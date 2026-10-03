@@ -1,0 +1,80 @@
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "Bahnschrift", "Segoe UI", Arial, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, monospace;
+  --font-tnr: "Bahnschrift", "Segoe UI", Arial, sans-serif;
+  --font-serif: "Bahnschrift", "Segoe UI", Arial, sans-serif;
+}
+
+@layer base {
+  *, ::before, ::after {
+    font-family: "Bahnschrift", "Segoe UI", Arial, sans-serif !important;
+  }
+  body {
+    font-family: "Bahnschrift", "Segoe UI", Arial, sans-serif !important;
+    @apply bg-slate-50 text-slate-900;
+  }
+  h1, h2, h3, h4, h5, h6 {
+    font-weight: 700;
+  }
+}
+
+.paper-a4, .paper-f4 {
+  width: 215mm;
+  min-height: 330mm;
+  padding: 30mm 20mm 10mm 30mm;
+  margin: 10mm auto;
+  background: white;
+  box-shadow: 0 0 10px rgba(0,0,0,0.1);
+  position: relative;
+  box-sizing: border-box;
+  font-family: "Times New Roman", Times, serif !important;
+  font-size: 12pt;
+  line-height: 1.5;
+  color: #000000;
+}
+
+.paper-a4-landscape, .paper-f4-landscape {
+  width: 330mm;
+  min-height: 215mm;
+  padding: 30mm 20mm 10mm 30mm;
+  margin: 10mm auto;
+  background: white;
+  box-shadow: 0 0 10px rgba(0,0,0,0.1);
+  position: relative;
+  box-sizing: border-box;
+  font-family: "Times New Roman", Times, serif !important;
+  font-size: 12pt;
+  line-height: 1.5;
+  color: #000000;
+}
+
+.paper-a4-bordered, .paper-f4-bordered {
+  border: 2px double #000000;
+}
+
+.font-tnr {
+  font-family: "Times New Roman", Times, serif !important;
+  color: #000000 !important;
+}
+
+@media print {
+  body {
+    background: none;
+  }
+  .no-print {
+    display: none;
+  }
+  .paper-a4, .paper-a4-landscape, .paper-f4, .paper-f4-landscape {
+    margin: 0;
+    box-shadow: none;
+    page-break-after: always;
+  }
+  
+  /* Print orientation handling for F4 Folio */
+  @page {
+    size: 215mm 330mm;
+    margin: 30mm 20mm 10mm 30mm;
+  }
+}
