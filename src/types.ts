@@ -83,3 +83,25 @@ export const HOLIDAYS_2026 = [
   '2026-03-30', // Example holiday
   // Add more as needed or use a library
 ];
+export type UserRole = 'guru' | 'pengawas';
+
+export interface UserProfile {
+  id: string;
+  role: UserRole;
+  email: string;
+  workUnitBina?: string; // khusus pengawas
+}
+
+export type TabKey =
+  | 'dashboard'
+  | 'profile'
+  | 'journal'
+  | 'preview'
+  | 'history'
+  | 'pw_dashboard'
+  | 'pw_teachers'
+  | 'pw_verify'
+  | 'pw_approve'
+  | 'pw_rec_history'
+  | 'help'
+  | 'about';

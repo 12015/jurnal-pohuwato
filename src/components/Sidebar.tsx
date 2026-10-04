@@ -1,14 +1,16 @@
 import type { ReactNode } from 'react';
-import { User, FileText, Eye, LogOut, BookOpen } from 'lucide-react';
-import type { TeacherData } from '../types';
+import {
+  LayoutDashboard, User, FileText, Eye, History, HelpCircle, Info,
+  Users, ClipboardCheck, CheckSquare, FileCheck, LogOut, BookOpen,
+} from 'lucide-react';
+import type { TeacherData, UserProfile, TabKey } from '../types';
 import { cn } from '../lib/utils';
-
-type TabKey = 'profile' | 'journal' | 'preview';
 
 interface SidebarProps {
   activeTab: TabKey;
   onTabChange: (tab: TabKey) => void;
   teacher: TeacherData;
+  profile: UserProfile | null;
   onSignOut: () => void;
   mobileOpen: boolean;
   onCloseMobile: () => void;
@@ -25,29 +27,74 @@ interface MenuSection {
   items: MenuItem[];
 }
 
+const guruSections: MenuSection[] = [
+  {
+    title: 'UTAMA',
+    items: [
+      { key: 'dashboard', label: 'Dashboard', icon: <LayoutDashboard className="w-5 h-5" /> },
+      { key: 'profile', label: 'Profil Guru', icon: <User className="w-5 h-5" /> },
+      { key: 'journal', label: 'Input Jurnal', icon: <FileText className="w-5 h-5" /> },
+    ],
+  },
+  {
+    title: 'DOKUMEN',
+    items: [
+      { key: 'preview', label: 'Preview & Cetak', icon: <Eye className="w-5 h-5" /> },
+      { key: 'history', label: 'Riwayat Jurnal', icon: <History className="w-5 h-5" /> },
+    ],
+  },
+  {
+    title: 'INFORMASI',
+    items: [
+      { key: 'help', label: 'Bantuan', icon: <HelpCircle className="w-5 h-5" /> },
+      { key: 'about', label: 'Tentang', icon: <Info className="w-5 h-5" /> },
+    ],
+  },
+];
+
+const pengawasSections: MenuSection[] = [
+  {
+    title: 'UTAMA',
+    items: [
+      { key: 'pw_dashboard', label: 'Dashboard', icon: <LayoutDashboard className="w-5 h-5" /> },
+      { key: 'profile', label: 'Profil Pengawas', icon: <User className="w-5 h-5" /> },
+    ],
+  },
+  {
+    title: 'VERIFIKASI',
+    items: [
+      { key: 'pw_teachers', label: 'Daftar Guru Binaan', icon: <Users className="w-5 h-5" /> },
+      { key: 'pw_verify', label: 'Verifikasi Jurnal', icon: <ClipboardCheck className="w-5 h-5" /> },
+      { key: 'pw_approve', label: 'Persetujuan', icon: <CheckSquare className="w-5 h-5" /> },
+    ],
+  },
+  {
+    title: 'DOKUMEN',
+    items: [
+      { key: 'pw_rec_history', label: 'Riwayat Rekomendasi', icon: <FileCheck className="w-5 h-5" /> },
+    ],
+  },
+  {
+    title: 'INFORMASI',
+    items: [
+      { key: 'help', label: 'Bantuan', icon: <HelpCircle className="w-5 h-5" /> },
+      { key: 'about', label: 'Tentang', icon: <Info className="w-5 h-5" /> },
+    ],
+  },
+];
+
 export function Sidebar({
   activeTab,
   onTabChange,
   teacher,
+  profile,
   onSignOut,
   mobileOpen,
   onCloseMobile,
 }: SidebarProps) {
-  const sections: MenuSection[] = [
-    {
-      title: 'UTAMA',
-      items: [
-        { key: 'profile', label: 'Profil Guru', icon: <User className="w-5 h-5" /> },
-        { key: 'journal', label: 'Input Jurnal', icon: <FileText className="w-5 h-5" /> },
-      ],
-    },
-    {
-      title: 'DOKUMEN',
-      items: [
-        { key: 'preview', label: 'Preview & Cetak', icon: <Eye className="w-5 h-5" /> },
-      ],
-    },
-  ];
+  const role = profile?.role || 'guru';
+  const sections = role === 'pengawas' ? pengawasSections : guruSections;
+  const roleLabel = role === 'pengawas' ? 'Pengawas Sekolah' : 'Guru';
 
   return (
     <>
@@ -81,7 +128,7 @@ export function Sidebar({
           <div className="min-w-0">
             <p className="font-extrabold text-sm tracking-wide uppercase leading-tight">JURNAL</p>
             <p className="text-[11px] text-[var(--color-sidebar-text)] truncate leading-tight">
-              Jurnal Kegiatan Harian Guru
+              {roleLabel}
             </p>
           </div>
         </div>
@@ -129,7 +176,7 @@ export function Sidebar({
             </div>
             <div className="min-w-0 flex-1">
               <p className="text-xs font-semibold text-white truncate leading-tight">
-                {teacher.name || 'Guru Belum Terdaftar'}
+                {teacher.name || 'Belum Terdaftar'}
               </p>
               <p className="text-[10px] text-[var(--color-sidebar-text)] truncate leading-tight">
                 {teacher.nip || '-'}

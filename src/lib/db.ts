@@ -1,10 +1,17 @@
 import { supabase } from './supabase';
-import type { TeacherData, JournalEntry } from '../types';
+import type { TeacherData, JournalEntry, UserProfile } from '../types';
+import { startOfMonth, endOfMonth, format } from 'date-fns';
 
 // ============ TEACHERS ============
 
 export async function loadTeacher(): Promise<TeacherData | null> {
-  const { data, error } = await supabase.from('teachers').select('*').maybeSingle();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return null;
+  const { data, error } = await supabase
+    .from('teachers')
+    .select('*')
+    .eq('user_id', user.id)
+    .maybeSingle();
   if (error) {
     console.error('loadTeacher:', error);
     return null;
@@ -159,4 +166,259 @@ export async function setApproval(periodKey: string, approved: boolean): Promise
     const { error } = await supabase.from('approvals').delete().eq('period_key', periodKey);
     if (error) throw error;
   }
+}
+
+// ============ PROFILES (role user) ============
+
+export async function getProfile(userId: string): Promise<UserProfile | null> {
+  const { data, error } = await supabase
+    .from('profiles')
+    .select('*')
+    .eq('id', userId)
+    .maybeSingle();
+  if (error) {
+    console.error('getProfile:', error);
+    return null;
+  }
+  if (!data) return null;
+  return {
+    id: data.id,
+    role: (data.role as 'guru' | 'pengawas') || 'guru',
+    email: data.email || '',
+    workUnitBina: data.work_unit_bina || undefined,
+  };
+}
+
+export async function upsertProfile(profile: UserProfile): Promise<void> {
+  const { error } = await supabase.from('profiles').upsert(
+    {
+      id: profile.id,
+      role: profile.role,
+      email: profile.email,
+      work_unit_bina: profile.workUnitBina || null,
+      updated_at: new Date().toISOString(),
+    },
+    { onConflict: 'id' }
+  );
+  if (error) throw error;
+}
+
+// ============ PENGAWAS: data guru binaan ============
+
+export interface GuruBinaanSummary {
+  userId: string;
+  name: string;
+  nip: string;
+  workUnit: string;
+  position: string;
+  subject: string;
+  journalCount: number;
+  activityCount: number;
+  profilePhoto?: string;
+}
+
+export async function getGuruBinaan(workUnitBina: string): Promise<GuruBinaanSummary[]> {
+  // 0. Ambil dulu daftar user_id yang role-nya 'guru' saja
+  const { data: guruProfiles, error: pErr } = await supabase
+    .from('profiles')
+    .select('id')
+    .eq('role', 'guru');
+
+  if (pErr) {
+    console.error('getGuruBinaan profiles:', pErr);
+    return [];
+  }
+
+  const guruIds = new Set((guruProfiles || []).map((p) => p.id));
+  if (guruIds.size === 0) return [];
+
+  // 1. Ambil teachers yang work_unit sama & role-nya guru
+  const { data: teachers, error } = await supabase
+    .from('teachers')
+    .select('user_id, name, nip, work_unit, position, subject, profile_photo')
+    .in('user_id', Array.from(guruIds));
+
+  if (error) {
+    console.error('getGuruBinaan teachers:', error);
+    return [];
+  }
+
+  const matched = (teachers || []).filter(
+    (t) =>
+      (t.work_unit || '').toLowerCase().trim() === workUnitBina.toLowerCase().trim()
+  );
+
+  if (matched.length === 0) return [];
+
+  const userIds = matched.map((t) => t.user_id);
+
+  // 2. Ambil journals bulan ini untuk guru-guru binaan
+  const now = new Date();
+  const start = format(startOfMonth(now), 'yyyy-MM-dd');
+  const end = format(endOfMonth(now), 'yyyy-MM-dd');
+
+  const { data: journals, error: jErr } = await supabase
+    .from('journals')
+    .select('user_id, date, activities')
+    .in('user_id', userIds)
+    .gte('date', start)
+    .lte('date', end);
+
+  if (jErr) {
+    console.error('getGuruBinaan journals:', jErr);
+  }
+
+  const journalsByUser = new Map<string, { count: number; activities: number }>();
+  (journals || []).forEach((j: any) => {
+    const curr = journalsByUser.get(j.user_id) || { count: 0, activities: 0 };
+    curr.count += 1;
+    curr.activities += Array.isArray(j.activities) ? j.activities.length : 0;
+    journalsByUser.set(j.user_id, curr);
+  });
+
+  return matched.map((t) => {
+    const stats = journalsByUser.get(t.user_id) || { count: 0, activities: 0 };
+    return {
+      userId: t.user_id,
+      name: t.name || '(Tanpa Nama)',
+      nip: t.nip || '',
+      workUnit: t.work_unit || '',
+      position: t.position || '',
+      subject: t.subject || '',
+      journalCount: stats.count,
+      activityCount: stats.activities,
+      profilePhoto: t.profile_photo || undefined,
+    };
+  });
+}
+
+// ============ PENGAWAS: verifikasi jurnal guru ============
+
+export async function getJournalsByUser(
+  userId: string,
+  monthIdx: number,
+  year: number
+): Promise<JournalEntry[]> {
+  const start = format(startOfMonth(new Date(year, monthIdx)), 'yyyy-MM-dd');
+  const end = format(endOfMonth(new Date(year, monthIdx)), 'yyyy-MM-dd');
+
+  const { data, error } = await supabase
+    .from('journals')
+    .select('id, date, activities')
+    .eq('user_id', userId)
+    .gte('date', start)
+    .lte('date', end)
+    .order('date', { ascending: true });
+
+  if (error) {
+    console.error('getJournalsByUser:', error);
+    return [];
+  }
+  return (data || []).map((row) => ({
+    id: row.id as string,
+    date: row.date as string,
+    activities: Array.isArray(row.activities) ? row.activities : [],
+  }));
+}
+
+export async function getApprovalsByUser(userId: string): Promise<string[]> {
+  const { data, error } = await supabase
+    .from('approvals')
+    .select('period_key, approved')
+    .eq('user_id', userId);
+  if (error) {
+    console.error('getApprovalsByUser:', error);
+    return [];
+  }
+  return (data || []).filter((r) => r.approved).map((r) => r.period_key as string);
+}
+
+export async function setApprovalForUser(
+  userId: string,
+  periodKey: string,
+  approved: boolean
+): Promise<void> {
+  if (approved) {
+    const { error } = await supabase.from('approvals').upsert(
+      {
+        user_id: userId,
+        period_key: periodKey,
+        approved: true,
+        updated_at: new Date().toISOString(),
+      },
+      { onConflict: 'user_id,period_key' }
+    );
+    if (error) throw error;
+  } else {
+    const { error } = await supabase
+      .from('approvals')
+      .delete()
+      .eq('user_id', userId)
+      .eq('period_key', periodKey);
+    if (error) throw error;
+  }
+}
+
+// ============ PENGAWAS: riwayat rekomendasi ============
+
+export interface RekomendasiHistory {
+  guruUserId: string;
+  guruName: string;
+  guruNip: string;
+  periodKey: string;
+  approved: boolean;
+  updatedAt: string;
+}
+
+export async function getRekomendasiHistory(
+  workUnitBina: string
+): Promise<RekomendasiHistory[]> {
+  // 1. Ambil guru binaan
+  const { data: guruProfiles } = await supabase
+    .from('profiles')
+    .select('id')
+    .eq('role', 'guru');
+
+  const guruIds = new Set((guruProfiles || []).map((p) => p.id));
+  if (guruIds.size === 0) return [];
+
+  const { data: teachers } = await supabase
+    .from('teachers')
+    .select('user_id, name, nip, work_unit');
+
+  const matched = (teachers || []).filter(
+    (t) =>
+      guruIds.has(t.user_id) &&
+      (t.work_unit || '').toLowerCase().trim() === workUnitBina.toLowerCase().trim()
+  );
+
+  if (matched.length === 0) return [];
+
+  const userIds = matched.map((t) => t.user_id);
+  const teacherMap = new Map(matched.map((t) => [t.user_id, t]));
+
+  // 2. Ambil approvals mereka
+  const { data: approvals, error } = await supabase
+    .from('approvals')
+    .select('user_id, period_key, approved, updated_at')
+    .in('user_id', userIds)
+    .eq('approved', true)
+    .order('updated_at', { ascending: false });
+
+  if (error) {
+    console.error('getRekomendasiHistory:', error);
+    return [];
+  }
+
+  return (approvals || []).map((a: any) => {
+    const t = teacherMap.get(a.user_id);
+    return {
+      guruUserId: a.user_id,
+      guruName: t?.name || '(Tanpa Nama)',
+      guruNip: t?.nip || '',
+      periodKey: a.period_key,
+      approved: !!a.approved,
+      updatedAt: a.updated_at || '',
+    };
+  });
 }

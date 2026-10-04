@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Loader2, LogIn, UserPlus } from 'lucide-react';
 import { useAuth } from './hooks/useAuth';
+import type { UserRole } from './types';
 
 export function LoginPage() {
   const { signIn, signUp } = useAuth();
@@ -8,6 +9,8 @@ export function LoginPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirm, setConfirm] = useState('');
+  const [role, setRole] = useState<UserRole>('guru');
+  const [workUnitBina, setWorkUnitBina] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [info, setInfo] = useState('');
@@ -23,7 +26,15 @@ export function LoginPage() {
       } else {
         if (password.length < 6) throw new Error('Password minimal 6 karakter');
         if (password !== confirm) throw new Error('Konfirmasi password tidak cocok');
-        await signUp(email.trim(), password);
+        if (role === 'pengawas' && !workUnitBina.trim()) {
+          throw new Error('Unit kerja yang dibina wajib diisi untuk pengawas');
+        }
+        await signUp(
+          email.trim(),
+          password,
+          role,
+          role === 'pengawas' ? workUnitBina.trim() : undefined
+        );
         setInfo('Pendaftaran berhasil. Silakan login.');
         setMode('login');
         setPassword('');
@@ -45,6 +56,38 @@ export function LoginPage() {
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-4">
+          {mode === 'register' && (
+            <div>
+              <label className="block text-xs font-semibold text-slate-700 mb-1.5">
+                DAFTAR SEBAGAI
+              </label>
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  onClick={() => setRole('guru')}
+                  className={`flex-1 py-2 rounded-lg text-sm font-semibold border transition-colors ${
+                    role === 'guru'
+                      ? 'bg-indigo-600 text-white border-indigo-600'
+                      : 'bg-white text-slate-700 border-slate-300 hover:bg-slate-50'
+                  }`}
+                >
+                  GURU
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setRole('pengawas')}
+                  className={`flex-1 py-2 rounded-lg text-sm font-semibold border transition-colors ${
+                    role === 'pengawas'
+                      ? 'bg-indigo-600 text-white border-indigo-600'
+                      : 'bg-white text-slate-700 border-slate-300 hover:bg-slate-50'
+                  }`}
+                >
+                  PENGAWAS
+                </button>
+              </div>
+            </div>
+          )}
+
           <div>
             <label className="block text-xs font-semibold text-slate-700 mb-1.5">EMAIL</label>
             <input
@@ -82,6 +125,26 @@ export function LoginPage() {
                 placeholder="Ulangi password"
                 className="w-full px-3 py-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none text-sm"
               />
+            </div>
+          )}
+
+          {mode === 'register' && role === 'pengawas' && (
+            <div>
+              <label className="block text-xs font-semibold text-slate-700 mb-1.5">
+                UNIT KERJA YANG DIBINA
+              </label>
+              <input
+                type="text"
+                required
+                value={workUnitBina}
+                onChange={(e) => setWorkUnitBina(e.target.value)}
+                placeholder="SMP Negeri 1 Randangan"
+                className="w-full px-3 py-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none text-sm"
+              />
+              <p className="text-[11px] text-slate-500 mt-1">
+                Tulis sama persis dengan Unit Kerja guru. Guru yang mendaftar dengan Unit Kerja
+                ini otomatis masuk daftar binaan Anda.
+              </p>
             </div>
           )}
 

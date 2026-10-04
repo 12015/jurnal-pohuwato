@@ -50,6 +50,17 @@ import { useAuth } from './hooks/useAuth';
 import { LoginPage } from './LoginPage';
 import * as db from './lib/db';
 import { Sidebar } from './components/Sidebar';
+import { PlaceholderPage } from './components/PlaceholderPage';
+import { DashboardGuru } from './pages/guru/DashboardGuru';
+import { RiwayatJurnal } from './pages/guru/RiwayatJurnal';
+import { Bantuan } from './pages/shared/Bantuan';
+import { Tentang } from './pages/shared/Tentang';
+import { DashboardPengawas } from './pages/pengawas/DashboardPengawas';
+import { DaftarGuruBinaan } from './pages/pengawas/DaftarGuruBinaan';
+import { VerifikasiJurnal } from './pages/pengawas/VerifikasiJurnal';
+import { Persetujuan } from './pages/pengawas/Persetujuan';
+import { RiwayatRekomendasi } from './pages/pengawas/RiwayatRekomendasi';
+import type { TabKey } from './types';
 import { TopBar } from './components/TopBar';
 
 // --- Components ---
@@ -178,7 +189,7 @@ const Input = ({
 // --- Main App ---
 
 export default function App() {
-  const { user, loading, signOut } = useAuth();
+  const { user, profile, loading, signOut } = useAuth();
 
   if (loading) {
     return (
@@ -195,11 +206,42 @@ export default function App() {
     return <LoginPage />;
   }
 
-  return <AppContent user={user} onSignOut={signOut} />;
+  return <AppContent user={user} profile={profile} onSignOut={signOut} />;
 }
+const tabTitles: Record<TabKey, string> = {
+  dashboard: 'Dashboard',
+  profile: 'Profil',
+  journal: 'Jurnal Kegiatan Harian',
+  preview: 'Preview Dokumen',
+  history: 'Riwayat Jurnal',
+  pw_dashboard: 'Dashboard Pengawas',
+  pw_teachers: 'Daftar Guru Binaan',
+  pw_verify: 'Verifikasi Jurnal',
+  pw_approve: 'Persetujuan',
+  pw_rec_history: 'Riwayat Rekomendasi',
+  help: 'Bantuan',
+  about: 'Tentang Aplikasi',
+};
+function AppContent({
+  user: _user,
+  profile,
+  onSignOut,
+}: {
+  user: SupabaseUser;
+  profile: import('./types').UserProfile | null;
+  onSignOut: () => void;
+}) {
+  const role = profile?.role || 'guru';
+  const [activeTab, setActiveTab] = useState<TabKey>('dashboard');
+  const [lastRole, setLastRole] = useState<string | null>(null);
 
-function AppContent({ user: _user, onSignOut }: { user: SupabaseUser; onSignOut: () => void }) {
-  const [activeTab, setActiveTab] = useState<'profile' | 'journal' | 'preview'>('profile');
+  // Reset tab saat role berubah / login pertama dengan role tertentu
+  useEffect(() => {
+    if (profile && profile.role !== lastRole) {
+      setActiveTab(profile.role === 'pengawas' ? 'pw_dashboard' : 'dashboard');
+      setLastRole(profile.role);
+    }
+  }, [profile, lastRole]);
 const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
   const [teacher, setTeacher] = useState<TeacherData>(INITIAL_TEACHER_DATA);
   const [journals, setJournals] = useState<JournalEntry[]>([]);
@@ -305,6 +347,7 @@ const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
         activeTab={activeTab}
         onTabChange={setActiveTab}
         teacher={teacher}
+        profile={profile}
         onSignOut={onSignOut}
         mobileOpen={mobileSidebarOpen}
         onCloseMobile={() => setMobileSidebarOpen(false)}
@@ -313,12 +356,7 @@ const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
       {/* Main Content */}
       <main className="flex-1 flex flex-col min-w-0 bg-white lg:rounded-xl overflow-hidden">
         <TopBar
-          title={
-            activeTab === 'profile' ? 'Profil Guru'
-            : activeTab === 'journal' ? 'Jurnal Kegiatan Harian'
-            : activeTab === 'preview' ? 'Preview Dokumen'
-            : ''
-          }
+          title={tabTitles[activeTab]}
           teacherName={teacher.name}
           teacherNip={teacher.nip}
           teacherPhoto={teacher.profilePhoto}
@@ -335,6 +373,86 @@ const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
             </div>
           ) : (
             <AnimatePresence mode="wait">
+                                          {activeTab === 'dashboard' && (
+                <motion.div key="dashboard" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }}>
+                  <DashboardGuru
+                    teacher={teacher}
+                    journals={journals}
+                    approvals={approvals}
+                    onNavigate={setActiveTab}
+                  />
+                </motion.div>
+              )}
+
+              {activeTab === 'history' && (
+                <motion.div key="history" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }}>
+                  <RiwayatJurnal
+                    journals={journals}
+                    onNavigate={setActiveTab}
+                    onDelete={handleDeleteJournal}
+                  />
+                </motion.div>
+              )}
+
+              {activeTab === 'pw_dashboard' && profile && (
+                <motion.div key="pw_dashboard" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }}>
+                  <DashboardPengawas
+                    profile={profile}
+                    teacher={teacher}
+                    onNavigate={setActiveTab}
+                    addNotification={addNotification}
+                  />
+                </motion.div>
+              )}
+
+              {activeTab === 'pw_teachers' && profile && (
+                <motion.div key="pw_teachers" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }}>
+                  <DaftarGuruBinaan
+                    profile={profile}
+                    onNavigate={setActiveTab}
+                    addNotification={addNotification}
+                  />
+                </motion.div>
+              )}
+
+              {activeTab === 'pw_verify' && profile && (
+                <motion.div key="pw_verify" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }}>
+                  <VerifikasiJurnal
+                    profile={profile}
+                    addNotification={addNotification}
+                  />
+                </motion.div>
+              )}
+
+              {activeTab === 'pw_approve' && profile && (
+                <motion.div key="pw_approve" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }}>
+                  <Persetujuan
+                    profile={profile}
+                    addNotification={addNotification}
+                  />
+                </motion.div>
+              )}
+
+              {activeTab === 'pw_rec_history' && profile && (
+                <motion.div key="pw_rec_history" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }}>
+                  <RiwayatRekomendasi
+                    profile={profile}
+                    addNotification={addNotification}
+                  />
+                </motion.div>
+              )}
+
+              {activeTab === 'help' && (
+                <motion.div key="help" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }}>
+                  <Bantuan role={role} />
+                </motion.div>
+              )}
+
+              {activeTab === 'about' && (
+                <motion.div key="about" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }}>
+                  <Tentang />
+                </motion.div>
+              )}
               {activeTab === 'profile' && (
                 <motion.div
                   key="profile"
@@ -342,7 +460,7 @@ const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, y: -20 }}
                 >
-                  <ProfileForm data={teacher} onSave={handleSaveTeacher} />
+                  <ProfileForm data={teacher} onSave={handleSaveTeacher} role={role} />
                 </motion.div>
               )}
 
@@ -499,7 +617,15 @@ function LogoUploader({
   );
 }
 
-function ProfileForm({ data, onSave }: { data: TeacherData; onSave: (d: TeacherData) => void }) {
+function ProfileForm({
+  data,
+  onSave,
+  role = 'guru',
+}: {
+  data: TeacherData;
+  onSave: (d: TeacherData) => void;
+  role?: 'guru' | 'pengawas';
+}) {
   const [form, setForm] = useState<TeacherData>(data);
 
   useEffect(() => {
@@ -511,7 +637,7 @@ function ProfileForm({ data, onSave }: { data: TeacherData; onSave: (d: TeacherD
       <div className="flex justify-between items-center pb-3 mb-5 border-b border-slate-200">
         <h3 className="text-lg font-bold text-slate-800 flex items-center gap-2 uppercase tracking-wide">
           <User className="w-5 h-5 text-indigo-600" />
-          PROFIL GURU & SATUAN PENDIDIKAN
+          {role === 'pengawas' ? 'PROFIL PENGAWAS' : 'PROFIL GURU & SATUAN PENDIDIKAN'}
         </h3>
         <Button onClick={() => onSave(form)} className="px-5 py-2 text-xs sm:text-sm font-semibold uppercase tracking-wide">
           <Save className="w-4 h-4" /> SIMPAN PROFIL
@@ -529,7 +655,13 @@ function ProfileForm({ data, onSave }: { data: TeacherData; onSave: (d: TeacherD
             <Input label="Mata Pelajaran" value={form.subject} onChange={(v) => setForm({ ...form, subject: v })} placeholder="Matematika" required />
             <Input label="Pangkat / Golongan" value={form.grade} onChange={(v) => setForm({ ...form, grade: v })} placeholder="Pembina, IV/a" />
             <Input label="Instansi" value={form.institution || ''} onChange={(v) => setForm({ ...form, institution: v })} placeholder="Dinas Pendidikan dan Kebudayaan" />
-            <Input label="Unit Kerja" value={form.workUnit} onChange={(v) => setForm({ ...form, workUnit: v })} placeholder="SMPN 1 Randangan" required />
+            <Input
+              label={role === 'pengawas' ? 'Unit Kerja Pengawas' : 'Unit Kerja'}
+              value={form.workUnit}
+              onChange={(v) => setForm({ ...form, workUnit: v })}
+              placeholder={role === 'pengawas' ? 'Dinas Pendidikan / Pengawas' : 'SMPN 1 Randangan'}
+              required
+            />
             <Input label="Kecamatan" value={form.kecamatan} onChange={(v) => setForm({ ...form, kecamatan: v })} placeholder="Kecamatan Marisa" required />
             <Input label="NPSN" value={form.npsn} onChange={(v) => setForm({ ...form, npsn: v })} placeholder="10xxxxxx" />
             <Input label="Nomor Surat Pernyataan" value={form.letterNumber || ''} onChange={(v) => setForm({ ...form, letterNumber: v })} placeholder="800/SMPN1-RDG/01/2026" />
