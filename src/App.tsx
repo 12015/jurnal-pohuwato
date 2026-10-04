@@ -42,12 +42,15 @@ import {
   BorderStyle,
   UnderlineType
 } from 'docx';
-import html2canvas from 'html2canvas';
+import { toJpeg } from 'html-to-image';
 import jsPDF from 'jspdf';
+import autoTable from 'jspdf-autotable';
 import type { User as SupabaseUser } from '@supabase/supabase-js';
 import { useAuth } from './hooks/useAuth';
 import { LoginPage } from './LoginPage';
 import * as db from './lib/db';
+import { Sidebar } from './components/Sidebar';
+import { TopBar } from './components/TopBar';
 
 // --- Components ---
 
@@ -196,7 +199,8 @@ export default function App() {
 }
 
 function AppContent({ user: _user, onSignOut }: { user: SupabaseUser; onSignOut: () => void }) {
-  const [activeTab, setActiveTab] = useState<'profile' | 'journal' | 'preview' | 'send_email'>('profile');
+  const [activeTab, setActiveTab] = useState<'profile' | 'journal' | 'preview'>('profile');
+const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
   const [teacher, setTeacher] = useState<TeacherData>(INITIAL_TEACHER_DATA);
   const [journals, setJournals] = useState<JournalEntry[]>([]);
   const [approvals, setApprovals] = useState<string[]>([]);
@@ -295,213 +299,33 @@ function AppContent({ user: _user, onSignOut }: { user: SupabaseUser; onSignOut:
   };
 
   return (
-    <div className="h-screen w-screen flex bg-slate-50 overflow-hidden">
+    <div className="h-screen w-screen flex bg-slate-100 overflow-hidden lg:p-3 lg:gap-3">
       {/* Sidebar */}
-      <aside className={cn(
-        "bg-slate-900 text-white transition-all duration-300 flex flex-col shrink-0 h-full no-print",
-        sidebarOpen ? "w-64" : "w-20"
-      )}>
-        <div className="p-6 flex items-center justify-between gap-3 border-b border-slate-800">
-          <div className="flex items-center gap-3 overflow-hidden">
-            <div className="w-8 h-8 bg-indigo-500 rounded-lg flex items-center justify-center shrink-0 overflow-hidden shadow-sm">
-              {teacher.schoolLogo || teacher.districtLogo ? (
-                <img
-                  src={teacher.schoolLogo || teacher.districtLogo}
-                  alt="Logo App"
-                  className="w-full h-full object-contain p-0.5 bg-white rounded-lg"
-                />
-              ) : (
-                <BookOpen className="w-5 h-5 text-white" />
-              )}
-            </div>
-            {sidebarOpen && <span className="font-bold text-lg tracking-tight truncate uppercase">JURNAL GURU</span>}
-          </div>
-        </div>
-
-        <nav className="flex-1 p-4 space-y-2 overflow-y-auto">
-          <NavItem
-            icon={<User className="w-5 h-5" />}
-            label="PROFIL"
-            active={activeTab === 'profile'}
-            onClick={() => setActiveTab('profile')}
-            collapsed={!sidebarOpen}
-          />
-          <NavItem
-            icon={<FileText className="w-5 h-5" />}
-            label="INPUT JURNAL"
-            active={activeTab === 'journal'}
-            onClick={() => setActiveTab('journal')}
-            collapsed={!sidebarOpen}
-          />
-          <NavItem
-            icon={<Eye className="w-5 h-5" />}
-            label="PREVIEW & CETAK"
-            active={activeTab === 'preview'}
-            onClick={() => setActiveTab('preview')}
-            collapsed={!sidebarOpen}
-          />
-          <NavItem
-            icon={<Mail className="w-5 h-5" />}
-            label="KIRIM EMAIL"
-            active={activeTab === 'send_email'}
-            onClick={() => setActiveTab('send_email')}
-            collapsed={!sidebarOpen}
-          />
-        </nav>
-      </aside>
+      <Sidebar
+        activeTab={activeTab}
+        onTabChange={setActiveTab}
+        teacher={teacher}
+        onSignOut={onSignOut}
+        mobileOpen={mobileSidebarOpen}
+        onCloseMobile={() => setMobileSidebarOpen(false)}
+      />
 
       {/* Main Content */}
-      <main className="flex-1 h-full overflow-y-auto flex flex-col">
-        <header className="bg-white border-b border-slate-200 p-4 sticky top-0 z-10 no-print">
-          <div className="w-full px-2 sm:px-4 flex justify-between items-center">
-            <div className="flex items-center gap-3">
-              <button
-                onClick={() => setSidebarOpen(!sidebarOpen)}
-                className="p-2 hover:bg-slate-100 rounded-lg text-slate-700 transition-colors flex items-center justify-center border border-slate-200 bg-slate-50"
-                title="Sembunyikan / Tampilkan Sidebar (Menu)"
-              >
-                <Menu className="w-5 h-5" />
-              </button>
-              <h1 className="text-lg sm:text-xl font-bold text-slate-800 uppercase tracking-tight">
-                {activeTab === 'profile' && 'PROFIL GURU'}
-                {activeTab === 'journal' && 'JURNAL KEGIATAN HARIAN'}
-                {activeTab === 'preview' && 'PREVIEW DOKUMEN'}
-                {activeTab === 'send_email' && 'KIRIM JURNAL VIA EMAIL'}
-              </h1>
-            </div>
-            <div className="relative flex items-center gap-3">
-              <div
-                className="text-right hidden sm:block cursor-pointer select-none"
-                onClick={() => setShowDatePickerPopover(!showDatePickerPopover)}
-              >
-                <p className="text-sm font-bold text-slate-900 leading-tight hover:text-indigo-600 transition-colors">
-                  {teacher.name || 'Guru Belum Terdaftar'}
-                </p>
-                <p className="text-xs text-slate-500 font-medium">{teacher.nip || '-'}</p>
-              </div>
+      <main className="flex-1 flex flex-col min-w-0 bg-white lg:rounded-xl overflow-hidden">
+        <TopBar
+          title={
+            activeTab === 'profile' ? 'Profil Guru'
+            : activeTab === 'journal' ? 'Jurnal Kegiatan Harian'
+            : activeTab === 'preview' ? 'Preview Dokumen'
+            : ''
+          }
+          teacherName={teacher.name}
+          teacherNip={teacher.nip}
+          teacherPhoto={teacher.profilePhoto}
+          onToggleSidebar={() => setMobileSidebarOpen(true)}
+        />
 
-              {/* Profile Photo Avatar Button */}
-              <button
-                onClick={() => setShowDatePickerPopover(!showDatePickerPopover)}
-                className="relative group focus:outline-none focus:ring-2 focus:ring-indigo-500/50 rounded-full cursor-pointer"
-                title="Klik Foto Profil untuk Pilih Tanggal & Tambah Kegiatan (+)"
-              >
-                <div className="w-10 h-10 sm:w-11 sm:h-11 rounded-full bg-indigo-50 border-2 border-indigo-500/40 overflow-hidden flex items-center justify-center shadow-xs transition-transform group-hover:scale-105">
-                  {teacher.profilePhoto ? (
-                    <img src={teacher.profilePhoto} alt="Foto Profil" className="w-full h-full object-cover" />
-                  ) : (
-                    <User className="w-5 h-5 sm:w-6 sm:h-6 text-indigo-600" />
-                  )}
-                </div>
-              </button>
-
-              {/* Logout Button */}
-              <button
-                onClick={onSignOut}
-                title="Keluar dari akun"
-                className="p-2 hover:bg-red-50 rounded-lg text-slate-500 hover:text-red-600 transition-colors"
-              >
-                <LogOut className="w-5 h-5" />
-              </button>
-
-              {/* Popover Form Input (Pilih Tanggal & +) */}
-              <AnimatePresence>
-                {showDatePickerPopover && (
-                  <>
-                    {/* Backdrop click listener */}
-                    <div
-                      className="fixed inset-0 z-40"
-                      onClick={() => setShowDatePickerPopover(false)}
-                    />
-
-                    <motion.div
-                      initial={{ opacity: 0, y: -8, scale: 0.96 }}
-                      animate={{ opacity: 1, y: 0, scale: 1 }}
-                      exit={{ opacity: 0, y: -8, scale: 0.96 }}
-                      transition={{ duration: 0.15 }}
-                      className="absolute right-0 top-14 z-50 w-72 bg-white border border-slate-200/90 rounded-2xl shadow-2xl p-4 space-y-3"
-                    >
-                      <div className="flex justify-between items-center pb-2 border-b border-slate-100">
-                        <div className="flex items-center gap-1.5 text-xs font-bold text-slate-800 uppercase tracking-wide">
-                          <CalendarIcon className="w-4 h-4 text-indigo-600" />
-                          FORM INPUT TANGGAL & JURNAL
-                        </div>
-                        <button
-                          onClick={() => setShowDatePickerPopover(false)}
-                          className="text-slate-400 hover:text-slate-600 p-1 rounded-lg text-xs"
-                        >
-                          ✕
-                        </button>
-                      </div>
-
-                      {/* Form Input (Pilih Tanggal & + Button) */}
-                      <div className="flex items-center justify-between gap-2 bg-slate-50 border border-slate-200 p-2.5 rounded-xl">
-                        <div className="flex items-center gap-2 flex-1">
-                          <label htmlFor="popover-date-picker" className="text-xs font-semibold text-slate-700 shrink-0 cursor-pointer">
-                            Pilih Tanggal:
-                          </label>
-                          <input
-                            id="popover-date-picker"
-                            type="date"
-                            value={selectedDateStr}
-                            onChange={(e) => setSelectedDateStr(e.target.value)}
-                            className="text-xs font-medium text-slate-800 bg-white border border-slate-300 rounded-lg px-2 py-1 focus:ring-2 focus:ring-indigo-500 outline-none w-full cursor-pointer shadow-2xs"
-                          />
-                        </div>
-
-                        {rows.length < 9 && (
-                          <button
-                            onClick={() => {
-                              addRow();
-                              if (activeTab !== 'journal') {
-                                setActiveTab('journal');
-                              }
-                              addNotification(`Kegiatan baru ditambahkan ke Jurnal!`, 'success');
-                            }}
-                            className="p-1.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg transition-all flex items-center justify-center shadow-xs shrink-0"
-                            title="Tambah Kegiatan Berikutnya (+)"
-                          >
-                            <Plus className="w-4 h-4" />
-                          </button>
-                        )}
-                      </div>
-
-                      <div className="text-[11px] text-slate-500 flex justify-between items-center px-1">
-                        <span>Status:</span>
-                        <span className={cn(
-                          "font-semibold px-2 py-0.5 rounded text-[10px]",
-                          isWorkDay ? "bg-emerald-50 text-emerald-700" : "bg-amber-50 text-amber-700"
-                        )}>
-                          {isWorkDay ? "Hari Kerja" : "Hari Libur / Akhir Pekan"}
-                        </span>
-                      </div>
-
-                      <div className="pt-1 flex gap-2">
-                        <button
-                          onClick={() => setSelectedDateStr(format(new Date(), 'yyyy-MM-dd'))}
-                          className="flex-1 py-1.5 px-2 text-[11px] font-medium text-indigo-600 bg-indigo-50 hover:bg-indigo-100 rounded-lg transition-colors text-center"
-                        >
-                          Hari Ini
-                        </button>
-                        <button
-                          onClick={() => {
-                            setActiveTab('journal');
-                            setShowDatePickerPopover(false);
-                          }}
-                          className="flex-1 py-1.5 px-2 text-[11px] font-medium text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-lg transition-colors text-center"
-                        >
-                          Ke Input Jurnal
-                        </button>
-                      </div>
-                    </motion.div>
-                  </>
-                )}
-              </AnimatePresence>
-            </div>
-          </div>
-        </header>
-
-        <div className="p-4 sm:p-6 w-full">
+        <div className="flex-1 overflow-y-auto px-4 sm:px-6 pb-4 sm:pb-6">
           {isLoadingData ? (
             <div className="flex items-center justify-center py-20">
               <div className="text-center">
@@ -572,22 +396,6 @@ function AppContent({ user: _user, onSignOut }: { user: SupabaseUser; onSignOut:
                     }}
                     addNotification={addNotification}
                     onUpdateTeacher={handleSaveTeacher}
-                  />
-                </motion.div>
-              )}
-
-              {activeTab === 'send_email' && (
-                <motion.div
-                  key="send_email"
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -20 }}
-                >
-                  <KirimEmailSection
-                    teacher={teacher}
-                    journals={journals}
-                    onUpdateTeacher={handleSaveTeacher}
-                    addNotification={addNotification}
                   />
                 </motion.div>
               )}
@@ -1253,27 +1061,6 @@ function JournalInput({
 
         <div className="mt-4 flex flex-wrap justify-end gap-2.5 pt-3 border-t border-slate-200">
           <Button
-            variant="outline"
-            onClick={handleKirimEmailToday}
-            disabled={!canInput}
-            className="border-emerald-200 text-emerald-700 hover:bg-emerald-50 px-3 py-1.5 text-xs"
-          >
-            <Mail className="w-3.5 h-3.5" /> KIRIM KE EMAIL
-          </Button>
-          <Button
-            variant="outline"
-            onClick={handleKirim}
-            disabled={!canInput || isSendingKirim}
-            className="border-indigo-200 text-indigo-700 hover:bg-indigo-50 px-3 py-1.5 text-xs"
-          >
-            {isSendingKirim ? (
-              <Loader2 className="w-3.5 h-3.5 animate-spin" />
-            ) : (
-              <Send className="w-3.5 h-3.5" />
-            )}
-            KIRIM (GAS)
-          </Button>
-          <Button
             onClick={handleSubmit}
             disabled={!canInput}
             className={cn(
@@ -1356,7 +1143,226 @@ function JournalInput({
 }
 
 // --- Preview Section ---
+// ============ PDF JURNAL (autoTable, multi-halaman rapi) ============
+async function downloadJurnalPDF(
+  teacher: TeacherData,
+  journals: JournalEntry[],
+  monthIdx: number,
+  filterYear: number,
+  useTriwulan: boolean,
+  filterTriwulan: number,
+  addNotification: (message: string, type: 'success' | 'error') => void
+) {
+  const monthsList = [
+    'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni',
+    'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'
+  ];
 
+  try {
+    addNotification('Menyiapkan PDF Jurnal...', 'success');
+
+    const doc = new jsPDF({
+      orientation: 'landscape',
+      unit: 'mm',
+      format: [330, 215],
+    });
+
+    const pageW = 330;
+    const pageH = 215;
+    const marginL = 10;
+    const marginR = 10;
+    const marginT = 20;
+    const marginB = 10;
+    const startTableY = 82;
+
+    // ====== Fungsi gambar kop ======
+    const drawKop = (yStart: number): number => {
+      let y = yStart;
+      if (teacher.districtLogo) {
+        try { doc.addImage(teacher.districtLogo, 'PNG', marginL, y, 22, 22); } catch { /* ignore */ }
+      }
+      if (teacher.schoolLogo) {
+        try { doc.addImage(teacher.schoolLogo, 'PNG', pageW - marginR - 22, y, 22, 22); } catch { /* ignore */ }
+      }
+      doc.setFont('times', 'bold');
+      doc.setFontSize(14); // PEMERINTAH KABUPATEN
+      doc.text('PEMERINTAH KABUPATEN POHUWATO', pageW / 2, y + 6, { align: 'center' });
+
+      doc.setFontSize(14); // DINAS
+      doc.text(
+        teacher.institution ? teacher.institution.toUpperCase() : 'DINAS PENDIDIKAN DAN KEBUDAYAAN',
+        pageW / 2,
+        y + 13,
+        { align: 'center' }
+      );
+
+      doc.setFontSize(16); // SMP NEGERI
+      doc.text(
+        teacher.workUnit ? teacher.workUnit.toUpperCase() : 'SMP NEGERI RANDANGAN',
+        pageW / 2,
+        y + 21,
+        { align: 'center' }
+      );
+
+      doc.setFont('times', 'italic');
+      doc.setFontSize(8); // Alamat tetap kecil
+      doc.text(teacher.schoolAddress || '', pageW / 2, y + 26, { align: 'center' });
+
+      y += 28;
+      doc.setLineWidth(0.6);
+      doc.line(marginL, y, pageW - marginR, y);
+      doc.setLineWidth(0.2);
+      doc.line(marginL, y + 1, pageW - marginR, y + 1);
+      y += 9; // jarak dari garis ke judul
+      doc.setFont('times', 'bold');
+      doc.setFontSize(14); // JURNAL KEGIATAN HARIAN GURU
+      doc.text('JURNAL KEGIATAN HARIAN GURU', pageW / 2, y, { align: 'center' });
+      y += 9;
+      doc.setFont('times', 'normal');
+      doc.setFontSize(12); // Info profil
+      const leftX = marginL;
+      const rightX = pageW / 2 + 5;
+      const labelW = 25;
+      const infoRows = [
+        { l: ['Nama', teacher.name], r: ['Unit Kerja', teacher.workUnit] },
+        { l: ['NIP', teacher.nip], r: ['Kecamatan', teacher.kecamatan] },
+        { l: ['Jabatan', teacher.position], r: ['Bulan', `${monthsList[monthIdx] || ''} ${filterYear}`] },
+      ];
+      infoRows.forEach((row, i) => {
+        const yy = y + i * 5.5;
+        doc.text(row.l[0], leftX, yy);
+        doc.text(':', leftX + labelW, yy);
+        doc.text(row.l[1] || '-', leftX + labelW + 3, yy);
+        doc.text(row.r[0], rightX, yy);
+        doc.text(':', rightX + labelW, yy);
+        doc.text(row.r[1] || '-', rightX + labelW + 3, yy);
+      });
+      return y + infoRows.length * 5.5 + 4;
+    };
+
+    // ====== Filter jurnal ======
+    const monthJournals = journals
+      .filter((j) => {
+        const d = parseISO(j.date);
+        if (useTriwulan) {
+          const q = Math.floor(getMonth(d) / 3) + 1;
+          return q === filterTriwulan && getYear(d) === filterYear;
+        }
+        return getMonth(d) === monthIdx && getYear(d) === filterYear;
+      })
+      .sort((a, b) => parseISO(a.date).getTime() - parseISO(b.date).getTime());
+
+    // ====== Bangun body dengan rowSpan ======
+    const body: any[] = [];
+    monthJournals.forEach((j, dayIdx) => {
+      const dateStr = format(parseISO(j.date), 'EEEE, d MMM yyyy', { locale: id });
+      const actCount = j.activities.length;
+      j.activities.forEach((act, actIdx) => {
+        const row: any[] = [];
+        if (actIdx === 0) {
+          row.push({ content: String(dayIdx + 1), rowSpan: actCount });
+          row.push({ content: dateStr, rowSpan: actCount });
+        }
+        row.push(act.jam || '-');
+        row.push(act.jenisKegiatan || '-');
+        row.push(act.agendaMapel || act.subject || '-');
+        row.push(act.lokasiKelas || act.class || '-');
+        row.push(act.kegiatanTujuan || [act.goal, act.activity].filter(Boolean).join(' - ') || '-');
+        row.push(act.keterangan || (act.studentCount ? `${act.studentCount} Siswa` : '-'));
+        body.push(row);
+      });
+    });
+
+    // ====== Gambar kop halaman 1 ======
+    drawKop(marginT);
+
+    // ====== Tabel autoTable ======
+    autoTable(doc, {
+      startY: startTableY,
+      head: [[
+        'NO', 'HARI / TANGGAL', 'JAM', 'JENIS KEGIATAN',
+        'AGENDA / MAPEL', 'LOKASI / KELAS', 'KEGIATAN / TUJUAN PEMBELAJARAN', 'KETERANGAN / LAMPIRAN',
+      ]],
+      body,
+      theme: 'grid',
+      showHead: 'everyPage', // ← header tabel berulang setiap halaman
+      styles: {
+        font: 'times',
+        fontSize: 11, // tabel isi
+        cellPadding: 1.5,
+        lineColor: [0, 0, 0],
+        lineWidth: 0.15,
+        textColor: [0, 0, 0],
+        overflow: 'linebreak',
+        valign: 'middle',
+      },
+      headStyles: {
+        fillColor: [107, 33, 168],
+        textColor: [255, 255, 255],
+        fontStyle: 'bold',
+        halign: 'center',
+        valign: 'middle',
+        fontSize: 11, // header tabel
+      },
+      columnStyles: {
+        0: { cellWidth: 10, halign: 'center' },
+        1: { cellWidth: 32 },
+        2: { cellWidth: 22, halign: 'center' },
+        3: { cellWidth: 30 },
+        4: { cellWidth: 30 },
+        5: { cellWidth: 24, halign: 'center' },
+        6: { cellWidth: 'auto' },
+        7: { cellWidth: 32 },
+      },
+      margin: { top: startTableY, left: marginL, right: marginR, bottom: marginB },
+      didDrawPage: (data) => {
+        if (data.pageNumber > 1) {
+          drawKop(marginT);
+        }
+      },
+    });
+
+    // ====== Footer tanda tangan ======
+    const lastY = (doc as any).lastAutoTable.finalY + 10;
+    const sigBlockHeight = 45;
+    let sigY = lastY;
+
+    if (sigY + sigBlockHeight > pageH - marginB) {
+      doc.addPage([330, 215], 'landscape');
+      drawKop(marginT);
+      sigY = startTableY;
+    }
+
+    const lastDay = endOfMonth(new Date(filterYear, monthIdx));
+    const sigLeftX = marginL + 60;
+    const sigRightX = pageW - marginR - 60;
+
+    doc.setFont('times', 'normal');
+    doc.setFontSize(12); // tanda tangan
+    doc.text('Mengetahui,', sigLeftX, sigY, { align: 'center' });
+    doc.text('Kepala Satuan Pendidikan', sigLeftX, sigY + 5.5, { align: 'center' });
+    doc.text(`Pohuwato, ${format(lastDay, 'd MMMM yyyy', { locale: id })}`, sigRightX, sigY, { align: 'center' });
+    doc.text('Guru Mata Pelajaran', sigRightX, sigY + 5.5, { align: 'center' });
+
+    sigY += 27;
+
+    doc.setFont('times', 'bold');
+    doc.text(teacher.principalName || '................', sigLeftX, sigY, { align: 'center' });
+    doc.text(teacher.name || '................', sigRightX, sigY, { align: 'center' });
+
+    doc.setFont('times', 'normal');
+    doc.text(`NIP. ${teacher.principalNip || '................'}`, sigLeftX, sigY + 5.5, { align: 'center' });
+    doc.text(`NIP. ${teacher.nip || '................'}`, sigRightX, sigY + 5.5, { align: 'center' });
+
+    const monthStr = useTriwulan ? `Triwulan_${filterTriwulan}` : monthsList[monthIdx];
+    const filename = `Dokumen_JURNAL_${monthStr}_${filterYear}.pdf`;
+    doc.save(filename);
+    addNotification('PDF Jurnal berhasil diunduh!', 'success');
+  } catch (error) {
+    console.error('Error PDF Jurnal:', error);
+    addNotification('Gagal: ' + (error as Error).message, 'error');
+  }
+}
 type PreviewType = 'jurnal' | 'rekomendasi' | 'sptjm' | 'pernyataan' | 'perjanjian';
 
 function PreviewSection({
@@ -1568,12 +1574,13 @@ function PreviewSection({
           </style>
           <style>
             * { box-sizing: border-box; font-family: "Times New Roman", Times, serif !important; color: #000000 !important; }
-            body { margin: 0; padding: 0; background: #ffffff; color: #000000 !important; font-family: "Times New Roman", Times, serif !important; font-size: 12pt !important; line-height: 1.5 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+                        html, body { margin: 0; padding: 0; background: #ffffff !important; }
+            body { color: #000000 !important; font-family: "Times New Roman", Times, serif !important; font-size: 12pt !important; line-height: 1.5 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
             .paper-a4, .paper-f4 {
               width: 215mm !important;
               min-height: 330mm !important;
               max-width: 215mm !important;
-              padding: 30mm 20mm 10mm 30mm !important;
+              padding: 20mm 10mm 10mm 10mm !important;
               margin: 0 auto !important;
               background: white !important;
               box-shadow: none !important;
@@ -1589,7 +1596,7 @@ function PreviewSection({
               width: 330mm !important;
               min-height: 215mm !important;
               max-width: 330mm !important;
-              padding: 30mm 20mm 10mm 30mm !important;
+              padding: 20mm 10mm 10mm 10mm !important;
               margin: 0 auto !important;
               background: white !important;
               box-shadow: none !important;
@@ -1637,6 +1644,8 @@ function PreviewSection({
         clone.style.boxShadow = 'none';
         clone.style.margin = '0';
         clone.style.position = 'relative';
+        clone.style.background = '#ffffff';
+        clone.style.backgroundColor = '#ffffff';
 
         const imgs = Array.from(clone.querySelectorAll('img'));
         for (const img of imgs) {
@@ -1690,15 +1699,24 @@ function PreviewSection({
 
         await new Promise((r) => setTimeout(r, 120));
 
-        const canvas = await html2canvas(clone, {
-          scale: 2,
-          useCORS: true,
-          logging: false,
+        const paperWidthPx = isLandscape ? 1247 : 813;
+        const imgData = await toJpeg(clone, {
+          quality: 0.95,
+          pixelRatio: 3,
           backgroundColor: '#ffffff',
-          windowWidth: isLandscape ? 1247 : 813,
+          cacheBust: true,
+          width: paperWidthPx,
+          height: clone.scrollHeight,
+          style: {
+            margin: '0',
+            transform: 'none',
+            boxShadow: 'none',
+            background: '#ffffff',
+            backgroundColor: '#ffffff',
+            width: paperWidthPx + 'px',
+          },
         });
 
-        const imgData = canvas.toDataURL('image/png');
         const formatF4 = isLandscape ? [330, 215] : [215, 330];
 
         if (i === 0) {
@@ -1714,24 +1732,38 @@ function PreviewSection({
         if (pdf) {
           const pdfWidth = pdf.internal.pageSize.getWidth();
           const pdfHeight = pdf.internal.pageSize.getHeight();
-          const imgHeightInPdf = (canvas.height * pdfWidth) / canvas.width;
+                    const img = new Image();
+          img.src = imgData;
+          await new Promise<void>((resolve) => {
+            img.onload = () => resolve();
+          });
+          const imgHeightInPdf = (img.height * pdfWidth) / img.width;
 
-          if (pagesToRender.length === 1 || imgHeightInPdf <= pdfHeight * 1.15) {
-            const renderHeight = Math.min(imgHeightInPdf, pdfHeight);
-            pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, renderHeight);
-          } else {
-            let heightLeft = imgHeightInPdf;
-            let position = 0;
-            pdf.addImage(imgData, 'PNG', 0, position, pdfWidth, imgHeightInPdf);
-            heightLeft -= pdfHeight;
+  // Kalau konten pas dalam 1 halaman → langsung render
+            // Untuk JURNAL boleh multi-halaman, untuk letter tetap 1 halaman
+      const allowMultiPage = type === 'jurnal';
 
-            while (heightLeft > 5) {
-              position -= pdfHeight;
-              pdf.addPage(formatF4, orientation);
-              pdf.addImage(imgData, 'PNG', 0, position, pdfWidth, imgHeightInPdf);
-              heightLeft -= pdfHeight;
-            }
-          }
+      if (!allowMultiPage || imgHeightInPdf <= pdfHeight * 1.02) {
+        // Muat dalam 1 halaman (scale agar pas)
+        const renderHeight = Math.min(imgHeightInPdf, pdfHeight);
+        pdf.addImage(imgData, 'JPEG', 0, 0, pdfWidth, renderHeight);
+      } else {
+        // Konten panjang → pecah otomatis ke halaman berikutnya
+        let heightLeft = imgHeightInPdf;
+        let position = 0;
+
+        // Halaman pertama: taruh image penuh (bagian yang keluar halaman akan otomatis terpotong)
+        pdf.addImage(imgData, 'JPEG', 0, position, pdfWidth, imgHeightInPdf);
+        heightLeft -= pdfHeight;
+
+        // Halaman berikutnya: geser gambar ke atas, tambah halaman baru
+        while (heightLeft > 5) {
+          position -= pdfHeight;
+          pdf.addPage(formatF4, orientation);
+          pdf.addImage(imgData, 'JPEG', 0, position, pdfWidth, imgHeightInPdf);
+          heightLeft -= pdfHeight;
+        }
+      }
         }
       }
 
@@ -1923,8 +1955,8 @@ function PreviewSection({
   };
 
   return (
-    <div className="space-y-6">
-      <Card className="p-4 no-print">
+    <div className="space-y-0 pt-1">
+                  <Card className="p-4 no-print sticky top-0 z-20 bg-white shadow-sm">
         <div className="flex flex-wrap gap-2 items-center justify-between">
           <div className="flex gap-2">
             <Button variant={type === 'jurnal' ? 'primary' : 'outline'} onClick={() => setType('jurnal')} className="uppercase text-xs font-bold">JURNAL</Button>
@@ -1969,25 +2001,26 @@ function PreviewSection({
             </div>
 
             <div className="flex items-center gap-2">
-              <Button variant="secondary" onClick={() => downloadPDF('preview-content', `Dokumen_${type}.pdf`)} className="uppercase text-xs">
+                            <Button
+                variant="secondary"
+                onClick={() => {
+                  if (type === 'jurnal') {
+                    downloadJurnalPDF(
+                      teacher,
+                      journals,
+                      filterMonth,
+                      filterYear,
+                      useTriwulan,
+                      filterTriwulan,
+                      addNotification
+                    );
+                  } else {
+                    downloadPDF('preview-content', `Dokumen_${type}.pdf`);
+                  }
+                }}
+                className="uppercase text-xs"
+              >
                 <Download className="w-3.5 h-3.5" /> DOWNLOAD PDF
-              </Button>
-              <Button variant="outline" onClick={downloadWord} className="uppercase text-xs">
-                <FileText className="w-3.5 h-3.5" /> DOWNLOAD WORD
-              </Button>
-            </div>
-
-            <div className="flex items-center gap-2 border-t md:border-t-0 md:border-l pt-2 md:pt-0 pl-0 md:pl-3 border-slate-200">
-              <input
-                type="email"
-                className="text-xs border border-slate-300 rounded p-1.5 w-48 text-slate-800 bg-white"
-                placeholder="Email Tujuan"
-                value={teacher.targetEmail || ''}
-                onChange={(e) => onUpdateTeacher({ ...teacher, targetEmail: e.target.value })}
-                title="Email Tujuan Kirim Jurnal"
-              />
-              <Button variant="primary" onClick={handleKirimEmail} className="bg-emerald-600 hover:bg-emerald-700 border-none uppercase text-xs">
-                <Mail className="w-3.5 h-3.5 text-white" /> KIRIM JURNAL
               </Button>
             </div>
           </div>
@@ -2054,8 +2087,7 @@ function PreviewSection({
           </div>
         )}
       </div>
-
-      <div id="preview-content" className="flex flex-col items-center gap-8 bg-slate-200 p-8 min-h-screen overflow-y-auto">
+      <div id="preview-content" className="flex flex-col items-center gap-4 p-4 rounded-lg border border-slate-200 bg-white overflow-y-auto">
         {type === 'jurnal' && (
           <>
             {useTriwulan ? (
@@ -2145,42 +2177,167 @@ const getFormattedAddress = (addr?: string) => {
 };
 
 const KopSurat = ({ teacher }: { teacher?: TeacherData }) => (
-  <div className="w-full mb-3">
-    <table className="border-none w-full" width="100%" border={0} cellPadding={0} cellSpacing={0} style={{ width: '100%', borderCollapse: 'collapse', border: 'none', tableLayout: 'fixed' }}>
+  <div
+    style={{
+      width: '100%',
+      marginBottom: '12px',
+      background: '#ffffff',
+      color: '#000000',
+    }}
+  >
+    <table
+      width="100%"
+      border={0}
+      cellPadding={0}
+      cellSpacing={0}
+      style={{
+        width: '100%',
+        borderCollapse: 'collapse',
+        border: 'none',
+        background: '#ffffff',
+      }}
+    >
       <tbody>
-        <tr style={{ border: 'none' }}>
-          <td width="70" style={{ width: '70px', border: 'none', verticalAlign: 'middle', textAlign: 'left' }}>
+        <tr>
+          <td
+            width="80"
+            style={{
+              width: '80px',
+              border: 'none',
+              verticalAlign: 'middle',
+              textAlign: 'left',
+              background: '#ffffff',
+              padding: 0,
+            }}
+          >
             {teacher?.districtLogo && teacher.districtLogo.trim() !== '' ? (
-              <img src={teacher.districtLogo.trim()} alt="" width="65" height="65" style={{ width: '65px', height: '65px', maxHeight: '65px', maxWidth: '65px', objectFit: 'contain', border: 'none' }} />
+              <img
+                src={teacher.districtLogo.trim()}
+                alt=""
+                style={{
+                  width: '75px',
+                  height: '75px',
+                  objectFit: 'contain',
+                  border: 'none',
+                  display: 'block',
+                }}
+              />
             ) : (
-              <div style={{ width: '65px', height: '1px' }}></div>
+              <div style={{ width: '75px', height: '75px' }}></div>
             )}
           </td>
-          <td style={{ border: 'none', verticalAlign: 'middle', textAlign: 'center', padding: '0 4px' }}>
-            <p className="font-tnr font-bold uppercase text-center" style={{ margin: '1px 0', padding: 0, fontWeight: 'bold', fontSize: '10pt', textAlign: 'center', fontFamily: '"Times New Roman", serif', textTransform: 'uppercase', lineHeight: '1.15' }}>
+          <td
+            style={{
+              border: 'none',
+              verticalAlign: 'middle',
+              textAlign: 'center',
+              padding: '0 8px',
+              background: '#ffffff',
+            }}
+          >
+            <p
+              style={{
+                margin: 0,
+                padding: 0,
+                fontWeight: 'bold',
+                fontSize: '13pt',
+                textAlign: 'center',
+                fontFamily: '"Times New Roman", Times, serif',
+                textTransform: 'uppercase',
+                lineHeight: '1.2',
+                color: '#000000',
+              }}
+            >
               PEMERINTAH KABUPATEN POHUWATO
             </p>
-            <p className="font-tnr font-bold uppercase text-center" style={{ margin: '1px 0', padding: 0, fontWeight: 'bold', fontSize: '11pt', textAlign: 'center', fontFamily: '"Times New Roman", serif', textTransform: 'uppercase', lineHeight: '1.15' }}>
-              {teacher?.institution ? teacher.institution.toUpperCase() : 'DINAS PENDIDIKAN DAN KEBUDAYAAN'}
+            <p
+              style={{
+                margin: 0,
+                padding: 0,
+                fontWeight: 'bold',
+                fontSize: '13pt',
+                textAlign: 'center',
+                fontFamily: '"Times New Roman", Times, serif',
+                textTransform: 'uppercase',
+                lineHeight: '1.2',
+                color: '#000000',
+              }}
+            >
+              {teacher?.institution
+                ? teacher.institution.toUpperCase()
+                : 'DINAS PENDIDIKAN DAN KEBUDAYAAN'}
             </p>
-            <p className="font-tnr font-black uppercase text-center tracking-wide" style={{ margin: '1px 0', padding: 0, fontWeight: 'bold', fontSize: '13pt', textAlign: 'center', fontFamily: '"Times New Roman", serif', textTransform: 'uppercase', lineHeight: '1.15', letterSpacing: '0.5px' }}>
-              {teacher?.workUnit ? teacher.workUnit.toUpperCase() : 'SMP NEGERI 1 RANDANGAN'}
+            <p
+              style={{
+                margin: 0,
+                padding: 0,
+                fontWeight: 'bold',
+                fontSize: '15pt',
+                textAlign: 'center',
+                fontFamily: '"Times New Roman", Times, serif',
+                textTransform: 'uppercase',
+                lineHeight: '1.2',
+                letterSpacing: '0.5px',
+                color: '#000000',
+              }}
+            >
+              {teacher?.workUnit ? teacher.workUnit.toUpperCase() : 'SMP NEGERI RANDANGAN'}
             </p>
-            <p className="font-tnr italic text-center" style={{ margin: '1px 0', padding: 0, fontStyle: 'italic', fontSize: '8pt', textAlign: 'center', fontFamily: '"Times New Roman", serif', lineHeight: '1.15' }}>
-              {getFormattedAddress(teacher?.institutionAddress || teacher?.schoolAddress)}
+            <p
+              style={{
+                margin: 0,
+                padding: 0,
+                fontStyle: 'italic',
+                fontSize: '8pt',
+                textAlign: 'center',
+                fontFamily: '"Times New Roman", Times, serif',
+                lineHeight: '1.2',
+                color: '#000000',
+              }}
+            >
+              {getFormattedAddress(teacher?.schoolAddress)}
             </p>
           </td>
-          <td width="70" style={{ width: '70px', border: 'none', verticalAlign: 'middle', textAlign: 'right' }}>
+          <td
+            width="80"
+            style={{
+              width: '80px',
+              border: 'none',
+              verticalAlign: 'middle',
+              textAlign: 'right',
+              background: '#ffffff',
+              padding: 0,
+            }}
+          >
             {teacher?.schoolLogo && teacher.schoolLogo.trim() !== '' ? (
-              <img src={teacher.schoolLogo.trim()} alt="" width="65" height="65" style={{ width: '65px', height: '65px', maxHeight: '65px', maxWidth: '65px', objectFit: 'contain', border: 'none' }} />
+              <img
+                src={teacher.schoolLogo.trim()}
+                alt=""
+                style={{
+                  width: '75px',
+                  height: '75px',
+                  objectFit: 'contain',
+                  border: 'none',
+                  display: 'block',
+                  marginLeft: 'auto',
+                }}
+              />
             ) : (
-              <div style={{ width: '65px', height: '1px' }}></div>
+              <div style={{ width: '75px', height: '75px' }}></div>
             )}
           </td>
         </tr>
       </tbody>
     </table>
-    <div style={{ borderBottom: '3.5pt double #000000', width: '100%', marginTop: '4px', marginBottom: '8px' }}></div>
+        <div
+      style={{
+        borderTop: '3px double #000000',
+        marginTop: '6px',
+        marginBottom: '10px',
+        background: '#ffffff',
+        height: 0,
+      }}
+    ></div>
   </div>
 );
 
@@ -2194,39 +2351,136 @@ function JurnalTable({ teacher, journals, month, year, monthIndex }: {
   const lastDay = endOfMonth(new Date(year, monthIndex));
   const sortedJournals = [...journals].sort((a, b) => parseISO(a.date).getTime() - parseISO(b.date).getTime());
 
-  return (
-    <div className="paper-a4-landscape font-tnr text-[12pt] leading-[1.5] text-black">
-      <KopSurat teacher={teacher} />
-      <h3 className="text-center font-bold underline mb-4 text-[13pt] text-black">JURNAL KEGIATAN HARIAN GURU</h3>
+  const tdStyle: React.CSSProperties = {
+    border: '1px solid #000000',
+    padding: '6px 8px',
+    fontFamily: '"Times New Roman", Times, serif',
+    fontSize: '10.5pt',
+    lineHeight: '1.3',
+    color: '#000000',
+    background: '#ffffff',
+    verticalAlign: 'top',
+  };
 
-      <table className="w-full border-none mb-4 font-tnr text-[12pt] leading-[1.5] text-black" style={{ width: '100%', borderCollapse: 'collapse', border: 'none' }}>
+  const thStyle: React.CSSProperties = {
+    border: '1px solid #000000',
+    padding: '6px 8px',
+    fontFamily: '"Times New Roman", Times, serif',
+    fontSize: '10.5pt',
+    lineHeight: '1.3',
+    color: '#000000',
+    background: '#e5e5e5',
+    fontWeight: 'bold',
+    textAlign: 'center',
+    textTransform: 'uppercase',
+    verticalAlign: 'middle',
+  };
+
+  const dataLabelStyle: React.CSSProperties = {
+    fontFamily: '"Times New Roman", Times, serif',
+    fontSize: '12pt',
+    color: '#000000',
+    padding: '1px 0',
+    verticalAlign: 'top',
+    border: 'none',
+    background: '#ffffff',
+  };
+
+  return (
+    <div
+      className="paper-a4-landscape"
+      style={{ background: '#ffffff', color: '#000000' }}
+    >
+      <KopSurat teacher={teacher} />
+      <h3
+        style={{
+          textAlign: 'center',
+          fontWeight: 'bold',
+          marginBottom: '16px',
+          marginTop: '8px',
+          fontSize: '13pt',
+          fontFamily: '"Times New Roman", Times, serif',
+          color: '#000000',
+        }}
+      >
+        JURNAL KEGIATAN HARIAN GURU
+      </h3>
+
+            <table
+        style={{
+          width: '100%',
+          borderCollapse: 'collapse',
+          border: 'none',
+          marginBottom: '16px',
+          background: '#ffffff',
+        }}
+      >
         <tbody>
           <tr style={{ border: 'none' }}>
-            <td style={{ width: '50%', border: 'none', paddingRight: '16px', verticalAlign: 'top' }}>
-              <DataRow label="Nama" value={teacher.name} colonPos="120px" />
-              <DataRow label="NIP" value={teacher.nip} colonPos="120px" />
-              <DataRow label="Jabatan" value={teacher.position} colonPos="120px" />
+            <td style={{ width: '50%', ...dataLabelStyle, paddingRight: '16px' }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse', border: 'none' }}>
+                <tbody>
+                  <tr>
+                    <td style={{ width: '110px', ...dataLabelStyle }}>Nama</td>
+                    <td style={{ width: '12px', ...dataLabelStyle, textAlign: 'center' }}>:</td>
+                    <td style={dataLabelStyle}>{teacher.name}</td>
+                  </tr>
+                  <tr>
+                    <td style={{ width: '110px', ...dataLabelStyle }}>NIP</td>
+                    <td style={{ width: '12px', ...dataLabelStyle, textAlign: 'center' }}>:</td>
+                    <td style={dataLabelStyle}>{teacher.nip}</td>
+                  </tr>
+                  <tr>
+                    <td style={{ width: '110px', ...dataLabelStyle }}>Jabatan</td>
+                    <td style={{ width: '12px', ...dataLabelStyle, textAlign: 'center' }}>:</td>
+                    <td style={dataLabelStyle}>{teacher.position}</td>
+                  </tr>
+                </tbody>
+              </table>
             </td>
-            <td style={{ width: '50%', border: 'none', paddingLeft: '16px', verticalAlign: 'top' }}>
-              <DataRow label="Unit Kerja" value={teacher.workUnit} colonPos="120px" />
-              <DataRow label="Kecamatan" value={teacher.kecamatan} colonPos="120px" />
-              <DataRow label="Bulan" value={`${month} ${year}`} colonPos="120px" />
+            <td style={{ width: '50%', ...dataLabelStyle, paddingLeft: '16px' }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse', border: 'none' }}>
+                <tbody>
+                  <tr>
+                    <td style={{ width: '110px', ...dataLabelStyle }}>Unit Kerja</td>
+                    <td style={{ width: '12px', ...dataLabelStyle, textAlign: 'center' }}>:</td>
+                    <td style={dataLabelStyle}>{teacher.workUnit}</td>
+                  </tr>
+                  <tr>
+                    <td style={{ width: '110px', ...dataLabelStyle }}>Kecamatan</td>
+                    <td style={{ width: '12px', ...dataLabelStyle, textAlign: 'center' }}>:</td>
+                    <td style={dataLabelStyle}>{teacher.kecamatan}</td>
+                  </tr>
+                  <tr>
+                    <td style={{ width: '110px', ...dataLabelStyle }}>Bulan</td>
+                    <td style={{ width: '12px', ...dataLabelStyle, textAlign: 'center' }}>:</td>
+                    <td style={dataLabelStyle}>{`${month} ${year}`}</td>
+                  </tr>
+                </tbody>
+              </table>
             </td>
           </tr>
         </tbody>
       </table>
 
-      <table className="w-full border-collapse border border-black font-tnr text-[10.5pt]">
+      <table
+        style={{
+          width: '100%',
+          borderCollapse: 'collapse',
+          border: '1px solid #000000',
+          background: '#ffffff',
+        }}
+      >
         <thead>
-          <tr className="bg-slate-100 font-bold text-center uppercase">
-            <th className="border border-black p-1 w-6">NO</th>
-            <th className="border border-black p-1 w-24">HARI / TANGGAL</th>
-            <th className="border border-black p-1 w-20">JAM</th>
-            <th className="border border-black p-1 w-28">JENIS KEGIATAN</th>
-            <th className="border border-black p-1 w-28">AGENDA / MAPEL</th>
-            <th className="border border-black p-1 w-24">LOKASI / KELAS</th>
-            <th className="border border-black p-1">KEGIATAN / TUJUAN PEMBELAJARAN</th>
-            <th className="border border-black p-1 w-28">KETERANGAN / LAMPIRAN</th>
+          <tr>
+            <th style={{ ...thStyle, width: '28px' }}>NO</th>
+            <th style={{ ...thStyle, width: '90px' }}>HARI / TANGGAL</th>
+            <th style={{ ...thStyle, width: '70px' }}>JAM</th>
+            <th style={{ ...thStyle, width: '100px' }}>JENIS KEGIATAN</th>
+            <th style={{ ...thStyle, width: '100px' }}>AGENDA / MAPEL</th>
+            <th style={{ ...thStyle, width: '80px' }}>LOKASI / KELAS</th>
+            <th style={thStyle}>KEGIATAN / TUJUAN PEMBELAJARAN</th>
+            <th style={{ ...thStyle, width: '100px' }}>KETERANGAN / LAMPIRAN</th>
           </tr>
         </thead>
         <tbody>
@@ -2235,53 +2489,162 @@ function JurnalTable({ teacher, journals, month, year, monthIndex }: {
               {j.activities.map((act, actIdx) => (
                 <tr key={`${j.id}-${actIdx}`}>
                   {actIdx === 0 && (
-                    <td className="border border-black p-1 text-center" rowSpan={j.activities.length}>{i + 1}</td>
+                    <td
+                      style={{ ...tdStyle, textAlign: 'center', verticalAlign: 'top' }}
+                      rowSpan={j.activities.length}
+                    >
+                      {i + 1}
+                    </td>
                   )}
                   {actIdx === 0 && (
-                    <td className="border border-black p-1" rowSpan={j.activities.length}>{format(parseISO(j.date), 'EEEE, d MMM yyyy', { locale: id })}</td>
+                    <td style={tdStyle} rowSpan={j.activities.length}>
+                      {format(parseISO(j.date), 'EEEE, d MMM yyyy', { locale: id })}
+                    </td>
                   )}
-                  <td className="border border-black p-1 text-center">{act.jam || '-'}</td>
-                  <td className="border border-black p-1">{act.jenisKegiatan || '-'}</td>
-                  <td className="border border-black p-1">{act.agendaMapel || act.subject || '-'}</td>
-                  <td className="border border-black p-1 text-center">{act.lokasiKelas || act.class || '-'}</td>
-                  <td className="border border-black p-1 text-justify">{act.kegiatanTujuan || [act.goal, act.activity].filter(Boolean).join(' - ') || '-'}</td>
-                  <td className="border border-black p-1">{act.keterangan || (act.studentCount !== undefined ? `${act.studentCount} Siswa` : '-')}</td>
+                  <td style={{ ...tdStyle, textAlign: 'center' }}>{act.jam || '-'}</td>
+                  <td style={tdStyle}>{act.jenisKegiatan || '-'}</td>
+                  <td style={tdStyle}>{act.agendaMapel || act.subject || '-'}</td>
+                  <td style={{ ...tdStyle, textAlign: 'center' }}>
+                    {act.lokasiKelas || act.class || '-'}
+                  </td>
+                  <td style={{ ...tdStyle, textAlign: 'justify' }}>
+                    {act.kegiatanTujuan || [act.goal, act.activity].filter(Boolean).join(' - ') || '-'}
+                  </td>
+                  <td style={tdStyle}>
+                    {act.keterangan ||
+                      (act.studentCount !== undefined ? `${act.studentCount} Siswa` : '-')}
+                  </td>
                 </tr>
               ))}
             </React.Fragment>
           ))}
           {journals.length === 0 && (
             <tr>
-              <td colSpan={8} className="border border-black p-8 text-center text-slate-400 italic font-medium">Belum ada data jurnal untuk periode ini.</td>
+              <td
+                colSpan={8}
+                style={{
+                  ...tdStyle,
+                  padding: '32px',
+                  textAlign: 'center',
+                  fontStyle: 'italic',
+                  color: '#666666',
+                }}
+              >
+                Belum ada data jurnal untuk periode ini.
+              </td>
             </tr>
           )}
         </tbody>
       </table>
 
-      <table className="w-full border-none mt-6 text-[12pt] font-tnr leading-[1.5] text-black" style={{ width: '100%', borderCollapse: 'collapse', border: 'none', tableLayout: 'fixed' }}>
+            <table
+        style={{
+          width: '100%',
+          borderCollapse: 'collapse',
+          border: 'none',
+          marginTop: '32px',
+          background: '#ffffff',
+        }}
+      >
         <tbody>
           <tr style={{ border: 'none' }}>
-            <td style={{ width: '50%', border: 'none', textAlign: 'center', verticalAlign: 'top', padding: '0 8px', color: '#000000' }}>
+            <td
+              style={{
+                width: '50%',
+                border: 'none',
+                textAlign: 'center',
+                verticalAlign: 'top',
+                padding: '0 8px',
+                fontFamily: '"Times New Roman", Times, serif',
+                fontSize: '12pt',
+                color: '#000000',
+                background: '#ffffff',
+                lineHeight: '1.3',
+              }}
+            >
               <p style={{ margin: 0 }}>Mengetahui,</p>
               <p style={{ margin: 0 }}>Kepala Satuan Pendidikan</p>
             </td>
-            <td style={{ width: '50%', border: 'none', textAlign: 'center', verticalAlign: 'top', padding: '0 8px', color: '#000000' }}>
-              <p style={{ margin: 0 }}>Pohuwato, {format(lastDay, 'd MMMM yyyy', { locale: id })}</p>
+            <td
+              style={{
+                width: '50%',
+                border: 'none',
+                textAlign: 'center',
+                verticalAlign: 'top',
+                padding: '0 8px',
+                fontFamily: '"Times New Roman", Times, serif',
+                fontSize: '12pt',
+                color: '#000000',
+                background: '#ffffff',
+                lineHeight: '1.3',
+              }}
+            >
+              <p style={{ margin: 0 }}>
+                Pohuwato, {format(lastDay, 'd MMMM yyyy', { locale: id })}
+              </p>
               <p style={{ margin: 0 }}>Guru Mata Pelajaran</p>
             </td>
           </tr>
           <tr style={{ border: 'none' }}>
-            <td style={{ height: '48px', border: 'none' }}></td>
-            <td style={{ height: '48px', border: 'none' }}></td>
+            <td style={{ height: '70px', border: 'none' }}></td>
+            <td style={{ height: '70px', border: 'none' }}></td>
           </tr>
           <tr style={{ border: 'none' }}>
-            <td style={{ width: '50%', border: 'none', textAlign: 'center', verticalAlign: 'bottom', padding: '0 8px', color: '#000000' }}>
-              <p style={{ margin: 0, fontWeight: 'bold', textDecoration: 'underline' }}>{teacher.principalName || '......................................................'}</p>
-              <p style={{ margin: 0 }}>NIP. {teacher.principalNip || '................................................'}</p>
+            <td
+              style={{
+                width: '50%',
+                border: 'none',
+                textAlign: 'center',
+                verticalAlign: 'bottom',
+                padding: '0 8px',
+                fontFamily: '"Times New Roman", Times, serif',
+                fontSize: '12pt',
+                color: '#000000',
+                background: '#ffffff',
+              }}
+            >
+              <span
+                style={{
+                  display: 'inline-block',
+                  paddingLeft: '4px',
+                  paddingRight: '4px',
+                  fontWeight: 'bold',
+                  lineHeight: '1.2',
+                }}
+              >
+                {teacher.principalName || '......................................................'}
+              </span>
+              <p style={{ margin: 0, marginTop: '4px', lineHeight: '1.2' }}>
+                NIP. {teacher.principalNip || '................................................'}
+              </p>
             </td>
-            <td style={{ width: '50%', border: 'none', textAlign: 'center', verticalAlign: 'bottom', padding: '0 8px', color: '#000000' }}>
-              <p style={{ margin: 0, fontWeight: 'bold', textDecoration: 'underline' }}>{teacher.name || '......................................................'}</p>
-              <p style={{ margin: 0 }}>NIP. {teacher.nip || '................................................'}</p>
+            <td
+              style={{
+                width: '50%',
+                border: 'none',
+                textAlign: 'center',
+                verticalAlign: 'bottom',
+                padding: '0 8px',
+                fontFamily: '"Times New Roman", Times, serif',
+                fontSize: '12pt',
+                color: '#000000',
+                background: '#ffffff',
+              }}
+            >
+              <span
+                style={{
+                  display: 'inline-block',
+                  paddingLeft: '4px',
+                  paddingRight: '4px',
+                  fontWeight: 'bold',
+                  lineHeight: '1.2',
+                }}
+              >
+                {teacher.name || '......................................................'}
+              </span>
+              <p style={{ margin: 0, marginTop: '2px', lineHeight: '1.15' }}>
+                NIP. {teacher.nip || '................................................'}
+              </p>
             </td>
           </tr>
         </tbody>
@@ -2673,229 +3036,6 @@ function PerjanjianLetter({
         <p style={{ margin: 0, fontWeight: 'bold', textDecoration: 'underline' }}>{teacher.supervisorName || '......................................................'}</p>
         <p style={{ margin: 0 }}>NIP. {teacher.supervisorNip || '................................................'}</p>
       </div>
-    </div>
-  );
-}
-
-// --- Kirim Email Section ---
-
-function KirimEmailSection({
-  teacher,
-  journals,
-  onUpdateTeacher,
-  addNotification
-}: {
-  teacher: TeacherData;
-  journals: JournalEntry[];
-  onUpdateTeacher: (data: TeacherData) => void;
-  addNotification: (message: string, type: 'success' | 'error') => void;
-}) {
-  const [filterMonth, setFilterMonth] = useState<number>(getMonth(new Date()));
-  const [filterYear, setFilterYear] = useState<number>(getYear(new Date()));
-  const [filterTriwulan, setFilterTriwulan] = useState<number>(Math.floor(getMonth(new Date()) / 3) + 1);
-  const [useTriwulan, setUseTriwulan] = useState(false);
-
-  const months = [
-    'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni',
-    'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'
-  ];
-
-  const filteredJournals = journals.filter(j => {
-    const d = parseISO(j.date);
-    if (useTriwulan) {
-      const q = Math.floor(getMonth(d) / 3) + 1;
-      return q === filterTriwulan && getYear(d) === filterYear;
-    } else {
-      return getMonth(d) === filterMonth && getYear(d) === filterYear;
-    }
-  });
-
-  const generateEmailBody = () => {
-    const periodText = useTriwulan
-      ? `Triwulan ${filterTriwulan} (${filterYear})`
-      : `${months[filterMonth]} ${filterYear}`;
-
-    let body = `Yth. Bapak/Ibu,\n\n`;
-    body += `Berikut kami kirimkan Jurnal Kegiatan Harian Guru untuk:\n\n`;
-    body += `--- PROFIL GURU ---\n`;
-    body += `Nama Lengkap     : ${teacher.name || '-'}\n`;
-    body += `NIP              : ${teacher.nip || '-'}\n`;
-    body += `Jabatan          : ${teacher.position || '-'}\n`;
-    body += `Mata Pelajaran   : ${teacher.subject || '-'}\n`;
-    body += `Unit Kerja       : ${teacher.workUnit || '-'}\n`;
-    body += `Kecamatan        : ${teacher.kecamatan || '-'}\n`;
-    body += `Pangkat/Golongan : ${teacher.grade || '-'}\n`;
-    body += `NPSN             : ${teacher.npsn || '-'}\n`;
-    body += `Periode Jurnal   : ${periodText}\n\n`;
-
-    body += `--- TABEL KEGIATAN JURNAL ---\n\n`;
-
-    if (filteredJournals.length === 0) {
-      body += `Belum ada data jurnal untuk periode ini.\n`;
-    } else {
-      let counter = 1;
-      const sortedJournals = [...filteredJournals].sort((a, b) => parseISO(a.date).getTime() - parseISO(b.date).getTime());
-
-      sortedJournals.forEach(j => {
-        const formattedDate = format(parseISO(j.date), 'EEEE, d MMMM yyyy', { locale: id });
-        j.activities.forEach(act => {
-          body += `Kegiatan #${counter}\n`;
-          body += `Hari / Tanggal               : ${formattedDate}\n`;
-          body += `JAM                          : ${act.jam || '-'}\n`;
-          body += `Jenis Kegiatan               : ${act.jenisKegiatan || '-'}\n`;
-          body += `Agenda / Mapel               : ${act.agendaMapel || act.subject || '-'}\n`;
-          body += `Lokasi / Kelas               : ${act.lokasiKelas || act.class || '-'}\n`;
-          body += `Kegiatan / Tujuan Pembelajaran: ${act.kegiatanTujuan || [act.goal, act.activity].filter(Boolean).join(' - ') || '-'}\n`;
-          body += `Keterangan / Lampiran        : ${act.keterangan || (act.studentCount !== undefined ? `${act.studentCount} Siswa` : '-')}\n`;
-          body += `--------------------------------------------------\n\n`;
-          counter++;
-        });
-      });
-    }
-
-    body += `--- PEJABAT TERKAIT ---\n`;
-    body += `Kepala Sekolah : ${teacher.principalName || '-'} (NIP. ${teacher.principalNip || '-'})\n`;
-    body += `Pengawas Bina  : ${teacher.supervisorName || '-'} (NIP. ${teacher.supervisorNip || '-'})\n\n`;
-
-    body += `Dikirim dari Aplikasi Jurnal Harian Guru.`;
-    return body;
-  };
-
-  const handleKirimEmail = () => {
-    if (!teacher.targetEmail || !teacher.targetEmail.trim()) {
-      addNotification('Silakan isi email tujuan terlebih dahulu!', 'error');
-      return;
-    }
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(teacher.targetEmail.trim())) {
-      addNotification('Format email tidak valid!', 'error');
-      return;
-    }
-
-    const subject = `Jurnal Kegiatan Harian Guru - ${teacher.name || 'Guru'}`;
-    const bodyText = generateEmailBody();
-
-    const mailtoUrl = `mailto:${encodeURIComponent(teacher.targetEmail.trim())}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(bodyText)}`;
-
-    window.location.href = mailtoUrl;
-    addNotification('Aplikasi email berhasil dibuka!', 'success');
-  };
-
-  return (
-    <div className="space-y-4">
-      <Card className="p-6 sm:p-8">
-        <div className="w-full space-y-6">
-          <div>
-            <h2 className="text-xl font-bold text-slate-800 uppercase tracking-tight">KIRIM JURNAL VIA EMAIL</h2>
-            <p className="text-slate-500 text-sm mt-1">
-              Kirimkan ringkasan tabel kegiatan jurnal mengajar Anda ke kepala sekolah, pengawas bina, atau pihak administrasi lainnya dalam format yang rapi dan terstruktur.
-            </p>
-          </div>
-
-          <div className="border-t border-slate-100 pt-5 space-y-3">
-            <h3 className="font-semibold text-slate-800 text-sm uppercase tracking-wide">1. TENTUKAN ALAMAT EMAIL PENERIMA</h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-end">
-              <Input
-                label="Email Tujuan"
-                value={teacher.targetEmail || ''}
-                onChange={(v) => onUpdateTeacher({ ...teacher, targetEmail: v })}
-                placeholder="contoh_penerima@gmail.com"
-                hint="Alamat email utama tujuan pengiriman"
-              />
-              <div className="p-3 bg-slate-50 rounded-lg border border-slate-100 text-xs text-slate-500 flex items-start gap-2">
-                <AlertCircle className="w-4 h-4 text-slate-400 shrink-0 mt-0.5" />
-                <p>Alamat email ini disimpan otomatis dan digunakan tiap kali mengirim jurnal.</p>
-              </div>
-            </div>
-          </div>
-
-          <div className="border-t border-slate-100 pt-5 space-y-3">
-            <h3 className="font-semibold text-slate-800 text-sm uppercase tracking-wide">2. PILIH PERIODE JURNAL</h3>
-            <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-end">
-              <div className="flex bg-slate-100 p-1 rounded-lg">
-                <button
-                  type="button"
-                  onClick={() => setUseTriwulan(false)}
-                  className={cn(
-                    "px-3 py-1.5 text-xs sm:text-sm font-medium rounded-md transition-all",
-                    !useTriwulan ? "bg-white text-slate-800 shadow-xs font-semibold" : "text-slate-500 hover:text-slate-800"
-                  )}
-                >
-                  Bulanan
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setUseTriwulan(true)}
-                  className={cn(
-                    "px-3 py-1.5 text-xs sm:text-sm font-medium rounded-md transition-all",
-                    useTriwulan ? "bg-white text-slate-800 shadow-xs font-semibold" : "text-slate-500 hover:text-slate-800"
-                  )}
-                >
-                  Triwulan
-                </button>
-              </div>
-
-              {!useTriwulan ? (
-                <div className="flex gap-2 w-full sm:w-auto">
-                  <select
-                    value={filterMonth}
-                    onChange={(e) => setFilterMonth(parseInt(e.target.value))}
-                    className="px-3 py-2 bg-white border border-slate-200 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none text-xs sm:text-sm text-slate-800"
-                  >
-                    {months.map((m, i) => (
-                      <option key={i} value={i}>{m}</option>
-                    ))}
-                  </select>
-                  <select
-                    value={filterYear}
-                    onChange={(e) => setFilterYear(parseInt(e.target.value))}
-                    className="px-3 py-2 bg-white border border-slate-200 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none text-xs sm:text-sm text-slate-800"
-                  >
-                    {[2025, 2026, 2027].map(y => (
-                      <option key={y} value={y}>{y}</option>
-                    ))}
-                  </select>
-                </div>
-              ) : (
-                <div className="flex gap-2 w-full sm:w-auto">
-                  <select
-                    value={filterTriwulan}
-                    onChange={(e) => setFilterTriwulan(parseInt(e.target.value))}
-                    className="px-3 py-2 bg-white border border-slate-200 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none text-xs sm:text-sm text-slate-800"
-                  >
-                    {[1, 2, 3, 4].map(q => (
-                      <option key={q} value={q}>Triwulan {q}</option>
-                    ))}
-                  </select>
-                  <select
-                    value={filterYear}
-                    onChange={(e) => setFilterYear(parseInt(e.target.value))}
-                    className="px-3 py-2 bg-white border border-slate-200 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none text-xs sm:text-sm text-slate-800"
-                  >
-                    {[2025, 2026, 2027].map(y => (
-                      <option key={y} value={y}>{y}</option>
-                    ))}
-                  </select>
-                </div>
-              )}
-            </div>
-
-            <p className="text-xs sm:text-sm text-slate-500">
-              Ditemukan <span className="font-semibold text-slate-700">{filteredJournals.length}</span> hari jurnal terdata pada periode terpilih.
-            </p>
-          </div>
-
-          <div className="border-t border-slate-100 pt-5 flex justify-end gap-3">
-            <Button
-              variant="primary"
-              onClick={handleKirimEmail}
-              className="bg-emerald-600 hover:bg-emerald-700 border-none px-6 py-2.5 text-xs sm:text-sm"
-            >
-              <Mail className="w-4 h-4 text-white" /> Buka Aplikasi Email & Kirim
-            </Button>
-          </div>
-        </div>
-      </Card>
     </div>
   );
 }

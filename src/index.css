@@ -1,29 +1,47 @@
 @import "tailwindcss";
 
 @theme {
-  --font-sans: "Bahnschrift", "Segoe UI", Arial, sans-serif;
-  --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, monospace;
-  --font-tnr: "Bahnschrift", "Segoe UI", Arial, sans-serif;
-  --font-serif: "Bahnschrift", "Segoe UI", Arial, sans-serif;
+  /* Font utama — Barlow, mirip Bahnschrift, konsisten di semua device */
+  --font-sans: "Barlow", "Segoe UI", system-ui, -apple-system, sans-serif;
+  /* Font dokumen cetak */
+  --font-tnr: "Times New Roman", Times, serif;
+
+  /* Warna brand (navy ala SAHABAT) */
+  --color-brand-50: #eff6ff;
+  --color-brand-100: #dbeafe;
+  --color-brand-200: #bfdbfe;
+  --color-brand-300: #93c5fd;
+  --color-brand-400: #60a5fa;
+  --color-brand-500: #3b82f6;
+  --color-brand-600: #2563eb;
+  --color-brand-700: #1d4ed8;
+  --color-brand-800: #1e40af;
+  --color-brand-900: #1e3a8a;
+
+  /* Warna sidebar (navy gelap) */
+  --color-sidebar-bg: #0f1e3d;
+  --color-sidebar-hover: #16294a;
+  --color-sidebar-active: #2563eb;
+  --color-sidebar-text: #94a3b8;
+  --color-sidebar-text-active: #ffffff;
 }
 
 @layer base {
-  *, ::before, ::after {
-    font-family: "Bahnschrift", "Segoe UI", Arial, sans-serif !important;
-  }
   body {
-    font-family: "Bahnschrift", "Segoe UI", Arial, sans-serif !important;
-    @apply bg-slate-50 text-slate-900;
+    @apply bg-slate-100 text-slate-900 antialiased;
+    font-family: var(--font-sans);
   }
   h1, h2, h3, h4, h5, h6 {
     font-weight: 700;
+    letter-spacing: -0.01em;
   }
 }
 
+/* --- Kartu dokumen cetak (JANGAN DIUBAH — untuk PDF/Word) --- */
 .paper-a4, .paper-f4 {
   width: 215mm;
   min-height: 330mm;
-  padding: 30mm 20mm 10mm 30mm;
+  padding: 20mm 10mm 10mm 10mm;
   margin: 10mm auto;
   background: white;
   box-shadow: 0 0 10px rgba(0,0,0,0.1);
@@ -38,7 +56,7 @@
 .paper-a4-landscape, .paper-f4-landscape {
   width: 330mm;
   min-height: 215mm;
-  padding: 30mm 20mm 10mm 30mm;
+  padding: 20mm 10mm 10mm 10mm;
   margin: 10mm auto;
   background: white;
   box-shadow: 0 0 10px rgba(0,0,0,0.1);
@@ -53,28 +71,35 @@
 .paper-a4-bordered, .paper-f4-bordered {
   border: 2px double #000000;
 }
-
+/* Preview area — override hanya untuk tampilan, tidak memengaruhi PDF */
+#preview-content .paper-a4-landscape,
+#preview-content .paper-a4 {
+  width: 100% !important;
+  max-width: 100% !important;
+  margin: 0 auto !important;
+  box-shadow: none !important;
+}
 .font-tnr {
   font-family: "Times New Roman", Times, serif !important;
   color: #000000 !important;
 }
 
 @media print {
-  body {
-    background: none;
-  }
-  .no-print {
-    display: none;
-  }
+  body { background: none; }
+  .no-print { display: none; }
   .paper-a4, .paper-a4-landscape, .paper-f4, .paper-f4-landscape {
     margin: 0;
     box-shadow: none;
     page-break-after: always;
   }
-  
-  /* Print orientation handling for F4 Folio */
   @page {
     size: 215mm 330mm;
-    margin: 30mm 20mm 10mm 30mm;
+    margin: 20mm 10mm 10mm 10mm;
   }
 }
+
+/* Scrollbar halus */
+::-webkit-scrollbar { width: 8px; height: 8px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
