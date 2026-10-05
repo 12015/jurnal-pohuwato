@@ -1638,7 +1638,7 @@ function PreviewSection({
     return approvals.includes(`q-${q}-${filterYear}`);
   };
 
-  const downloadPDF = async (id: string, _filename: string) => {
+  const downloadPDF = async (id: string, _filename: string, isRekomendasi = false) => {
     try {
       addNotification('Sedang menyiapkan PDF...', 'success');
       const element = document.getElementById(id);
@@ -1712,7 +1712,7 @@ function PreviewSection({
               width: 215mm !important;
               min-height: 330mm !important;
               max-width: 215mm !important;
-              padding: 20mm 10mm 10mm 10mm !important;
+              padding: ${isRekomendasi ? '20mm' : '20mm 10mm 10mm 10mm'} !important;
               margin: 0 auto !important;
               background: white !important;
               box-shadow: none !important;
@@ -2147,7 +2147,7 @@ function PreviewSection({
                       addNotification
                     );
                   } else {
-                    downloadPDF('preview-content', `Dokumen_${type}.pdf`);
+                                        downloadPDF('preview-content', `Dokumen_${type}.pdf`, type === 'rekomendasi');
                   }
                 }}
                 className="uppercase text-xs"
@@ -2308,26 +2308,20 @@ const getFormattedAddress = (addr?: string) => {
   return `Alamat: ${trimmed}`;
 };
 
-const KopSurat = ({ teacher }: { teacher?: TeacherData }) => (
-  <div
-    style={{
-      width: '100%',
-      marginBottom: '12px',
-      background: '#ffffff',
-      color: '#000000',
-    }}
-  >
+const KopSurat = ({
+  teacher,
+  compact = false,
+}: {
+  teacher?: TeacherData;
+  compact?: boolean;
+}) => (
+  <div style={{ width: '100%', marginBottom: '12px', background: '#ffffff', color: '#000000' }}>
     <table
       width="100%"
       border={0}
       cellPadding={0}
       cellSpacing={0}
-      style={{
-        width: '100%',
-        borderCollapse: 'collapse',
-        border: 'none',
-        background: '#ffffff',
-      }}
+      style={{ width: '100%', borderCollapse: 'collapse', border: 'none', background: '#ffffff' }}
     >
       <tbody>
         <tr>
@@ -2399,36 +2393,40 @@ const KopSurat = ({ teacher }: { teacher?: TeacherData }) => (
                 ? teacher.institution.toUpperCase()
                 : 'DINAS PENDIDIKAN DAN KEBUDAYAAN'}
             </p>
-            <p
-              style={{
-                margin: 0,
-                padding: 0,
-                fontWeight: 'bold',
-                fontSize: '15pt',
-                textAlign: 'center',
-                fontFamily: '"Times New Roman", Times, serif',
-                textTransform: 'uppercase',
-                lineHeight: '1.2',
-                letterSpacing: '0.5px',
-                color: '#000000',
-              }}
-            >
-              {teacher?.workUnit ? teacher.workUnit.toUpperCase() : 'SMP NEGERI RANDANGAN'}
-            </p>
-            <p
-              style={{
-                margin: 0,
-                padding: 0,
-                fontStyle: 'italic',
-                fontSize: '8pt',
-                textAlign: 'center',
-                fontFamily: '"Times New Roman", Times, serif',
-                lineHeight: '1.2',
-                color: '#000000',
-              }}
-            >
-              {getFormattedAddress(teacher?.schoolAddress)}
-            </p>
+            {!compact && (
+              <>
+                <p
+                  style={{
+                    margin: 0,
+                    padding: 0,
+                    fontWeight: 'bold',
+                    fontSize: '15pt',
+                    textAlign: 'center',
+                    fontFamily: '"Times New Roman", Times, serif',
+                    textTransform: 'uppercase',
+                    lineHeight: '1.2',
+                    letterSpacing: '0.5px',
+                    color: '#000000',
+                  }}
+                >
+                  {teacher?.workUnit ? teacher.workUnit.toUpperCase() : 'SMP NEGERI RANDANGAN'}
+                </p>
+                <p
+                  style={{
+                    margin: 0,
+                    padding: 0,
+                    fontStyle: 'italic',
+                    fontSize: '8pt',
+                    textAlign: 'center',
+                    fontFamily: '"Times New Roman", Times, serif',
+                    lineHeight: '1.2',
+                    color: '#000000',
+                  }}
+                >
+                  {getFormattedAddress(teacher?.schoolAddress)}
+                </p>
+              </>
+            )}
           </td>
           <td
             width="80"
@@ -2441,7 +2439,7 @@ const KopSurat = ({ teacher }: { teacher?: TeacherData }) => (
               padding: 0,
             }}
           >
-            {teacher?.schoolLogo && teacher.schoolLogo.trim() !== '' ? (
+            {!compact && teacher?.schoolLogo && teacher.schoolLogo.trim() !== '' ? (
               <img
                 src={teacher.schoolLogo.trim()}
                 alt=""
@@ -2461,7 +2459,7 @@ const KopSurat = ({ teacher }: { teacher?: TeacherData }) => (
         </tr>
       </tbody>
     </table>
-        <div
+    <div
       style={{
         borderTop: '3px double #000000',
         marginTop: '6px',
@@ -2816,8 +2814,11 @@ function RekomendasiLetter({
 
   const isAllEligible = statuses.every(s => s.isEligible || s.manualApproved);
   return (
-    <div className="paper-a4 paper-a4-bordered font-tnr text-[12pt] leading-[1.5] text-black">
-      <KopSurat teacher={teacher} />
+    <div
+      className="paper-a4 paper-a4-bordered font-tnr text-[12pt] leading-[1.5] text-black"
+      style={{ padding: '20mm' }}
+    >
+      <KopSurat teacher={teacher} compact />
       <h3 className="text-center font-bold underline mb-3 text-[13pt] uppercase tracking-wide text-black">REKOMENDASI PENGAWAS</h3>
 
       <div className="text-[12pt] space-y-2 font-tnr leading-[1.5] text-black">
