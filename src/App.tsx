@@ -1712,7 +1712,7 @@ function PreviewSection({
               width: 215mm !important;
               min-height: 330mm !important;
               max-width: 215mm !important;
-              padding: ${isRekomendasi ? '20mm' : '20mm 10mm 10mm 10mm'} !important;
+              padding: ${isRekomendasi ? '20mm' : '20mm 20mm 10mm 20mm'} !important;
               margin: 0 auto !important;
               background: white !important;
               box-shadow: none !important;
@@ -2393,40 +2393,40 @@ const KopSurat = ({
                 ? teacher.institution.toUpperCase()
                 : 'DINAS PENDIDIKAN DAN KEBUDAYAAN'}
             </p>
-            {!compact && (
-              <>
-                <p
-                  style={{
-                    margin: 0,
-                    padding: 0,
-                    fontWeight: 'bold',
-                    fontSize: '15pt',
-                    textAlign: 'center',
-                    fontFamily: '"Times New Roman", Times, serif',
-                    textTransform: 'uppercase',
-                    lineHeight: '1.2',
-                    letterSpacing: '0.5px',
-                    color: '#000000',
-                  }}
-                >
-                  {teacher?.workUnit ? teacher.workUnit.toUpperCase() : 'SMP NEGERI RANDANGAN'}
-                </p>
-                <p
-                  style={{
-                    margin: 0,
-                    padding: 0,
-                    fontStyle: 'italic',
-                    fontSize: '8pt',
-                    textAlign: 'center',
-                    fontFamily: '"Times New Roman", Times, serif',
-                    lineHeight: '1.2',
-                    color: '#000000',
-                  }}
-                >
-                  {getFormattedAddress(teacher?.schoolAddress)}
-                </p>
-              </>
+                        {!compact && (
+              <p
+                style={{
+                  margin: 0,
+                  padding: 0,
+                  fontWeight: 'bold',
+                  fontSize: '15pt',
+                  textAlign: 'center',
+                  fontFamily: '"Times New Roman", Times, serif',
+                  textTransform: 'uppercase',
+                  lineHeight: '1.2',
+                  letterSpacing: '0.5px',
+                  color: '#000000',
+                }}
+              >
+                {teacher?.workUnit ? teacher.workUnit.toUpperCase() : 'SMP NEGERI RANDANGAN'}
+              </p>
             )}
+            <p
+              style={{
+                margin: 0,
+                padding: 0,
+                fontStyle: 'italic',
+                fontSize: '8pt',
+                textAlign: 'center',
+                fontFamily: '"Times New Roman", Times, serif',
+                lineHeight: '1.2',
+                color: '#000000',
+              }}
+            >
+              {getFormattedAddress(
+                compact ? teacher?.institutionAddress : teacher?.schoolAddress
+              )}
+            </p>
           </td>
           <td
             width="80"
@@ -2906,9 +2906,11 @@ function SPTJMLetter({
     : endOfMonth(new Date(year, filterMonth));
 
   return (
-    <div className="paper-a4 paper-a4-bordered font-tnr text-[12pt] leading-[1.5] text-black">
+    <div
+      className="paper-a4 paper-a4-bordered font-tnr text-[12pt] leading-[1.5] text-black"
+      style={{ padding: '20mm 20mm 10mm 20mm' }}
+    >
       <KopSurat teacher={teacher} />
-
       <div className="text-center mb-2.5">
         <h1 className="text-[13pt] font-bold uppercase tracking-wide text-black">SURAT PERNYATAAN TANGGUNG JAWAB MUTLAK</h1>
         <h2 className="text-[12pt] font-bold uppercase tracking-wide text-black">KEBENARAN DATA GURU PADA DAPODIK</h2>
@@ -2994,8 +2996,11 @@ function PernyataanLetter({
     : endOfMonth(new Date(year, filterMonth));
 
   return (
-    <div className="paper-a4 paper-a4-bordered font-tnr text-[12pt] leading-[1.5] text-black">
-      <KopSurat teacher={teacher} />
+  <div
+    className="paper-a4 paper-a4-bordered font-tnr text-[12pt] leading-[1.5] text-black"
+    style={{ padding: '20mm 20mm 10mm 20mm' }}
+  >
+    <KopSurat teacher={teacher} />
 
       <div className="text-center mb-2.5">
         <h3 className="font-bold underline text-[13pt] uppercase tracking-wide text-black">SURAT PERNYATAAN</h3>
@@ -3095,8 +3100,11 @@ function PerjanjianLetter({
     : endOfMonth(new Date(year, filterMonth));
 
   return (
-    <div className="paper-a4 paper-a4-bordered font-tnr text-[12pt] leading-[1.5] text-black">
-      <KopSurat teacher={teacher} />
+  <div
+    className="paper-a4 paper-a4-bordered font-tnr text-[12pt] leading-[1.5] text-black"
+    style={{ padding: '20mm 20mm 10mm 20mm' }}
+  >
+    <KopSurat teacher={teacher} />
 
       <div className="text-center mb-2.5">
         <h3 className="font-bold underline text-[13pt] uppercase tracking-wide text-black">SURAT PERJANJIAN / PERNYATAAN</h3>
