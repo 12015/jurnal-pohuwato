@@ -650,7 +650,6 @@ function ProfileForm({
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
             <Input label="Nama Lengkap" value={form.name} onChange={(v) => setForm({ ...form, name: v })} placeholder="Nama Lengkap & Gelar" required />
             <Input label="NIP" value={form.nip} onChange={(v) => setForm({ ...form, nip: v })} placeholder="19xxxxxxxxxxxxxx" required />
-            <Input label="Tempat, Tanggal Lahir" value={form.birthPlaceDate || ''} onChange={(v) => setForm({ ...form, birthPlaceDate: v })} placeholder="Marisa, 15 Januari 1990" />
             <Input label="Jabatan" value={form.position} onChange={(v) => setForm({ ...form, position: v })} placeholder="Guru Madya / Muda" required />
             <Input label="Mata Pelajaran" value={form.subject} onChange={(v) => setForm({ ...form, subject: v })} placeholder="Matematika" required />
             <Input label="Pangkat / Golongan" value={form.grade} onChange={(v) => setForm({ ...form, grade: v })} placeholder="Pembina, IV/a" />
@@ -664,8 +663,6 @@ function ProfileForm({
             />
             <Input label="Kecamatan" value={form.kecamatan} onChange={(v) => setForm({ ...form, kecamatan: v })} placeholder="Kecamatan Marisa" required />
             <Input label="NPSN" value={form.npsn} onChange={(v) => setForm({ ...form, npsn: v })} placeholder="10xxxxxx" />
-            <Input label="Nomor Surat Pernyataan" value={form.letterNumber || ''} onChange={(v) => setForm({ ...form, letterNumber: v })} placeholder="800/SMPN1-RDG/01/2026" />
-            <Input label="Nomor Surat Perjanjian" value={form.agreementLetterNumber || ''} onChange={(v) => setForm({ ...form, agreementLetterNumber: v })} placeholder="800/SMPN1-RDG/02/2026" />
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
             <Input label="Alamat Instansi" value={form.institutionAddress || ''} onChange={(v) => setForm({ ...form, institutionAddress: v })} placeholder="Jalan Ki Hajar Dewantara No. 8 Palopo" />
@@ -719,29 +716,8 @@ function ProfileForm({
               <Input label="NIP Pengawas" value={form.supervisorNip} onChange={(v) => setForm({ ...form, supervisorNip: v })} placeholder="NIP Pengawas" />
             </div>
           </div>
-
-          {/* Pengaturan Kirim */}
-          <div className="p-3.5 sm:p-4 bg-emerald-50/60 rounded-xl border border-emerald-100 space-y-2.5">
-            <h4 className="text-xs sm:text-sm font-bold text-emerald-900 flex items-center gap-1.5 uppercase tracking-wide">
-              <Mail className="w-4 h-4 text-emerald-600" /> PENGATURAN KIRIM JURNAL
-            </h4>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <Input
-                label="Email Tujuan"
-                value={form.targetEmail || ''}
-                onChange={(v) => setForm({ ...form, targetEmail: v })}
-                placeholder="email_tujuan@gmail.com"
-              />
-              <Input
-                label="Target URL (GAS)"
-                value={form.gasUrl}
-                onChange={(v) => setForm({ ...form, gasUrl: v })}
-                placeholder="https://script.google.com/..."
-              />
-            </div>
-          </div>
-        </div>
       </div>
+    </div>
     </Card>
   );
 }
@@ -2093,7 +2069,7 @@ function PreviewSection({
           <div className="flex gap-2">
             <Button variant={type === 'jurnal' ? 'primary' : 'outline'} onClick={() => setType('jurnal')} className="uppercase text-xs font-bold">JURNAL</Button>
             <Button variant={type === 'rekomendasi' ? 'primary' : 'outline'} onClick={() => setType('rekomendasi')} className="uppercase text-xs font-bold">REKOMENDASI</Button>
-            <Button variant={type === 'sptjm' ? 'primary' : 'outline'} onClick={() => setType('sptjm')} className="uppercase text-xs font-bold">SPTJM</Button>
+            <Button variant={type === 'sptjm' ? 'primary' : 'outline'} onClick={() => setType('sptjm')} className="uppercase text-xs font-bold">SPTJM SEKOLAH</Button>
             <Button variant={type === 'pernyataan' ? 'primary' : 'outline'} onClick={() => setType('pernyataan')} className="uppercase text-xs font-bold">PERNYATAAN</Button>
             <Button variant={type === 'perjanjian' ? 'primary' : 'outline'} onClick={() => setType('perjanjian')} className="uppercase text-xs font-bold">PERJANJIAN</Button>
           </div>
@@ -2982,7 +2958,7 @@ function PernyataanLetter({
   year,
   useTriwulan,
   filterMonth,
-  filterTriwulan
+  filterTriwulan,
 }: {
   teacher: TeacherData;
   year: number;
@@ -2990,79 +2966,94 @@ function PernyataanLetter({
   filterMonth: number;
   filterTriwulan: number;
 }) {
-  const startMonth = (filterTriwulan - 1) * 3;
+  const romanNumerals = ['I', 'II', 'III', 'IV'];
+  const terbilang = ['Satu', 'Dua', 'Tiga', 'Empat'];
+
+  // Triwulan berdasarkan filter
+  const triwulanIdx = useTriwulan ? filterTriwulan : Math.floor(filterMonth / 3) + 1;
+  const triwulanText = `Triwulan ${romanNumerals[triwulanIdx - 1]} (${terbilang[triwulanIdx - 1]})`;
+
+  // Tanggal otomatis di akhir periode
+  const startMonth = (triwulanIdx - 1) * 3;
   const displayDate = useTriwulan
     ? endOfMonth(new Date(year, startMonth + 2))
     : endOfMonth(new Date(year, filterMonth));
 
-  return (
-  <div
-    className="paper-a4 paper-a4-bordered font-tnr text-[12pt] leading-[1.5] text-black"
-    style={{ padding: '20mm 20mm 10mm 20mm' }}
-  >
-    <KopSurat teacher={teacher} />
+  // Kota untuk tanggal surat (dari kecamatan, hilangkan prefix "Kecamatan ")
+  const city = (teacher.kecamatan || 'Randangan').replace(/^Kecamatan\s+/i, '');
 
-      <div className="text-center mb-2.5">
-        <h3 className="font-bold underline text-[13pt] uppercase tracking-wide text-black">SURAT PERNYATAAN</h3>
-        <p className="text-[12pt] font-tnr text-black">Nomor Surat : {teacher.letterNumber || '.........................................................................'}</p>
+  return (
+    <div
+      className="paper-a4 paper-a4-bordered font-tnr text-[12pt] leading-[1.5] text-black"
+      style={{ padding: '20mm 20mm 10mm 20mm' }}
+    >
+      <div className="text-center mb-6">
+        <h3 className="font-bold underline text-[13pt] uppercase tracking-wide text-black">
+          SURAT PERNYATAAN TANGGUNG JAWAB MUTLAK
+        </h3>
       </div>
 
-      <div className="text-[12pt] space-y-1.5 font-tnr leading-[1.5] text-black">
+      <div className="text-[12pt] space-y-2 font-tnr leading-[1.5] text-black">
         <p>Yang bertanda tangan di bawah ini:</p>
-        <div className="ml-4 space-y-0.5">
-          <DataRow label="Nama" value={teacher.name || '.........................................................................'} colonPos="175px" />
-          <DataRow label="NIP / NUPTK" value={teacher.nip || '.........................................................................'} colonPos="175px" />
-          <DataRow label="Tempat, Tanggal Lahir" value={teacher.birthPlaceDate || '.........................................................................'} colonPos="175px" />
-          <DataRow label="Pangkat / Golongan" value={teacher.grade || '.........................................................................'} colonPos="175px" />
-          <DataRow label="Jabatan" value={teacher.position || '.........................................................................'} colonPos="175px" />
-          <DataRow label="Unit Kerja" value={teacher.workUnit || '.........................................................................'} colonPos="175px" />
+        <div className="ml-5 space-y-0.5">
+          <DataRow label="Nama" value={teacher.name || '..............................'} colonPos="160px" />
+          <DataRow label="NIP" value={teacher.nip || '..............................'} colonPos="160px" />
+          <DataRow label="Pangkat/Golongan" value={teacher.grade || '..............................'} colonPos="160px" />
+          <DataRow label="Jabatan" value={teacher.position || '..............................'} colonPos="160px" />
+          <DataRow label="Unit Kerja" value={teacher.workUnit || '..............................'} colonPos="160px" />
         </div>
 
-        <p className="text-justify pt-0.5 leading-[1.5]">
-          dengan ini menyatakan dengan sesungguhnya, dengan penuh kesadaran dan tanpa paksaan dari pihak manapun, sebagai berikut:
+        <p className="text-justify pt-3 leading-[1.5]">
+          Bahwa Saya sebagai penerima Tunjangan Profesi Guru <strong>{triwulanText} Tahun {year}</strong> dengan ini menyatakan:
         </p>
 
-        <ol className="list-decimal ml-5 space-y-1 text-justify leading-[1.5]">
+        <ol className="list-decimal ml-5 space-y-2 text-justify leading-[1.5]">
           <li>
-            Bahwa saya benar-benar telah melaksanakan tugas pokok guru serta memenuhi seluruh ketentuan administrasi guru sesuai dengan peraturan perundang-undangan yang berlaku, sebagai dasar penerimaan Tunjangan Profesi.
+            Bertanggungjawab sepenuhnya terhadap ketentuan yang ada dalam Peraturan Menteri Pendidikan dan Kebudayaan Republik Indonesia Nomor 19 Tahun 2021 tentang Petunjuk Teknis Penyaluran Tunjangan Profesi, Tunjangan Khusus dan Tambahan Penghasilan Guru Pegawai Negeri Sipil Daerah dan Peraturan Menteri Pendidikan Kebudayaan, Riset dan Teknologi Republik Indonesia Nomor 4 Tahun 2022 Tentang Petunjuk Teknis Pemberian Tunjangan Profesi, Tunjangan Khusus dan Tambahan Penghasilan Guru Aparatur Sipil Negara di Daerah Provinsi, Kabupaten/Kota.
           </li>
           <li>
-            Bahwa saya melaksanakan tugas tersebut dengan penuh tanggung jawab, jujur, dan disiplin, sesuai dengan kode etik guru serta peraturan disiplin pegawai yang berlaku.
+            Melaksanakan tugas beban kerja guru selama 24 jam yang diampu dan linearitas dengan kualifikasi pendidikan yang dimiliki.
+          </li>
+          <li>
+            Jika dikemudian hari pembayaran tunjangan profesi/tambahan penghasilan yang saya terima tidak sesuai dengan petunjuk teknis dan peraturan Perundang-undangan yang berlaku dan mengakibatkan kerugian negara, saya bersedia mengembalikan kerugian tersebut secara utuh (tidak mencicil).
           </li>
         </ol>
 
-        <p className="text-justify leading-[1.5]">
-          Apabila di kemudian hari ditemukan atau terbukti bahwa saya tidak melaksanakan tugas sebagaimana dimaksud di atas, atau terdapat ketidaksesuaian antara pernyataan ini dengan kenyataan di lapangan, maka saya bersedia menerima segala konsekuensi hukum, sanksi administratif, dan/atau sanksi kepegawaian sesuai dengan ketentuan peraturan perundang-undangan yang berlaku serta mengembalikan seluruh Tunjangan Profesi Guru yang telah saya terima kepada negara/pemerintah sesuai dengan mekanisme dan ketentuan yang berlaku, tanpa syarat.
-        </p>
-
-        <p className="text-justify leading-[1.5]">
-          Demikian surat pernyataan ini saya buat dengan sebenar-benarnya untuk dapat dipergunakan sebagaimana mestinya.
+        <p className="text-justify leading-[1.5] pt-3">
+          Demikian surat pernyataan tanggung jawab mutlak ini saya buat dengan tanpa ada paksaan pihak manapun.
         </p>
       </div>
 
-      <table className="w-full border-none mt-4 text-[12pt] font-tnr leading-[1.5] text-black" style={{ width: '100%', borderCollapse: 'collapse', border: 'none', tableLayout: 'fixed' }}>
+      <table
+        className="w-full border-none mt-8 text-[12pt] font-tnr leading-[1.5] text-black"
+        style={{ width: '100%', borderCollapse: 'collapse', border: 'none', tableLayout: 'fixed' }}
+      >
         <tbody>
           <tr style={{ border: 'none' }}>
             <td style={{ width: '50%', border: 'none', textAlign: 'center', verticalAlign: 'top', padding: '0 8px', color: '#000000' }}>
               <p style={{ margin: 0 }}>Mengetahui,</p>
-              <p style={{ margin: 0 }}>Kepala Satuan Pendidikan</p>
+              <p style={{ margin: 0 }}>Kepala Sekolah</p>
             </td>
             <td style={{ width: '50%', border: 'none', textAlign: 'center', verticalAlign: 'top', padding: '0 8px', color: '#000000' }}>
-              <p style={{ margin: 0 }}>Pohuwato, {format(displayDate, 'd MMMM yyyy', { locale: id })}</p>
-              <p style={{ margin: 0 }}>Yang Membuat Pernyataan,</p>
+              <p style={{ margin: 0 }}>{city}, {format(displayDate, 'd MMMM yyyy', { locale: id })}</p>
+              <p style={{ margin: 0 }}>Yang Membuat Pernyataan</p>
             </td>
           </tr>
           <tr style={{ border: 'none' }}>
-            <td style={{ height: '48px', border: 'none' }}></td>
-            <td style={{ height: '48px', border: 'none' }}></td>
+            <td style={{ height: '70px', border: 'none' }}></td>
+            <td style={{ height: '70px', border: 'none' }}></td>
           </tr>
           <tr style={{ border: 'none' }}>
             <td style={{ width: '50%', border: 'none', textAlign: 'center', verticalAlign: 'bottom', padding: '0 8px', color: '#000000' }}>
-              <p style={{ margin: 0, fontWeight: 'bold', textDecoration: 'underline' }}>{teacher.principalName || '......................................................'}</p>
+              <p style={{ margin: 0, fontWeight: 'bold', textDecoration: 'underline' }}>
+                {teacher.principalName || '......................................................'}
+              </p>
               <p style={{ margin: 0 }}>NIP. {teacher.principalNip || '................................................'}</p>
             </td>
             <td style={{ width: '50%', border: 'none', textAlign: 'center', verticalAlign: 'bottom', padding: '0 8px', color: '#000000' }}>
-              <p style={{ margin: 0, fontWeight: 'bold', textDecoration: 'underline' }}>{teacher.name || '......................................................'}</p>
+              <p style={{ margin: 0, fontWeight: 'bold', textDecoration: 'underline' }}>
+                {teacher.name || '......................................................'}
+              </p>
               <p style={{ margin: 0 }}>NIP. {teacher.nip || '................................................'}</p>
             </td>
           </tr>
@@ -3104,13 +3095,9 @@ function PerjanjianLetter({
     className="paper-a4 paper-a4-bordered font-tnr text-[12pt] leading-[1.5] text-black"
     style={{ padding: '20mm 20mm 10mm 20mm' }}
   >
-    <KopSurat teacher={teacher} />
-
-      <div className="text-center mb-2.5">
+            <div className="text-center mb-6 mt-4">
         <h3 className="font-bold underline text-[13pt] uppercase tracking-wide text-black">SURAT PERJANJIAN / PERNYATAAN</h3>
-        <p className="text-[12pt] font-tnr text-black">Nomor Surat : {teacher.agreementLetterNumber || '.........................................................................'}</p>
       </div>
-
       <div className="text-[12pt] space-y-1.5 font-tnr leading-[1.5] text-black">
         <p>Yang bertanda tangan dibawah ini :</p>
         <div className="ml-5 space-y-0.5">
