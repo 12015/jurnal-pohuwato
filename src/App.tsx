@@ -23,7 +23,7 @@ import {
   Pencil,
   AlertTriangle
 } from 'lucide-react';
-import { format, isWeekend, isSameDay, parseISO, startOfMonth, endOfMonth, eachDayOfInterval, isWithinInterval, getMonth, getYear } from 'date-fns';
+import { format, isWeekend, isSameDay, parseISO, startOfMonth, endOfMonth, eachDayOfInterval, isWithinInterval, getMonth, getYear, addDays } from 'date-fns';
 import { id } from 'date-fns/locale';
 import { motion, AnimatePresence } from 'motion/react';
 import { cn } from './lib/utils';
@@ -1273,7 +1273,16 @@ async function downloadJurnalPDF(
     const marginB = 10;
     const startTableY = 82;
 
-    // ====== Fungsi gambar kop — parameter bulanLabel ======
+    // Helper: tanggal TTD (akhir bulan, geser ke hari kerja berikutnya jika weekend/libur)
+    const getSignDate = (year: number, mIdx: number): Date => {
+      let d = endOfMonth(new Date(year, mIdx));
+      while (isWeekend(d) || HOLIDAYS_2026.includes(format(d, 'yyyy-MM-dd'))) {
+        d = addDays(d, 1);
+      }
+      return d;
+    };
+
+    // ====== Fungsi gambar kop ======
     const drawKop = (yStart: number, bulanLabel: string): number => {
       let y = yStart;
       if (teacher.districtLogo) {
@@ -1385,7 +1394,6 @@ async function downloadJurnalPDF(
         });
       });
 
-      // Track halaman sebelum autoTable
       // AutoTable
       autoTable(doc, {
         startY: startTableY,
@@ -1431,40 +1439,40 @@ async function downloadJurnalPDF(
           }
         },
       });
+
+      // ====== TTD untuk bulan ini ======
+      const lastTableY = (doc as any).lastAutoTable.finalY + 8;
+      const sigBlockHeight = 42;
+      let sigY = lastTableY;
+
+      // Kalau tidak muat di halaman ini, buat halaman baru
+      if (sigY + sigBlockHeight > pageH - marginB) {
+        doc.addPage([330, 215], 'landscape');
+        drawKop(marginT, bulanLabel);
+        sigY = startTableY;
+      }
+
+      const sigDate = getSignDate(filterYear, mIdx);
+      const sigLeftX = marginL + 60;
+      const sigRightX = pageW - marginR - 60;
+
+      doc.setFont('times', 'normal');
+      doc.setFontSize(12);
+      doc.text('Mengetahui,', sigLeftX, sigY, { align: 'center' });
+      doc.text('Kepala Satuan Pendidikan', sigLeftX, sigY + 5.5, { align: 'center' });
+      doc.text(`Pohuwato, ${format(sigDate, 'd MMMM yyyy', { locale: id })}`, sigRightX, sigY, { align: 'center' });
+      doc.text('Guru Mata Pelajaran', sigRightX, sigY + 5.5, { align: 'center' });
+
+      sigY += 25;
+
+      doc.setFont('times', 'bold');
+      doc.text(teacher.principalName || '................', sigLeftX, sigY, { align: 'center' });
+      doc.text(teacher.name || '................', sigRightX, sigY, { align: 'center' });
+
+      doc.setFont('times', 'normal');
+      doc.text(`NIP. ${teacher.principalNip || '................'}`, sigLeftX, sigY + 5.5, { align: 'center' });
+      doc.text(`NIP. ${teacher.nip || '................'}`, sigRightX, sigY + 5.5, { align: 'center' });
     }
-
-    // ====== Tanda tangan di halaman terakhir ======
-    const lastY = (doc as any).lastAutoTable.finalY + 10;
-    const sigBlockHeight = 45;
-    let sigY = lastY;
-
-    if (sigY + sigBlockHeight > pageH - marginB) {
-      doc.addPage([330, 215], 'landscape');
-      const lastMonthIdx = bulanIndices[bulanIndices.length - 1];
-      drawKop(marginT, `${monthsList[lastMonthIdx]} ${filterYear}`);
-      sigY = startTableY;
-    }
-
-    const lastDay = endOfMonth(new Date(filterYear, bulanIndices[bulanIndices.length - 1]));
-    const sigLeftX = marginL + 60;
-    const sigRightX = pageW - marginR - 60;
-
-    doc.setFont('times', 'normal');
-    doc.setFontSize(12);
-    doc.text('Mengetahui,', sigLeftX, sigY, { align: 'center' });
-    doc.text('Kepala Satuan Pendidikan', sigLeftX, sigY + 5.5, { align: 'center' });
-    doc.text(`Pohuwato, ${format(lastDay, 'd MMMM yyyy', { locale: id })}`, sigRightX, sigY, { align: 'center' });
-    doc.text('Guru Mata Pelajaran', sigRightX, sigY + 5.5, { align: 'center' });
-
-    sigY += 27;
-
-    doc.setFont('times', 'bold');
-    doc.text(teacher.principalName || '................', sigLeftX, sigY, { align: 'center' });
-    doc.text(teacher.name || '................', sigRightX, sigY, { align: 'center' });
-
-    doc.setFont('times', 'normal');
-    doc.text(`NIP. ${teacher.principalNip || '................'}`, sigLeftX, sigY + 5.5, { align: 'center' });
-    doc.text(`NIP. ${teacher.nip || '................'}`, sigRightX, sigY + 5.5, { align: 'center' });
 
     const monthStr = useTriwulan ? `Triwulan_${filterTriwulan}` : monthsList[monthIdx];
     const filename = `Dokumen_JURNAL_${monthStr}_${filterYear}.pdf`;
@@ -1474,6 +1482,7 @@ async function downloadJurnalPDF(
     console.error('Error PDF Jurnal:', error);
     addNotification('Gagal: ' + (error as Error).message, 'error');
   }
+}
 }type PreviewType = 'jurnal' | 'rekomendasi' | 'sptjm' | 'pernyataan' | 'perjanjian';
 
 function PreviewSection({
