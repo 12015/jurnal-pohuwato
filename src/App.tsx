@@ -1324,7 +1324,7 @@ async function downloadJurnalPDF(
       const infoRows = [
         { l: ['Nama', teacher.name], r: ['Unit Kerja', teacher.workUnit] },
         { l: ['NIP', teacher.nip], r: ['Kecamatan', teacher.kecamatan] },
-        { l: ['Jabatan', teacher.position], r: ['Bulan', `${monthsList[monthIdx] || ''} ${filterYear}`] },
+        { l: ['Jabatan', teacher.position], r: ['Bulan', useTriwulan ? `Triwulan ${['I','II','III','IV'][filterTriwulan - 1]} (${monthsList[(filterTriwulan - 1) * 3]} - ${monthsList[(filterTriwulan - 1) * 3 + 2]}) ${filterYear}` : `${monthsList[monthIdx] || ''} ${filterYear}`] },
       ];
       infoRows.forEach((row, i) => {
         const yy = y + i * 5.5;
