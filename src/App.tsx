@@ -1483,7 +1483,8 @@ async function downloadJurnalPDF(
     addNotification('Gagal: ' + (error as Error).message, 'error');
   }
 }
-}type PreviewType = 'jurnal' | 'rekomendasi' | 'sptjm' | 'pernyataan' | 'perjanjian';
+
+type PreviewType = 'jurnal' | 'rekomendasi' | 'sptjm' | 'pernyataan' | 'perjanjian';
 
 function PreviewSection({
   teacher,
