@@ -1386,8 +1386,6 @@ async function downloadJurnalPDF(
       });
 
       // Track halaman sebelum autoTable
-      const pagesBeforeTable = doc.getNumberOfPages();
-
       // AutoTable
       autoTable(doc, {
         startY: startTableY,
@@ -1428,7 +1426,7 @@ async function downloadJurnalPDF(
         },
         margin: { top: startTableY, left: marginL, right: marginR, bottom: marginB },
         didDrawPage: (data) => {
-          if (data.pageNumber > pagesBeforeTable) {
+          if (data.pageNumber > 1) {
             drawKop(marginT, bulanLabel);
           }
         },
