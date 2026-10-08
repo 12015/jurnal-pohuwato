@@ -1112,18 +1112,8 @@ function JournalInput({
                     value={row.jenisKegiatan || ''}
                     onChange={(v) => updateRow(index, 'jenisKegiatan', v)}
                     placeholder="KBM / Rapat"
-                    list={`jenis-kegiatan-list-${index}`}
                     disabled={!canInput}
                   />
-                  <datalist id={`jenis-kegiatan-list-${index}`}>
-                    <option value="KBM (Mengajar)" />
-                    <option value="Tugas Tambahan" />
-                    <option value="Guru Piket" />
-                    <option value="Rapat / Musyawarah" />
-                    <option value="Upacara / Apel Bendera" />
-                    <option value="Bimbingan Siswa" />
-                    <option value="Kegiatan Ekskul" />
-                  </datalist>
                 </div>
                 <Input
                   label="Agenda / Mapel"
