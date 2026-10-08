@@ -1241,7 +1241,7 @@ function JournalInput({
 }
 
 // --- Preview Section ---
-// ============ PDF JURNAL (autoTable, multi-halaman rapi) ============
+// ============ PDF JURNAL (autoTable, multi-halaman rapi, per-bulan untuk triwulan) ============
 async function downloadJurnalPDF(
   teacher: TeacherData,
   journals: JournalEntry[],
@@ -1273,8 +1273,8 @@ async function downloadJurnalPDF(
     const marginB = 10;
     const startTableY = 82;
 
-    // ====== Fungsi gambar kop ======
-    const drawKop = (yStart: number): number => {
+    // ====== Fungsi gambar kop — parameter bulanLabel ======
+    const drawKop = (yStart: number, bulanLabel: string): number => {
       let y = yStart;
       if (teacher.districtLogo) {
         try { doc.addImage(teacher.districtLogo, 'PNG', marginL, y, 22, 22); } catch { /* ignore */ }
@@ -1283,10 +1283,10 @@ async function downloadJurnalPDF(
         try { doc.addImage(teacher.schoolLogo, 'PNG', pageW - marginR - 22, y, 22, 22); } catch { /* ignore */ }
       }
       doc.setFont('times', 'bold');
-      doc.setFontSize(14); // PEMERINTAH KABUPATEN
+      doc.setFontSize(14);
       doc.text('PEMERINTAH KABUPATEN POHUWATO', pageW / 2, y + 6, { align: 'center' });
 
-      doc.setFontSize(14); // DINAS
+      doc.setFontSize(14);
       doc.text(
         teacher.institution ? teacher.institution.toUpperCase() : 'DINAS PENDIDIKAN DAN KEBUDAYAAN',
         pageW / 2,
@@ -1294,7 +1294,7 @@ async function downloadJurnalPDF(
         { align: 'center' }
       );
 
-      doc.setFontSize(16); // SMP NEGERI
+      doc.setFontSize(16);
       doc.text(
         teacher.workUnit ? teacher.workUnit.toUpperCase() : 'SMP NEGERI RANDANGAN',
         pageW / 2,
@@ -1303,7 +1303,7 @@ async function downloadJurnalPDF(
       );
 
       doc.setFont('times', 'italic');
-      doc.setFontSize(8); // Alamat tetap kecil
+      doc.setFontSize(8);
       doc.text(teacher.schoolAddress || '', pageW / 2, y + 26, { align: 'center' });
 
       y += 28;
@@ -1311,20 +1311,20 @@ async function downloadJurnalPDF(
       doc.line(marginL, y, pageW - marginR, y);
       doc.setLineWidth(0.2);
       doc.line(marginL, y + 1, pageW - marginR, y + 1);
-      y += 9; // jarak dari garis ke judul
+      y += 9;
       doc.setFont('times', 'bold');
-      doc.setFontSize(14); // JURNAL KEGIATAN HARIAN GURU
+      doc.setFontSize(14);
       doc.text('JURNAL KEGIATAN HARIAN GURU', pageW / 2, y, { align: 'center' });
       y += 9;
       doc.setFont('times', 'normal');
-      doc.setFontSize(12); // Info profil
+      doc.setFontSize(12);
       const leftX = marginL;
       const rightX = pageW / 2 + 5;
       const labelW = 25;
       const infoRows = [
         { l: ['Nama', teacher.name], r: ['Unit Kerja', teacher.workUnit] },
         { l: ['NIP', teacher.nip], r: ['Kecamatan', teacher.kecamatan] },
-        { l: ['Jabatan', teacher.position], r: ['Bulan', useTriwulan ? `Triwulan ${['I','II','III','IV'][filterTriwulan - 1]} (${monthsList[(filterTriwulan - 1) * 3]} - ${monthsList[(filterTriwulan - 1) * 3 + 2]}) ${filterYear}` : `${monthsList[monthIdx] || ''} ${filterYear}`] },
+        { l: ['Jabatan', teacher.position], r: ['Bulan', bulanLabel] },
       ];
       infoRows.forEach((row, i) => {
         const yy = y + i * 5.5;
@@ -1338,105 +1338,121 @@ async function downloadJurnalPDF(
       return y + infoRows.length * 5.5 + 4;
     };
 
-    // ====== Filter jurnal ======
-    const monthJournals = journals
-      .filter((j) => {
-        const d = parseISO(j.date);
-        if (useTriwulan) {
-          const q = Math.floor(getMonth(d) / 3) + 1;
-          return q === filterTriwulan && getYear(d) === filterYear;
-        }
-        return getMonth(d) === monthIdx && getYear(d) === filterYear;
-      })
-      .sort((a, b) => parseISO(a.date).getTime() - parseISO(b.date).getTime());
+    // ====== Tentukan bulan-bulan yang dirender ======
+    const bulanIndices: number[] = useTriwulan
+      ? [(filterTriwulan - 1) * 3, (filterTriwulan - 1) * 3 + 1, (filterTriwulan - 1) * 3 + 2]
+      : [monthIdx];
 
-    // ====== Bangun body dengan rowSpan ======
-    const body: any[] = [];
-    monthJournals.forEach((j, dayIdx) => {
-      const dateStr = format(parseISO(j.date), 'EEEE, d MMM yyyy', { locale: id });
-      const actCount = j.activities.length;
-      j.activities.forEach((act, actIdx) => {
-        const row: any[] = [];
-        if (actIdx === 0) {
-          row.push({ content: String(dayIdx + 1), rowSpan: actCount });
-          row.push({ content: dateStr, rowSpan: actCount });
-        }
-        row.push(act.jam || '-');
-        row.push(act.jenisKegiatan || '-');
-        row.push(act.agendaMapel || act.subject || '-');
-        row.push(act.lokasiKelas || act.class || '-');
-        row.push(act.kegiatanTujuan || [act.goal, act.activity].filter(Boolean).join(' - ') || '-');
-        row.push(act.keterangan || (act.studentCount ? `${act.studentCount} Siswa` : '-'));
-        body.push(row);
+    // ====== Loop per bulan ======
+    for (let b = 0; b < bulanIndices.length; b++) {
+      const mIdx = bulanIndices[b];
+      const bulanLabel = `${monthsList[mIdx]} ${filterYear}`;
+
+      // Filter jurnal bulan ini
+      const monthJournals = journals
+        .filter((j) => {
+          const d = parseISO(j.date);
+          return getMonth(d) === mIdx && getYear(d) === filterYear;
+        })
+        .sort((a, b) => parseISO(a.date).getTime() - parseISO(b.date).getTime());
+
+      // Halaman baru untuk bulan kedua dan seterusnya
+      if (b > 0) {
+        doc.addPage([330, 215], 'landscape');
+      }
+
+      // Gambar kop untuk bulan ini
+      drawKop(marginT, bulanLabel);
+
+      // Build body
+      const body: any[] = [];
+      monthJournals.forEach((j, dayIdx) => {
+        const dateStr = format(parseISO(j.date), 'EEEE, d MMM yyyy', { locale: id });
+        const actCount = j.activities.length;
+        j.activities.forEach((act, actIdx) => {
+          const row: any[] = [];
+          if (actIdx === 0) {
+            row.push({ content: String(dayIdx + 1), rowSpan: actCount });
+            row.push({ content: dateStr, rowSpan: actCount });
+          }
+          row.push(act.jam || '-');
+          row.push(act.jenisKegiatan || '-');
+          row.push(act.agendaMapel || act.subject || '-');
+          row.push(act.lokasiKelas || act.class || '-');
+          row.push(act.kegiatanTujuan || [act.goal, act.activity].filter(Boolean).join(' - ') || '-');
+          row.push(act.keterangan || (act.studentCount ? `${act.studentCount} Siswa` : '-'));
+          body.push(row);
+        });
       });
-    });
 
-    // ====== Gambar kop halaman 1 ======
-    drawKop(marginT);
+      // Track halaman sebelum autoTable
+      const pagesBeforeTable = doc.getNumberOfPages();
 
-    // ====== Tabel autoTable ======
-    autoTable(doc, {
-      startY: startTableY,
-      head: [[
-        'NO', 'HARI / TANGGAL', 'JAM', 'JENIS KEGIATAN',
-        'AGENDA / MAPEL', 'LOKASI / KELAS', 'KEGIATAN / TUJUAN PEMBELAJARAN', 'KETERANGAN / LAMPIRAN',
-      ]],
-      body,
-      theme: 'grid',
-      showHead: 'everyPage', // ← header tabel berulang setiap halaman
-      styles: {
-        font: 'times',
-        fontSize: 11, // tabel isi
-        cellPadding: 1.5,
-        lineColor: [0, 0, 0],
-        lineWidth: 0.15,
-        textColor: [0, 0, 0],
-        overflow: 'linebreak',
-        valign: 'middle',
-      },
-      headStyles: {
-        fillColor: [107, 33, 168],
-        textColor: [255, 255, 255],
-        fontStyle: 'bold',
-        halign: 'center',
-        valign: 'middle',
-        fontSize: 11, // header tabel
-      },
-      columnStyles: {
-        0: { cellWidth: 10, halign: 'center' },
-        1: { cellWidth: 32 },
-        2: { cellWidth: 22, halign: 'center' },
-        3: { cellWidth: 30 },
-        4: { cellWidth: 30 },
-        5: { cellWidth: 24, halign: 'center' },
-        6: { cellWidth: 'auto' },
-        7: { cellWidth: 32 },
-      },
-      margin: { top: startTableY, left: marginL, right: marginR, bottom: marginB },
-      didDrawPage: (data) => {
-        if (data.pageNumber > 1) {
-          drawKop(marginT);
-        }
-      },
-    });
+      // AutoTable
+      autoTable(doc, {
+        startY: startTableY,
+        head: [[
+          'NO', 'HARI / TANGGAL', 'JAM', 'JENIS KEGIATAN',
+          'AGENDA / MAPEL', 'LOKASI / KELAS', 'KEGIATAN / TUJUAN PEMBELAJARAN', 'KETERANGAN / LAMPIRAN',
+        ]],
+        body,
+        theme: 'grid',
+        showHead: 'everyPage',
+        styles: {
+          font: 'times',
+          fontSize: 11,
+          cellPadding: 1.5,
+          lineColor: [0, 0, 0],
+          lineWidth: 0.15,
+          textColor: [0, 0, 0],
+          overflow: 'linebreak',
+          valign: 'middle',
+        },
+        headStyles: {
+          fillColor: [107, 33, 168],
+          textColor: [255, 255, 255],
+          fontStyle: 'bold',
+          halign: 'center',
+          valign: 'middle',
+          fontSize: 11,
+        },
+        columnStyles: {
+          0: { cellWidth: 10, halign: 'center' },
+          1: { cellWidth: 32 },
+          2: { cellWidth: 22, halign: 'center' },
+          3: { cellWidth: 30 },
+          4: { cellWidth: 30 },
+          5: { cellWidth: 24, halign: 'center' },
+          6: { cellWidth: 'auto' },
+          7: { cellWidth: 32 },
+        },
+        margin: { top: startTableY, left: marginL, right: marginR, bottom: marginB },
+        didDrawPage: (data) => {
+          if (data.pageNumber > pagesBeforeTable) {
+            drawKop(marginT, bulanLabel);
+          }
+        },
+      });
+    }
 
-    // ====== Footer tanda tangan ======
+    // ====== Tanda tangan di halaman terakhir ======
     const lastY = (doc as any).lastAutoTable.finalY + 10;
     const sigBlockHeight = 45;
     let sigY = lastY;
 
     if (sigY + sigBlockHeight > pageH - marginB) {
       doc.addPage([330, 215], 'landscape');
-      drawKop(marginT);
+      const lastMonthIdx = bulanIndices[bulanIndices.length - 1];
+      drawKop(marginT, `${monthsList[lastMonthIdx]} ${filterYear}`);
       sigY = startTableY;
     }
 
-    const lastDay = endOfMonth(new Date(filterYear, monthIdx));
+    const lastDay = endOfMonth(new Date(filterYear, bulanIndices[bulanIndices.length - 1]));
     const sigLeftX = marginL + 60;
     const sigRightX = pageW - marginR - 60;
 
     doc.setFont('times', 'normal');
-    doc.setFontSize(12); // tanda tangan
+    doc.setFontSize(12);
     doc.text('Mengetahui,', sigLeftX, sigY, { align: 'center' });
     doc.text('Kepala Satuan Pendidikan', sigLeftX, sigY + 5.5, { align: 'center' });
     doc.text(`Pohuwato, ${format(lastDay, 'd MMMM yyyy', { locale: id })}`, sigRightX, sigY, { align: 'center' });
@@ -1460,8 +1476,7 @@ async function downloadJurnalPDF(
     console.error('Error PDF Jurnal:', error);
     addNotification('Gagal: ' + (error as Error).message, 'error');
   }
-}
-type PreviewType = 'jurnal' | 'rekomendasi' | 'sptjm' | 'pernyataan' | 'perjanjian';
+}type PreviewType = 'jurnal' | 'rekomendasi' | 'sptjm' | 'pernyataan' | 'perjanjian';
 
 function PreviewSection({
   teacher,
