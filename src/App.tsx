@@ -59,6 +59,7 @@ import { DashboardPengawas } from './pages/pengawas/DashboardPengawas';
 import { DaftarGuruBinaan } from './pages/pengawas/DaftarGuruBinaan';
 import { DashboardKepsek } from './pages/kepsek/DashboardKepsek';
 import { AntrianVerifikasi } from './pages/kepsek/AntrianVerifikasi';
+import { SPTJMSekolah } from './pages/kepsek/SPTJMSekolah';
 import { VerifikasiJurnal } from './pages/pengawas/VerifikasiJurnal';
 import { Persetujuan } from './pages/pengawas/Persetujuan';
 import { RiwayatRekomendasi } from './pages/pengawas/RiwayatRekomendasi';
@@ -395,6 +396,11 @@ const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
               {activeTab === 'ks_queue' && profile && (
                 <motion.div key="ks_queue" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }}>
                   <AntrianVerifikasi profile={profile} addNotification={addNotification} />
+                </motion.div>
+              )}
+              {activeTab === 'ks_sptjm' && profile && (
+                <motion.div key="ks_sptjm" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }}>
+                  <SPTJMSekolah teacher={teacher} addNotification={addNotification} />
                 </motion.div>
               )}
 
