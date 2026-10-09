@@ -65,7 +65,7 @@ export function useAuth() {
           id: data.user.id,
           role,
           email,
-          workUnitBina: role === 'pengawas' ? workUnitBina : undefined,
+          workUnitBina: (role === 'pengawas' || role === 'kepala_sekolah') ? workUnitBina : undefined,
         });
       }
     },

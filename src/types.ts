@@ -10,6 +10,8 @@ export interface TeacherData {
   principalNip: string;
   supervisorName: string;
   supervisorNip: string;
+  headOfDeptName?: string;
+  headOfDeptNip?: string;
   npsn: string;
   schoolAddress: string;
   institution?: string;
@@ -64,6 +66,8 @@ export const INITIAL_TEACHER_DATA: TeacherData = {
   principalNip: '',
   supervisorName: '',
   supervisorNip: '',
+  headOfDeptName: '',
+  headOfDeptNip: '',
   npsn: '',
   schoolAddress: '',
   institution: '',
@@ -83,7 +87,7 @@ export const HOLIDAYS_2026 = [
   '2026-03-30', // Example holiday
   // Add more as needed or use a library
 ];
-export type UserRole = 'guru' | 'pengawas';
+export type UserRole = 'guru' | 'kepala_sekolah' | 'pengawas';
 
 export interface UserProfile {
   id: string;
@@ -103,5 +107,11 @@ export type TabKey =
   | 'pw_verify'
   | 'pw_approve'
   | 'pw_rec_history'
+  | 'ks_dashboard'
+  | 'ks_queue'
+  | 'ks_teachers'
+  | 'ks_history'
+  | 'ks_sptjm'
+  | 'ks_perjanjian'
   | 'help'
   | 'about';

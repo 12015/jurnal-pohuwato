@@ -26,14 +26,18 @@ export function LoginPage() {
       } else {
         if (password.length < 6) throw new Error('Password minimal 6 karakter');
         if (password !== confirm) throw new Error('Konfirmasi password tidak cocok');
-        if (role === 'pengawas' && !workUnitBina.trim()) {
-          throw new Error('Unit kerja yang dibina wajib diisi untuk pengawas');
+        if ((role === 'pengawas' || role === 'kepala_sekolah') && !workUnitBina.trim()) {
+          throw new Error(
+            role === 'pengawas'
+              ? 'Unit kerja yang dibina wajib diisi untuk pengawas'
+              : 'Unit kerja sekolah wajib diisi untuk kepala sekolah'
+          );
         }
         await signUp(
           email.trim(),
           password,
           role,
-          role === 'pengawas' ? workUnitBina.trim() : undefined
+          role === 'pengawas' || role === 'kepala_sekolah' ? workUnitBina.trim() : undefined
         );
         setInfo('Pendaftaran berhasil. Silakan login.');
         setMode('login');
@@ -65,7 +69,7 @@ export function LoginPage() {
                 <button
                   type="button"
                   onClick={() => setRole('guru')}
-                  className={`flex-1 py-2 rounded-lg text-sm font-semibold border transition-colors ${
+                  className={`flex-1 py-2 rounded-lg text-[10px] sm:text-xs font-semibold border transition-colors ${
                     role === 'guru'
                       ? 'bg-indigo-600 text-white border-indigo-600'
                       : 'bg-white text-slate-700 border-slate-300 hover:bg-slate-50'
@@ -75,8 +79,19 @@ export function LoginPage() {
                 </button>
                 <button
                   type="button"
+                  onClick={() => setRole('kepala_sekolah')}
+                  className={`flex-1 py-2 rounded-lg text-[10px] sm:text-xs font-semibold border transition-colors ${
+                    role === 'kepala_sekolah'
+                      ? 'bg-indigo-600 text-white border-indigo-600'
+                      : 'bg-white text-slate-700 border-slate-300 hover:bg-slate-50'
+                  }`}
+                >
+                  KEPALA SEKOLAH
+                </button>
+                <button
+                  type="button"
                   onClick={() => setRole('pengawas')}
-                  className={`flex-1 py-2 rounded-lg text-sm font-semibold border transition-colors ${
+                  className={`flex-1 py-2 rounded-lg text-[10px] sm:text-xs font-semibold border transition-colors ${
                     role === 'pengawas'
                       ? 'bg-indigo-600 text-white border-indigo-600'
                       : 'bg-white text-slate-700 border-slate-300 hover:bg-slate-50'
@@ -144,6 +159,26 @@ export function LoginPage() {
               <p className="text-[11px] text-slate-500 mt-1">
                 Tulis sama persis dengan Unit Kerja guru. Guru yang mendaftar dengan Unit Kerja
                 ini otomatis masuk daftar binaan Anda.
+              </p>
+            </div>
+          )}
+
+          {mode === 'register' && role === 'kepala_sekolah' && (
+            <div>
+              <label className="block text-xs font-semibold text-slate-700 mb-1.5">
+                UNIT KERJA SEKOLAH
+              </label>
+              <input
+                type="text"
+                required
+                value={workUnitBina}
+                onChange={(e) => setWorkUnitBina(e.target.value)}
+                placeholder="SMP Negeri 1 Randangan"
+                className="w-full px-3 py-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none text-sm"
+              />
+              <p className="text-[11px] text-slate-500 mt-1">
+                Tulis sama persis dengan Unit Kerja guru di sekolah Anda. Guru yang mendaftar
+                dengan Unit Kerja ini otomatis masuk daftar verifikasi Anda.
               </p>
             </div>
           )}

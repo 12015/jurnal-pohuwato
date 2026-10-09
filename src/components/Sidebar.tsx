@@ -2,6 +2,7 @@ import type { ReactNode } from 'react';
 import {
   LayoutDashboard, User, FileText, Eye, History, HelpCircle, Info,
   Users, ClipboardCheck, CheckSquare, FileCheck, LogOut, BookOpen,
+  FileSignature, FileSpreadsheet,
 } from 'lucide-react';
 import type { TeacherData, UserProfile, TabKey } from '../types';
 import { cn } from '../lib/utils';
@@ -41,6 +42,37 @@ const guruSections: MenuSection[] = [
     items: [
       { key: 'preview', label: 'Preview & Cetak', icon: <Eye className="w-5 h-5" /> },
       { key: 'history', label: 'Riwayat Jurnal', icon: <History className="w-5 h-5" /> },
+    ],
+  },
+  {
+    title: 'INFORMASI',
+    items: [
+      { key: 'help', label: 'Bantuan', icon: <HelpCircle className="w-5 h-5" /> },
+      { key: 'about', label: 'Tentang', icon: <Info className="w-5 h-5" /> },
+    ],
+  },
+];
+const kepsekSections: MenuSection[] = [
+  {
+    title: 'UTAMA',
+    items: [
+      { key: 'ks_dashboard', label: 'Dashboard', icon: <LayoutDashboard className="w-5 h-5" /> },
+      { key: 'profile', label: 'Profil Kepala Sekolah', icon: <User className="w-5 h-5" /> },
+    ],
+  },
+  {
+    title: 'VERIFIKASI',
+    items: [
+      { key: 'ks_queue', label: 'Antrian Verifikasi', icon: <ClipboardCheck className="w-5 h-5" /> },
+      { key: 'ks_teachers', label: 'Semua Guru', icon: <Users className="w-5 h-5" /> },
+      { key: 'ks_history', label: 'Riwayat Verifikasi', icon: <History className="w-5 h-5" /> },
+    ],
+  },
+  {
+    title: 'DOKUMEN',
+    items: [
+      { key: 'ks_sptjm', label: 'SPTJM Sekolah', icon: <FileSpreadsheet className="w-5 h-5" /> },
+      { key: 'ks_perjanjian', label: 'Perjanjian', icon: <FileSignature className="w-5 h-5" /> },
     ],
   },
   {
@@ -93,8 +125,16 @@ export function Sidebar({
   onCloseMobile,
 }: SidebarProps) {
   const role = profile?.role || 'guru';
-  const sections = role === 'pengawas' ? pengawasSections : guruSections;
-  const roleLabel = role === 'pengawas' ? 'Pengawas Sekolah' : 'Guru';
+  const sections = role === 'pengawas'
+    ? pengawasSections
+    : role === 'kepala_sekolah'
+    ? kepsekSections
+    : guruSections;
+  const roleLabel = role === 'pengawas'
+    ? 'Pengawas Sekolah'
+    : role === 'kepala_sekolah'
+    ? 'Kepala Sekolah'
+    : 'Guru';
 
   return (
     <>

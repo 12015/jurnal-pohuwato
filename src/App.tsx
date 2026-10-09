@@ -57,6 +57,7 @@ import { Bantuan } from './pages/shared/Bantuan';
 import { Tentang } from './pages/shared/Tentang';
 import { DashboardPengawas } from './pages/pengawas/DashboardPengawas';
 import { DaftarGuruBinaan } from './pages/pengawas/DaftarGuruBinaan';
+import { DashboardKepsek } from './pages/kepsek/DashboardKepsek';
 import { VerifikasiJurnal } from './pages/pengawas/VerifikasiJurnal';
 import { Persetujuan } from './pages/pengawas/Persetujuan';
 import { RiwayatRekomendasi } from './pages/pengawas/RiwayatRekomendasi';
@@ -219,6 +220,12 @@ const tabTitles: Record<TabKey, string> = {
   pw_verify: 'Verifikasi Jurnal',
   pw_approve: 'Persetujuan',
   pw_rec_history: 'Riwayat Rekomendasi',
+  ks_dashboard: 'Dashboard Kepala Sekolah',
+  ks_queue: 'Antrian Verifikasi',
+  ks_teachers: 'Semua Guru',
+  ks_history: 'Riwayat Verifikasi',
+  ks_sptjm: 'SPTJM Sekolah',
+  ks_perjanjian: 'Perjanjian',
   help: 'Bantuan',
   about: 'Tentang Aplikasi',
 };
@@ -238,7 +245,13 @@ function AppContent({
   // Reset tab saat role berubah / login pertama dengan role tertentu
   useEffect(() => {
     if (profile && profile.role !== lastRole) {
-      setActiveTab(profile.role === 'pengawas' ? 'pw_dashboard' : 'dashboard');
+      if (profile.role === 'pengawas') {
+        setActiveTab('pw_dashboard');
+      } else if (profile.role === 'kepala_sekolah') {
+        setActiveTab('ks_dashboard');
+      } else {
+        setActiveTab('dashboard');
+      }
       setLastRole(profile.role);
     }
   }, [profile, lastRole]);
@@ -373,6 +386,12 @@ const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
             </div>
           ) : (
             <AnimatePresence mode="wait">
+                          {activeTab === 'ks_dashboard' && profile && (
+                <motion.div key="ks_dashboard" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }}>
+                  <DashboardKepsek profile={profile} teacher={teacher} />
+                </motion.div>
+              )}
+
                                           {activeTab === 'dashboard' && (
                 <motion.div key="dashboard" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }}>
                   <DashboardGuru
@@ -637,7 +656,11 @@ function ProfileForm({
       <div className="flex justify-between items-center pb-3 mb-5 border-b border-slate-200">
         <h3 className="text-lg font-bold text-slate-800 flex items-center gap-2 uppercase tracking-wide">
           <User className="w-5 h-5 text-indigo-600" />
-          {role === 'pengawas' ? 'PROFIL PENGAWAS' : 'PROFIL GURU & SATUAN PENDIDIKAN'}
+          {role === 'pengawas'
+  ? 'PROFIL PENGAWAS'
+  : role === 'kepala_sekolah'
+  ? 'PROFIL KEPALA SEKOLAH'
+  : 'PROFIL GURU & SATUAN PENDIDIKAN'}
         </h3>
         <Button onClick={() => onSave(form)} className="px-5 py-2 text-xs sm:text-sm font-semibold uppercase tracking-wide">
           <Save className="w-4 h-4" /> SIMPAN PROFIL
@@ -710,10 +733,20 @@ function ProfileForm({
               <ShieldCheck className="w-4 h-4 text-indigo-600" /> PEJABAT TERKAIT
             </h4>
             <div className="grid grid-cols-2 gap-3">
-              <Input label="Kepala Satuan Pendidikan" value={form.principalName} onChange={(v) => setForm({ ...form, principalName: v })} placeholder="Nama Kepala Satuan Pendidikan" />
-              <Input label="NIP Kepala Satuan Pendidikan" value={form.principalNip} onChange={(v) => setForm({ ...form, principalNip: v })} placeholder="NIP Kepala Satuan Pendidikan" />
+              {role !== 'kepala_sekolah' && (
+                <>
+                  <Input label="Kepala Satuan Pendidikan" value={form.principalName} onChange={(v) => setForm({ ...form, principalName: v })} placeholder="Nama Kepala Satuan Pendidikan" />
+                  <Input label="NIP Kepala Satuan Pendidikan" value={form.principalNip} onChange={(v) => setForm({ ...form, principalNip: v })} placeholder="NIP Kepala Satuan Pendidikan" />
+                </>
+              )}
               <Input label="Pengawas Bina" value={form.supervisorName} onChange={(v) => setForm({ ...form, supervisorName: v })} placeholder="Nama Pengawas" />
               <Input label="NIP Pengawas" value={form.supervisorNip} onChange={(v) => setForm({ ...form, supervisorNip: v })} placeholder="NIP Pengawas" />
+              {role === 'kepala_sekolah' && (
+                <>
+                  <Input label="Kepala Dinas Pendidikan" value={form.headOfDeptName || ''} onChange={(v) => setForm({ ...form, headOfDeptName: v })} placeholder="Nama Kepala Dinas Pendidikan" />
+                  <Input label="NIP Kepala Dinas" value={form.headOfDeptNip || ''} onChange={(v) => setForm({ ...form, headOfDeptNip: v })} placeholder="NIP Kepala Dinas" />
+                </>
+              )}
             </div>
           </div>
       </div>
