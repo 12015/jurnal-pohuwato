@@ -58,6 +58,7 @@ const kepsekSections: MenuSection[] = [
     items: [
       { key: 'ks_dashboard', label: 'Dashboard', icon: <LayoutDashboard className="w-5 h-5" /> },
       { key: 'profile', label: 'Profil Kepala Sekolah', icon: <User className="w-5 h-5" /> },
+      { key: 'ks_journal', label: 'Input Jurnal', icon: <FileText className="w-5 h-5" /> },
     ],
   },
   {
@@ -71,6 +72,8 @@ const kepsekSections: MenuSection[] = [
   {
     title: 'DOKUMEN',
     items: [
+      { key: 'ks_preview', label: 'Preview & Cetak', icon: <Eye className="w-5 h-5" /> },
+      { key: 'ks_journal_history', label: 'Riwayat Jurnal', icon: <History className="w-5 h-5" /> },
       { key: 'ks_sptjm', label: 'SPTJM Sekolah', icon: <FileSpreadsheet className="w-5 h-5" /> },
     ],
   },

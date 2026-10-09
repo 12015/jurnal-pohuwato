@@ -66,7 +66,8 @@ import { Persetujuan } from './pages/pengawas/Persetujuan';
 import { RiwayatRekomendasi } from './pages/pengawas/RiwayatRekomendasi';
 import type { TabKey } from './types';
 import { TopBar } from './components/TopBar';
-import { getVerificationStatus, getKepsekSignature } from './lib/db';
+import { getVerificationStatus, getKepsekSignature, getPengawasSignature } from './lib/db';
+import { submitKepsekJournal } from './lib/db';
 
 // --- Components ---
 
@@ -228,7 +229,10 @@ const tabTitles: Record<TabKey, string> = {
   ks_queue: 'Antrian Verifikasi',
   ks_teachers: 'Semua Guru',
   ks_history: 'Riwayat Verifikasi',
+  ks_preview: 'Preview Dokumen',
   ks_sptjm: 'SPTJM Sekolah',
+  ks_journal: 'Input Jurnal',
+  ks_journal_history: 'Riwayat Jurnal',
   help: 'Bantuan',
   about: 'Tentang Aplikasi',
 };
@@ -391,7 +395,12 @@ const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
             <AnimatePresence mode="wait">
                           {activeTab === 'ks_dashboard' && profile && (
                 <motion.div key="ks_dashboard" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }}>
-                  <DashboardKepsek profile={profile} teacher={teacher} />
+                  <DashboardKepsek
+  profile={profile}
+  teacher={teacher}
+  journals={journals}
+  addNotification={addNotification}
+/>
                 </motion.div>
               )}
               {activeTab === 'ks_queue' && profile && (
@@ -399,9 +408,64 @@ const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
                   <AntrianVerifikasi profile={profile} addNotification={addNotification} />
                 </motion.div>
               )}
+                            {activeTab === 'ks_preview' && profile && (
+                <motion.div key="ks_preview" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }}>
+                  <PreviewSection
+                    teacher={teacher}
+                    journals={journals}
+                    approvals={approvals}
+                    role="kepala_sekolah"
+                    onToggleApproval={async (key) => {
+                      const wasApproved = approvals.includes(key);
+                      try {
+                        await db.setApproval(key, !wasApproved);
+                        setApprovals(prev =>
+                          wasApproved ? prev.filter(k => k !== key) : [...prev, key]
+                        );
+                        addNotification('Status persetujuan diperbarui!', 'success');
+                      } catch (e) {
+                        console.error(e);
+                        addNotification('Gagal update status: ' + (e as Error).message, 'error');
+                      }
+                    }}
+                    addNotification={addNotification}
+                    onUpdateTeacher={handleSaveTeacher}
+                  />
+                </motion.div>
+              )}
+
               {activeTab === 'ks_sptjm' && profile && (
                 <motion.div key="ks_sptjm" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }}>
                   <SPTJMSekolah teacher={teacher} addNotification={addNotification} />
+                </motion.div>
+              )}
+
+              {activeTab === 'ks_journal' && profile && (
+                <motion.div key="ks_journal" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }}>
+                  <JournalInput
+                    onAdd={handleAddJournal}
+                    onUpdate={handleUpdateJournal}
+                    journals={journals}
+                    onDelete={handleDeleteJournal}
+                    addNotification={addNotification}
+                    teacher={teacher}
+                    rows={rows}
+                    setRows={setRows}
+                    selectedDateStr={selectedDateStr}
+                    setSelectedDateStr={setSelectedDateStr}
+                    addRow={addRow}
+                    onOpenDatePicker={() => setShowDatePickerPopover(true)}
+                  />
+                </motion.div>
+              )}
+
+              {activeTab === 'ks_journal_history' && (
+                <motion.div key="ks_journal_history" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }}>
+                  <RiwayatJurnal
+                    journals={journals}
+                    onNavigate={setActiveTab}
+                    onDelete={handleDeleteJournal}
+                  />
                 </motion.div>
               )}
 
@@ -531,6 +595,7 @@ const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
                     teacher={teacher}
                     journals={journals}
                     approvals={approvals}
+                    role="guru"
                     onToggleApproval={async (key) => {
                       const wasApproved = approvals.includes(key);
                       try {
@@ -656,7 +721,7 @@ function ProfileForm({
 }: {
   data: TeacherData;
   onSave: (d: TeacherData) => void;
-  role?: 'guru' | 'pengawas';
+  role?: 'guru' | 'kepala_sekolah' | 'pengawas';
 }) {
   const [form, setForm] = useState<TeacherData>(data);
 
@@ -1344,10 +1409,33 @@ async function downloadJurnalPDF(
     const { data: { user: currentUser } } = await supabase.auth.getUser();
     const guruUserId = currentUser?.id || '';
 
-    // Ambil TTD+Cap kepsek sekali (kalau ada)
-    const kepsekSig = teacher.workUnit
-      ? await getKepsekSignature(teacher.workUnit)
+    // Deteksi role user (kepsek atau guru)
+    let isKepsekUser = false;
+    if (guruUserId) {
+      const { data: profileData } = await supabase
+        .from('profiles')
+        .select('role')
+        .eq('id', guruUserId)
+        .maybeSingle();
+      isKepsekUser = profileData?.role === 'kepala_sekolah';
+    }
+
+    // Ambil TTD+Cap:
+    // - User guru   → pakai TTD Kepsek (yang verifikasi jurnal guru)
+    // - User kepsek → pakai TTD Pengawas (yang verifikasi jurnal kepsek)
+    const officerSig = teacher.workUnit
+      ? (isKepsekUser
+          ? await getPengawasSignature(teacher.workUnit)
+          : await getKepsekSignature(teacher.workUnit))
       : null;
+
+    const officerLabel = isKepsekUser ? 'Pengawas Bina' : 'Kepala Satuan Pendidikan';
+    const officerName = isKepsekUser
+      ? (officerSig?.name || teacher.supervisorName || '................')
+      : (teacher.principalName || '................');
+    const officerNip = isKepsekUser
+      ? (officerSig?.nip || teacher.supervisorNip || '................')
+      : (teacher.principalNip || '................');
 
     // Helper: tanggal TTD (akhir bulan, geser ke hari kerja berikutnya jika weekend/libur)
     const getSignDate = (year: number, mIdx: number): Date => {
@@ -1399,7 +1487,12 @@ async function downloadJurnalPDF(
       y += 9;
       doc.setFont('times', 'bold');
       doc.setFontSize(14);
-      doc.text('JURNAL KEGIATAN HARIAN GURU', pageW / 2, y, { align: 'center' });
+      doc.text(
+        isKepsekUser ? 'JURNAL KEGIATAN HARIAN KEPALA SATUAN PENDIDIKAN' : 'JURNAL KEGIATAN HARIAN GURU',
+        pageW / 2,
+        y,
+        { align: 'center' }
+      );
       y += 9;
       doc.setFont('times', 'normal');
       doc.setFontSize(12);
@@ -1520,15 +1613,20 @@ async function downloadJurnalPDF(
       const lastTableY = (doc as any).lastAutoTable.finalY + 8;
       let sigY = lastTableY;
 
-      // Cek apakah jurnal bulan ini sudah diverifikasi kepsek
+      // Cek verifikasi
       const periodKey = `m-${mIdx}-${filterYear}`;
       const verification = guruUserId
         ? await getVerificationStatus(guruUserId, periodKey)
         : null;
-      const isVerifiedByKepsek = verification?.kepsekStatus === 'approved';
-      const hasKepsekSig = isVerifiedByKepsek && !!kepsekSig?.signatureStampImage;
 
-      const sigBlockHeight = hasKepsekSig ? 75 : 42;
+      // Guru   → cek kepsekStatus
+      // Kepsek → cek pengawasStatus
+      const isVerified = isKepsekUser
+        ? verification?.pengawasStatus === 'approved'
+        : verification?.kepsekStatus === 'approved';
+      const hasOfficerSig = isVerified && !!officerSig?.signatureStampImage;
+
+      const sigBlockHeight = hasOfficerSig ? 75 : 42;
 
       // Kalau tidak muat di halaman ini, buat halaman baru
       if (sigY + sigBlockHeight > pageH - marginB) {
@@ -1545,19 +1643,19 @@ async function downloadJurnalPDF(
       doc.setFont('times', 'normal');
       doc.setFontSize(12);
       doc.text('Mengetahui,', sigLeftX, sigY, { align: 'center' });
-      doc.text('Kepala Satuan Pendidikan', sigLeftX, sigY + 5.5, { align: 'center' });
+      doc.text(officerLabel, sigLeftX, sigY + 5.5, { align: 'center' });
       doc.text(`Pohuwato, ${format(sigDate, 'd MMMM yyyy', { locale: id })}`, sigRightX, sigY, { align: 'center' });
       doc.text('Guru Mata Pelajaran', sigRightX, sigY + 5.5, { align: 'center' });
 
       // Gambar QR/Scan (jika sudah diverifikasi)
       const labelBottom = sigY + 5.5;
-      const qrTop = labelBottom + 2;
+      const qrTop = labelBottom + 6;
       const qrSize = 30;
 
-      if (hasKepsekSig && kepsekSig?.signatureStampImage) {
+      if (hasOfficerSig && officerSig?.signatureStampImage) {
         try {
           doc.addImage(
-            kepsekSig.signatureStampImage,
+            officerSig.signatureStampImage,
             'PNG',
             sigLeftX - qrSize / 2,
             qrTop,
@@ -1569,15 +1667,15 @@ async function downloadJurnalPDF(
         }
       }
 
-      // Posisi nama: 4mm di bawah QR (kalau ada QR), atau 25mm dari label (kalau tidak ada)
-      const nameY = hasKepsekSig ? qrTop + qrSize + 4 : sigY + 25;
+      // Posisi nama: 6mm di bawah QR (kalau ada QR), atau 25mm dari label (kalau tidak ada)
+      const nameY = hasOfficerSig ? qrTop + qrSize + 6 : sigY + 25;
 
       doc.setFont('times', 'bold');
-      doc.text(teacher.principalName || '................', sigLeftX, nameY, { align: 'center' });
+      doc.text(officerName, sigLeftX, nameY, { align: 'center' });
       doc.text(teacher.name || '................', sigRightX, nameY, { align: 'center' });
 
       doc.setFont('times', 'normal');
-      doc.text(`NIP. ${teacher.principalNip || '................'}`, sigLeftX, nameY + 5.5, { align: 'center' });
+      doc.text(`NIP. ${officerNip}`, sigLeftX, nameY + 5.5, { align: 'center' });
       doc.text(`NIP. ${teacher.nip || '................'}`, sigRightX, nameY + 5.5, { align: 'center' });
     }
 
@@ -1599,7 +1697,8 @@ function PreviewSection({
   approvals,
   onToggleApproval,
   addNotification,
-  onUpdateTeacher
+  onUpdateTeacher,
+  role = 'guru',
 }: {
   teacher: TeacherData;
   journals: JournalEntry[];
@@ -1607,6 +1706,7 @@ function PreviewSection({
   onToggleApproval: (key: string) => void | Promise<void>;
   addNotification: (message: string, type: 'success' | 'error') => void;
   onUpdateTeacher: (data: TeacherData) => void;
+  role?: 'guru' | 'kepala_sekolah' | 'pengawas';
 }) {
   const [type, setType] = useState<PreviewType>('jurnal');
   const [filterMonth, setFilterMonth] = useState<number>(getMonth(new Date()));
@@ -2367,6 +2467,7 @@ function PreviewSection({
                       month={months[mIdx]}
                       year={filterYear}
                       monthIndex={mIdx}
+                      role={role}
                     />
                   </div>
                 );
@@ -2378,6 +2479,7 @@ function PreviewSection({
                 month={months[filterMonth]}
                 year={filterYear}
                 monthIndex={filterMonth}
+                role={role}
               />
             )}
           </>
@@ -2581,12 +2683,13 @@ const KopSurat = ({
   </div>
 );
 
-function JurnalTable({ teacher, journals, month, year, monthIndex }: {
+function JurnalTable({ teacher, journals, month, year, monthIndex, role = 'guru' }: {
   teacher: TeacherData;
   journals: JournalEntry[];
   month: string;
   year: number;
   monthIndex: number;
+  role?: 'guru' | 'kepala_sekolah' | 'pengawas';
 }) {
   const lastDay = endOfMonth(new Date(year, monthIndex));
   const sortedJournals = [...journals].sort((a, b) => parseISO(a.date).getTime() - parseISO(b.date).getTime());
@@ -2643,7 +2746,7 @@ function JurnalTable({ teacher, journals, month, year, monthIndex }: {
           color: '#000000',
         }}
       >
-        JURNAL KEGIATAN HARIAN GURU
+                {role === 'kepala_sekolah' ? 'JURNAL KEGIATAN HARIAN KEPALA SATUAN PENDIDIKAN' : 'JURNAL KEGIATAN HARIAN GURU'}
       </h3>
 
             <table
@@ -2803,7 +2906,9 @@ function JurnalTable({ teacher, journals, month, year, monthIndex }: {
               }}
             >
               <p style={{ margin: 0 }}>Mengetahui,</p>
-              <p style={{ margin: 0 }}>Kepala Satuan Pendidikan</p>
+              <p style={{ margin: 0 }}>
+                {role === 'kepala_sekolah' ? 'Pengawas Bina' : 'Kepala Satuan Pendidikan'}
+              </p>
             </td>
             <td
               style={{

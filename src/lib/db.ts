@@ -88,9 +88,13 @@ export async function saveTeacher(t: TeacherData): Promise<void> {
 // ============ JOURNALS ============
 
 export async function loadJournals(): Promise<JournalEntry[]> {
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return [];
+
   const { data, error } = await supabase
     .from('journals')
     .select('id, date, activities')
+    .eq('user_id', user.id)
     .order('date', { ascending: true });
   if (error) {
     console.error('loadJournals:', error);
@@ -744,4 +748,44 @@ export async function getPengawasSignature(
     nip: match.nip || '',
     signatureStampImage: match.signature_stamp_image || undefined,
   };
+}
+
+// ============ B9: Kepsek isi jurnal & kirim ke Pengawas ============
+
+export async function submitKepsekJournal(
+  kepsekUserId: string,
+  periodKey: string
+): Promise<void> {
+  const existing = await getVerificationStatus(kepsekUserId, periodKey);
+
+  if (existing) {
+    const { error } = await supabase
+      .from('verifications')
+      .update({
+        guru_submitted_at: new Date().toISOString(),
+        kepsek_status: 'approved',
+        kepsek_verified_by: kepsekUserId,
+        kepsek_verified_at: new Date().toISOString(),
+        kepsek_note: 'Auto-verified (self)',
+        pengawas_status: 'pending',
+        is_locked: true,
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', existing.id);
+    if (error) throw error;
+  } else {
+    const { error } = await supabase.from('verifications').insert({
+      guru_id: kepsekUserId,
+      period_key: periodKey,
+      guru_submitted_at: new Date().toISOString(),
+      kepsek_status: 'approved',
+      kepsek_verified_by: kepsekUserId,
+      kepsek_verified_at: new Date().toISOString(),
+      kepsek_note: 'Auto-verified (self)',
+      pengawas_status: 'pending',
+      is_locked: true,
+      revision_count: 0,
+    });
+    if (error) throw error;
+  }
 }

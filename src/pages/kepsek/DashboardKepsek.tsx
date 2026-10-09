@@ -1,48 +1,261 @@
-import { Users, CheckCircle2, Clock, AlertCircle } from 'lucide-react';
-import { format } from 'date-fns';
+import { useEffect, useState } from 'react';
+import {
+  Users, CheckCircle2, Clock, AlertCircle, Loader2, Send, RefreshCw, FileText,
+} from 'lucide-react';
+import {
+  format, parseISO, startOfMonth, endOfMonth, eachDayOfInterval, isWeekend,
+  getMonth, getYear,
+} from 'date-fns';
 import { id as localeId } from 'date-fns/locale';
+import {
+  getGuruBinaan,
+  getVerificationStatus,
+  submitKepsekJournal,
+  type GuruBinaanSummary,
+  type VerificationStatus,
+} from '../../lib/db';
+import { supabase } from '../../lib/supabase';
 import type { TeacherData, UserProfile } from '../../types';
+import { HOLIDAYS_2026 } from '../../types';
+import { cn } from '../../lib/utils';
 
 interface DashboardKepsekProps {
   profile: UserProfile;
   teacher: TeacherData;
+  journals?: any[];
+  addNotification?: (message: string, type: 'success' | 'error') => void;
 }
 
-export function DashboardKepsek({ profile, teacher }: DashboardKepsekProps) {
+type StatusType = 'lengkap' | 'kurang' | 'belum';
+
+function getStatus(count: number, required: number): StatusType {
+  if (required === 0) return 'belum';
+  const percent = (count / required) * 100;
+  if (percent >= 80) return 'lengkap';
+  if (percent >= 40) return 'kurang';
+  return 'belum';
+}
+
+export function DashboardKepsek({
+  profile,
+  teacher,
+  journals = [],
+  addNotification,
+}: DashboardKepsekProps) {
   const today = new Date();
+  const monthIdx = getMonth(today);
+  const yearNow = getYear(today);
+
+  const [gurus, setGurus] = useState<GuruBinaanSummary[]>([]);
+  const [loadingGurus, setLoadingGurus] = useState(true);
+  const [verification, setVerification] = useState<VerificationStatus | null>(null);
+  const [loadingVerif, setLoadingVerif] = useState(true);
+  const [submitting, setSubmitting] = useState(false);
+
+  const notify = addNotification || ((msg: string, type: 'success' | 'error') => {
+    if (type === 'error') console.error(msg);
+    else console.log(msg);
+  });
+
+  // Hitung hari kerja bulan ini
+  const workDaysThisMonth = eachDayOfInterval({
+    start: startOfMonth(today),
+    end: endOfMonth(today),
+  }).filter((d) => !isWeekend(d) && !HOLIDAYS_2026.includes(format(d, 'yyyy-MM-dd')));
+  const required = workDaysThisMonth.length;
+
+  const fetchGurus = async () => {
+    setLoadingGurus(true);
+    try {
+      const data = await getGuruBinaan(profile.workUnitBina || '');
+      setGurus(data);
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setLoadingGurus(false);
+    }
+  };
+
+  const fetchVerification = async () => {
+    setLoadingVerif(true);
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+      const periodKey = `m-${monthIdx}-${yearNow}`;
+      const v = await getVerificationStatus(user.id, periodKey);
+      setVerification(v);
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setLoadingVerif(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchGurus();
+    fetchVerification();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [profile.workUnitBina]);
+
+  // Jurnal kepsek bulan ini
+  const myJournals = journals.filter((j: any) => {
+    const d = parseISO(j.date);
+    return getMonth(d) === monthIdx && getYear(d) === yearNow;
+  });
+
+  const myFilledDays = myJournals.length;
+  const myPercent = required > 0 ? Math.round((myFilledDays / required) * 100) : 0;
+
+  const handleKirimKePengawas = async () => {
+    if (myFilledDays === 0) {
+      notify('Belum ada jurnal bulan ini. Isi dulu minimal 1 jurnal.', 'error');
+      return;
+    }
+    setSubmitting(true);
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error('Tidak login');
+      const periodKey = `m-${monthIdx}-${yearNow}`;
+      await submitKepsekJournal(user.id, periodKey);
+      const v = await getVerificationStatus(user.id, periodKey);
+      setVerification(v);
+      notify('Jurnal berhasil dikirim ke Pengawas!', 'success');
+    } catch (e) {
+      console.error(e);
+      notify('Gagal: ' + (e as Error).message, 'error');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const stats = {
+    total: gurus.length,
+    lengkap: gurus.filter((g) => getStatus(g.journalCount, required) === 'lengkap').length,
+    kurang: gurus.filter((g) => getStatus(g.journalCount, required) === 'kurang').length,
+    belum: gurus.filter((g) => getStatus(g.journalCount, required) === 'belum').length,
+  };
+
+  const isSentToPengawas = !!verification?.guruSubmittedAt;
+  const isApprovedPengawas = verification?.pengawasStatus === 'approved';
+  const isRejectedPengawas = verification?.pengawasStatus === 'rejected';
 
   return (
     <div className="space-y-4">
       {/* Header sambutan */}
       <div className="bg-gradient-to-br from-emerald-600 to-emerald-700 text-white rounded-xl p-5 sm:p-6 shadow-sm">
-        <p className="text-sm text-emerald-100 mb-1">
-          {format(today, 'EEEE, d MMMM yyyy', { locale: localeId })}
-        </p>
-        <h2 className="text-xl sm:text-2xl font-bold">
-          Selamat datang, {teacher.name || 'Bapak/Ibu Kepala Sekolah'}
-        </h2>
-        <p className="text-sm text-emerald-100 mt-1">
-          Unit Kerja: <span className="font-semibold">{profile.workUnitBina || '-'}</span>
-        </p>
-      </div>
-
-      {/* Info sedang dikembangkan */}
-      <div className="bg-amber-50 border border-amber-200 rounded-xl p-6">
-        <div className="flex items-start gap-3">
-          <div className="w-10 h-10 rounded-full bg-amber-100 flex items-center justify-center shrink-0">
-            <Clock className="w-5 h-5 text-amber-600" />
-          </div>
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
           <div>
-            <p className="font-semibold text-amber-900">Dashboard sedang dikembangkan</p>
-            <p className="text-sm text-amber-800 mt-1">
-              Fitur verifikasi jurnal, antrian verifikasi, dan SPTJM Sekolah akan ditambahkan
-              pada tahap berikutnya.
+            <p className="text-sm text-emerald-100 mb-1">
+              {format(today, 'EEEE, d MMMM yyyy', { locale: localeId })}
+            </p>
+            <h2 className="text-xl sm:text-2xl font-bold">
+              Selamat datang, {teacher.name || 'Bapak/Ibu Kepala Sekolah'}
+            </h2>
+            <p className="text-sm text-emerald-100 mt-1">
+              Unit Kerja: <span className="font-semibold">{profile.workUnitBina || '-'}</span>
             </p>
           </div>
+          <button
+            onClick={() => { fetchGurus(); fetchVerification(); }}
+            disabled={loadingGurus}
+            className="flex items-center gap-2 bg-white/15 hover:bg-white/25 px-3 py-2 rounded-lg transition-colors text-sm font-semibold disabled:opacity-50 shrink-0 self-start"
+          >
+            {loadingGurus ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />}
+            Segarkan
+          </button>
         </div>
       </div>
 
-      {/* Kartu placeholder */}
+      {/* Kartu Status Jurnal Saya */}
+      <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-5">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-3">
+          <div>
+            <p className="font-semibold text-slate-800 text-sm flex items-center gap-2">
+              <FileText className="w-4 h-4 text-emerald-600" />
+              Status Jurnal Saya — {format(today, 'MMMM yyyy', { locale: localeId })}
+            </p>
+            <p className="text-[11px] text-slate-500 mt-0.5">
+              Alur: Kepala Sekolah → Pengawas Bina
+            </p>
+          </div>
+          {!isSentToPengawas && (
+            <button
+              onClick={handleKirimKePengawas}
+              disabled={submitting || myFilledDays === 0}
+              className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed text-white text-sm font-semibold rounded-lg transition-colors flex items-center justify-center gap-2 shrink-0"
+              title={myFilledDays === 0 ? 'Isi jurnal dulu' : 'Kirim jurnal bulan ini ke pengawas'}
+            >
+              {submitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
+              Kirim ke Pengawas
+            </button>
+          )}
+        </div>
+
+        {loadingVerif ? (
+          <div className="py-4 text-center">
+            <Loader2 className="w-5 h-5 animate-spin text-emerald-600 mx-auto" />
+          </div>
+        ) : (
+          <div className="space-y-2">
+            <div className="flex items-center gap-3">
+              <div className={cn(
+                'w-6 h-6 rounded-full flex items-center justify-center text-xs shrink-0',
+                myFilledDays > 0 ? 'bg-emerald-500 text-white' : 'bg-slate-200 text-slate-500'
+              )}>
+                {myFilledDays > 0 ? '✓' : '○'}
+              </div>
+              <span className="text-sm text-slate-700">
+                Jurnal diisi: <span className="font-semibold">{myFilledDays}/{required}</span> hari ({myPercent}%)
+              </span>
+            </div>
+
+            <div className="flex items-center gap-3">
+              <div className={cn(
+                'w-6 h-6 rounded-full flex items-center justify-center text-xs shrink-0',
+                isSentToPengawas ? 'bg-emerald-500 text-white' : 'bg-slate-200 text-slate-500'
+              )}>
+                {isSentToPengawas ? '✓' : '○'}
+              </div>
+              <span className={cn('text-sm', isSentToPengawas ? 'text-slate-700' : 'text-slate-400')}>
+                {isSentToPengawas
+                  ? `Dikirim ke Pengawas — ${verification?.guruSubmittedAt ? format(parseISO(verification.guruSubmittedAt), 'd MMM yyyy', { locale: localeId }) : ''}`
+                  : 'Belum dikirim ke Pengawas'}
+              </span>
+            </div>
+
+            <div className="flex items-center gap-3">
+              <div className={cn(
+                'w-6 h-6 rounded-full flex items-center justify-center text-xs shrink-0',
+                isApprovedPengawas ? 'bg-emerald-500 text-white'
+                  : isRejectedPengawas ? 'bg-rose-500 text-white'
+                  : 'bg-slate-200 text-slate-500'
+              )}>
+                {isApprovedPengawas ? '✓' : isRejectedPengawas ? '✕' : '○'}
+              </div>
+              <span className={cn(
+                'text-sm',
+                isApprovedPengawas ? 'text-slate-700'
+                  : isRejectedPengawas ? 'text-rose-700'
+                  : 'text-slate-400'
+              )}>
+                {isApprovedPengawas
+                  ? `Disetujui Pengawas — ${verification?.pengawasVerifiedAt ? format(parseISO(verification.pengawasVerifiedAt), 'd MMM yyyy', { locale: localeId }) : ''}`
+                  : isRejectedPengawas
+                  ? `Ditolak Pengawas: ${verification?.pengawasNote || 'Tidak ada catatan'}`
+                  : 'Menunggu validasi Pengawas'}
+              </span>
+            </div>
+          </div>
+        )}
+
+        {isApprovedPengawas && (
+          <div className="mt-3 p-3 bg-emerald-50 border border-emerald-200 rounded-lg text-xs text-emerald-800">
+            ✅ Jurnal Anda sudah disetujui Pengawas. Anda dapat mencetak rekomendasi di menu Preview & Cetak.
+          </div>
+        )}
+      </div>
+
+      {/* Statistik Guru Binaan */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
         <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-4">
           <div className="w-9 h-9 rounded-lg bg-blue-50 flex items-center justify-center mb-3">
@@ -51,7 +264,7 @@ export function DashboardKepsek({ profile, teacher }: DashboardKepsekProps) {
           <p className="text-[11px] font-semibold text-slate-500 uppercase tracking-wide mb-1">
             Total Guru
           </p>
-          <p className="text-2xl font-bold text-slate-900">-</p>
+          <p className="text-2xl font-bold text-slate-900">{loadingGurus ? '-' : stats.total}</p>
           <p className="text-[11px] text-slate-500 mt-1">Guru di sekolah</p>
         </div>
 
@@ -60,10 +273,10 @@ export function DashboardKepsek({ profile, teacher }: DashboardKepsekProps) {
             <CheckCircle2 className="w-5 h-5 text-emerald-600" />
           </div>
           <p className="text-[11px] font-semibold text-slate-500 uppercase tracking-wide mb-1">
-            Terverifikasi
+            Lengkap
           </p>
-          <p className="text-2xl font-bold text-emerald-600">-</p>
-          <p className="text-[11px] text-slate-500 mt-1">Bulan ini</p>
+          <p className="text-2xl font-bold text-emerald-600">{loadingGurus ? '-' : stats.lengkap}</p>
+          <p className="text-[11px] text-slate-500 mt-1">≥80% terisi</p>
         </div>
 
         <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-4">
@@ -71,21 +284,21 @@ export function DashboardKepsek({ profile, teacher }: DashboardKepsekProps) {
             <Clock className="w-5 h-5 text-amber-600" />
           </div>
           <p className="text-[11px] font-semibold text-slate-500 uppercase tracking-wide mb-1">
-            Menunggu
+            Kurang
           </p>
-          <p className="text-2xl font-bold text-amber-600">-</p>
-          <p className="text-[11px] text-slate-500 mt-1">Antrian verifikasi</p>
+          <p className="text-2xl font-bold text-amber-600">{loadingGurus ? '-' : stats.kurang}</p>
+          <p className="text-[11px] text-slate-500 mt-1">40-79% terisi</p>
         </div>
 
         <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-4">
           <div className="w-9 h-9 rounded-lg bg-rose-50 flex items-center justify-center mb-3">
             <AlertCircle className="w-5 h-5 text-rose-600" />
           </div>
-          <p className="text-[11px] font-semibold text-slate-500 uppercase tracking-wide text-xs mb-1">
+          <p className="text-[11px] font-semibold text-slate-500 uppercase tracking-wide mb-1">
             Perlu Perhatian
           </p>
-          <p className="text-2xl font-bold text-rose-600">-</p>
-          <p className="text-[11px] text-slate-500 mt-1">Belum isi jurnal</p>
+          <p className="text-2xl font-bold text-rose-600">{loadingGurus ? '-' : stats.belum}</p>
+          <p className="text-[11px] text-slate-500 mt-1">&lt;40% terisi</p>
         </div>
       </div>
     </div>

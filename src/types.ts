@@ -87,13 +87,14 @@ export const HOLIDAYS_2026 = [
   '2026-03-30', // Example holiday
   // Add more as needed or use a library
 ];
+
 export type UserRole = 'guru' | 'kepala_sekolah' | 'pengawas';
 
 export interface UserProfile {
   id: string;
   role: UserRole;
   email: string;
-  workUnitBina?: string; // khusus pengawas
+  workUnitBina?: string; // khusus pengawas & kepala sekolah
 }
 
 export type TabKey =
@@ -111,6 +112,9 @@ export type TabKey =
   | 'ks_queue'
   | 'ks_teachers'
   | 'ks_history'
+  | 'ks_journal'
+  | 'ks_journal_history'
+  | 'ks_preview'
   | 'ks_sptjm'
   | 'help'
   | 'about';
