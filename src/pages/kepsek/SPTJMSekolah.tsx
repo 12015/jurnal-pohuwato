@@ -78,7 +78,7 @@ export function SPTJMSekolah({ teacher, addNotification }: SPTJMSekolahProps) {
   const city = (teacher.kecamatan || 'Randangan').replace(/^Kecamatan\s+/i, '');
   const paper = PAPER_SIZES[paperSize];
 
-  const handleDownloadPDF = async () => {
+    const handleDownloadPDF = async () => {
     try {
       setIsExporting(true);
       addNotification('Menyiapkan PDF...', 'success');
@@ -86,7 +86,68 @@ export function SPTJMSekolah({ teacher, addNotification }: SPTJMSekolahProps) {
       const element = document.getElementById('sptjm-sekolah-preview');
       if (!element) throw new Error('Elemen tidak ditemukan');
 
-      const canvas = await html2canvas(element, {
+      // 1. Extract semua CSS dari document, sanitize oklch → hex
+      const docStyles = Array.from(document.querySelectorAll('style, link[rel="stylesheet"]'));
+      let combinedCss = '';
+      for (const s of docStyles) {
+        if (s.tagName.toLowerCase() === 'style') {
+          combinedCss += s.textContent || '';
+        } else if (s.tagName.toLowerCase() === 'link') {
+          try {
+            const sheet = (s as HTMLLinkElement).sheet;
+            if (sheet) {
+              const rules = Array.from(sheet.cssRules || []);
+              combinedCss += rules.map((r) => r.cssText).join('\n');
+            }
+          } catch { /* ignore cross-origin */ }
+        }
+      }
+
+      const safeCss = combinedCss
+        .replace(/color-mix\([\s\S]*?\)/gi, '#000000')
+        .replace(/oklch\([\s\S]*?\)/gi, '#000000');
+
+      // 2. Bikin iframe tersembunyi
+      const iframe = document.createElement('iframe');
+      iframe.style.position = 'fixed';
+      iframe.style.left = '-9999px';
+      iframe.style.top = '0';
+      iframe.style.width = '1400px';
+      iframe.style.height = '2000px';
+      iframe.style.border = 'none';
+      document.body.appendChild(iframe);
+
+      const iframeWin = iframe.contentWindow;
+      const iframeDoc = iframeWin?.document;
+      if (!iframeDoc) throw new Error('Gagal membuat frame');
+
+      iframeDoc.open();
+      iframeDoc.write(`
+        <!DOCTYPE html>
+        <html><head><meta charset="utf-8">
+        <style>${safeCss}</style>
+        <style>
+          * { box-sizing: border-box; }
+          body { margin: 0; padding: 0; background: #ffffff; color: #000000; font-family: "Times New Roman", Times, serif; }
+          .no-print { display: none !important; }
+        </style>
+        </head><body><div id="container"></div></body></html>
+      `);
+      iframeDoc.close();
+
+      const container = iframeDoc.getElementById('container');
+      if (!container) throw new Error('Container gagal');
+
+      // 3. Clone elemen & masukkan ke iframe
+      const clone = element.cloneNode(true) as HTMLElement;
+      clone.style.boxShadow = 'none';
+      clone.style.margin = '0';
+      container.appendChild(clone);
+
+      await new Promise((r) => setTimeout(r, 250));
+
+      // 4. Capture pakai html2canvas
+      const canvas = await html2canvas(clone, {
         scale: 3,
         useCORS: true,
         logging: false,
@@ -94,6 +155,7 @@ export function SPTJMSekolah({ teacher, addNotification }: SPTJMSekolahProps) {
       });
       const imgData = canvas.toDataURL('image/png', 1.0);
 
+      // 5. Buat PDF
       const pdf = new jsPDF({
         orientation: 'portrait',
         unit: 'mm',
@@ -102,22 +164,20 @@ export function SPTJMSekolah({ teacher, addNotification }: SPTJMSekolahProps) {
 
       const pdfWidth = pdf.internal.pageSize.getWidth();
       const pdfHeight = pdf.internal.pageSize.getHeight();
-      const imgHeightInPdf = (canvas.height * pdfWidth) / canvas.width;
 
-      if (imgHeightInPdf <= pdfHeight * 1.02) {
-        pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, Math.min(imgHeightInPdf, pdfHeight));
-      } else {
-        let heightLeft = imgHeightInPdf;
-        let position = 0;
-        pdf.addImage(imgData, 'PNG', 0, position, pdfWidth, imgHeightInPdf);
-        heightLeft -= pdfHeight;
-        while (heightLeft > 5) {
-          position -= pdfHeight;
-          pdf.addPage([paper.width, paper.height], 'portrait');
-          pdf.addImage(imgData, 'PNG', 0, position, pdfWidth, imgHeightInPdf);
-          heightLeft -= pdfHeight;
-        }
-      }
+      // Fit-to-page preserving aspect ratio
+      const ratio = Math.min(pdfWidth / canvas.width, pdfHeight / canvas.height);
+      const finalW = canvas.width * ratio;
+      const finalH = canvas.height * ratio;
+
+      // Center horizontally, top-align vertically
+      const offsetX = (pdfWidth - finalW) / 2;
+      const offsetY = 0;
+
+      pdf.addImage(imgData, 'PNG', offsetX, offsetY, finalW, finalH);
+
+      // 6. Cleanup
+      if (document.body.contains(iframe)) document.body.removeChild(iframe);
 
       pdf.save(`SPTJM_Sekolah_${paperSize}_${monthsList[filterMonth]}_${filterYear}.pdf`);
       addNotification(`PDF ${paperSize} berhasil diunduh!`, 'success');
@@ -216,7 +276,6 @@ export function SPTJMSekolah({ teacher, addNotification }: SPTJMSekolahProps) {
             fontSize: '12pt',
             lineHeight: 1.5,
             color: '#000',
-            border: '2px double #000',
           }}
         >
           {/* Kop surat */}
@@ -378,7 +437,7 @@ export function SPTJMSekolah({ teacher, addNotification }: SPTJMSekolahProps) {
                   <p style={{ margin: 0 }}>Yang Membuat Pernyataan,</p>
                   {/* Ruang tanda tangan basah */}
                   <div style={{ height: '80px' }}></div>
-                  <p style={{ margin: 0, fontWeight: 'bold', textDecoration: 'underline' }}>{teacher.name || '..........................'}</p>
+                  <p style={{ margin: 0, fontWeight: 'bold' }}>{teacher.name || '..........................'}</p>
                   <p style={{ margin: 0 }}>NIP. {teacher.nip || '..........................'}</p>
                 </td>
               </tr>
