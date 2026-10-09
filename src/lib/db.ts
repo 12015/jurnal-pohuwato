@@ -40,6 +40,8 @@ export async function loadTeacher(): Promise<TeacherData | null> {
     schoolLogo: data.school_logo || '',
     districtLogo: data.district_logo || '',
     profilePhoto: data.profile_photo || '',
+    signatureImage: data.signature_image || '',
+    stampImage: data.stamp_image || '',
     birthPlaceDate: data.birth_place_date || '',
     letterNumber: data.letter_number || '',
     agreementLetterNumber: data.agreement_letter_number || '',
@@ -76,6 +78,8 @@ export async function saveTeacher(t: TeacherData): Promise<void> {
       target_email: t.targetEmail,
       gas_url: t.gasUrl,
       profile_photo: t.profilePhoto || '',
+      signature_image: t.signatureImage || '',
+      stamp_image: t.stampImage || '',
       district_logo: t.districtLogo || '',
       school_logo: t.schoolLogo || '',
       updated_at: new Date().toISOString(),
@@ -658,4 +662,93 @@ export async function rejectKepsek(
     })
     .eq('id', verificationId);
   if (error) throw error;
+}
+
+// ============ B8: TTD & Cap Pejabat ============
+
+export interface OfficerSignature {
+  name: string;
+  nip: string;
+  signatureImage?: string;
+  stampImage?: string;
+}
+
+/**
+ * Ambil TTD + cap Kepala Sekolah dari sekolah tertentu
+ * Dipakai saat guru cetak jurnal (supaya TTD kepsek muncul otomatis)
+ */
+export async function getKepsekSignature(
+  workUnit: string
+): Promise<OfficerSignature | null> {
+  // Ambil user_id kepsek dari profiles
+  const { data: profiles, error: pErr } = await supabase
+    .from('profiles')
+    .select('id')
+    .eq('role', 'kepala_sekolah');
+
+  if (pErr || !profiles || profiles.length === 0) {
+    return null;
+  }
+
+  const kepsekIds = profiles.map((p) => p.id);
+
+  const { data: teachers, error: tErr } = await supabase
+    .from('teachers')
+    .select('user_id, name, nip, work_unit, signature_image, stamp_image')
+    .in('user_id', kepsekIds);
+
+  if (tErr || !teachers) return null;
+
+  const match = teachers.find(
+    (t) => (t.work_unit || '').toLowerCase().trim() === workUnit.toLowerCase().trim()
+  );
+
+  if (!match) return null;
+
+  return {
+    name: match.name || '',
+    nip: match.nip || '',
+    signatureImage: match.signature_image || undefined,
+    stampImage: match.stamp_image || undefined,
+  };
+}
+
+/**
+ * Ambil TTD + cap Pengawas Bina untuk sekolah tertentu
+ * Dipakai saat cetak rekomendasi
+ */
+export async function getPengawasSignature(
+  workUnitBina: string
+): Promise<OfficerSignature | null> {
+  const { data: profiles, error: pErr } = await supabase
+    .from('profiles')
+    .select('id')
+    .eq('role', 'pengawas');
+
+  if (pErr || !profiles || profiles.length === 0) {
+    return null;
+  }
+
+  const pengawasIds = profiles.map((p) => p.id);
+
+  const { data: teachers, error: tErr } = await supabase
+    .from('teachers')
+    .select('user_id, name, nip, work_unit, signature_image, stamp_image')
+    .in('user_id', pengawasIds);
+
+  if (tErr || !teachers) return null;
+
+  // Cari pengawas yang work_unit-nya sama dengan sekolah guru
+  const match = teachers.find(
+    (t) => (t.work_unit || '').toLowerCase().trim() === workUnitBina.toLowerCase().trim()
+  );
+
+  if (!match) return null;
+
+  return {
+    name: match.name || '',
+    nip: match.nip || '',
+    signatureImage: match.signature_image || undefined,
+    stampImage: match.stamp_image || undefined,
+  };
 }

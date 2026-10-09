@@ -761,6 +761,30 @@ function ProfileForm({
             </div>
           </div>
       </div>
+    
+          {/* TTD & Cap Digital — hanya kepsek/pengawas */}
+          {(role === 'kepala_sekolah' || role === 'pengawas') && (
+            <div className="p-3.5 sm:p-4 bg-amber-50/60 rounded-xl border border-amber-100 space-y-2.5 lg:col-span-12">
+              <h4 className="text-xs sm:text-sm font-bold text-amber-900 flex items-center gap-1.5 uppercase tracking-wide">
+                <ShieldCheck className="w-4 h-4 text-amber-600" /> TANDA TANGAN & CAP DIGITAL
+              </h4>
+              <p className="text-[11px] text-amber-800 leading-relaxed">
+                Upload scan tanda tangan dan cap Anda. Keduanya akan muncul otomatis di PDF jurnal/rekomendasi yang Anda verifikasi.
+              </p>
+              <LogoUploader
+                label="Scan Tanda Tangan"
+                value={form.signatureImage}
+                onChange={(val) => setForm({ ...form, signatureImage: val })}
+                hint="PNG transparan disarankan"
+              />
+              <LogoUploader
+                label="Scan Cap"
+                value={form.stampImage}
+                onChange={(val) => setForm({ ...form, stampImage: val })}
+                hint="PNG transparan disarankan"
+              />
+            </div>
+          )}
     </div>
     </Card>
   );
