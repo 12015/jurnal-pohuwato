@@ -40,7 +40,7 @@ export async function loadTeacher(): Promise<TeacherData | null> {
     schoolLogo: data.school_logo || '',
     districtLogo: data.district_logo || '',
     profilePhoto: data.profile_photo || '',
-    signatureImage: data.signature_image || '',
+    signatureStampImage: data.signature_stamp_image || '',
     birthPlaceDate: data.birth_place_date || '',
     letterNumber: data.letter_number || '',
   };
@@ -75,7 +75,7 @@ export async function saveTeacher(t: TeacherData): Promise<void> {
       target_email: t.targetEmail,
       gas_url: t.gasUrl,
       profile_photo: t.profilePhoto || '',
-      signature_image: t.signatureImage || '',
+      signature_stamp_image: t.signatureStampImage || '',
       district_logo: t.districtLogo || '',
       school_logo: t.schoolLogo || '',
       updated_at: new Date().toISOString(),
