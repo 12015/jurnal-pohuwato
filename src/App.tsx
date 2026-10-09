@@ -49,6 +49,7 @@ import type { User as SupabaseUser } from '@supabase/supabase-js';
 import { useAuth } from './hooks/useAuth';
 import { LoginPage } from './LoginPage';
 import * as db from './lib/db';
+import { supabase } from './lib/supabase';
 import { Sidebar } from './components/Sidebar';
 import { PlaceholderPage } from './components/PlaceholderPage';
 import { DashboardGuru } from './pages/guru/DashboardGuru';
@@ -65,6 +66,7 @@ import { Persetujuan } from './pages/pengawas/Persetujuan';
 import { RiwayatRekomendasi } from './pages/pengawas/RiwayatRekomendasi';
 import type { TabKey } from './types';
 import { TopBar } from './components/TopBar';
+import { getVerificationStatus, getKepsekSignature } from './lib/db';
 
 // --- Components ---
 
@@ -1338,6 +1340,15 @@ async function downloadJurnalPDF(
     const marginB = 10;
     const startTableY = 82;
 
+    // Ambil user ID guru untuk cek verifikasi
+    const { data: { user: currentUser } } = await supabase.auth.getUser();
+    const guruUserId = currentUser?.id || '';
+
+    // Ambil TTD+Cap kepsek sekali (kalau ada)
+    const kepsekSig = teacher.workUnit
+      ? await getKepsekSignature(teacher.workUnit)
+      : null;
+
     // Helper: tanggal TTD (akhir bulan, geser ke hari kerja berikutnya jika weekend/libur)
     const getSignDate = (year: number, mIdx: number): Date => {
       let d = endOfMonth(new Date(year, mIdx));
@@ -1507,8 +1518,17 @@ async function downloadJurnalPDF(
 
       // ====== TTD untuk bulan ini ======
       const lastTableY = (doc as any).lastAutoTable.finalY + 8;
-      const sigBlockHeight = 42;
       let sigY = lastTableY;
+
+      // Cek apakah jurnal bulan ini sudah diverifikasi kepsek
+      const periodKey = `m-${mIdx}-${filterYear}`;
+      const verification = guruUserId
+        ? await getVerificationStatus(guruUserId, periodKey)
+        : null;
+      const isVerifiedByKepsek = verification?.kepsekStatus === 'approved';
+      const hasKepsekSig = isVerifiedByKepsek && !!kepsekSig?.signatureStampImage;
+
+      const sigBlockHeight = hasKepsekSig ? 75 : 42;
 
       // Kalau tidak muat di halaman ini, buat halaman baru
       if (sigY + sigBlockHeight > pageH - marginB) {
@@ -1521,6 +1541,7 @@ async function downloadJurnalPDF(
       const sigLeftX = marginL + 60;
       const sigRightX = pageW - marginR - 60;
 
+      // Label atas
       doc.setFont('times', 'normal');
       doc.setFontSize(12);
       doc.text('Mengetahui,', sigLeftX, sigY, { align: 'center' });
@@ -1528,15 +1549,36 @@ async function downloadJurnalPDF(
       doc.text(`Pohuwato, ${format(sigDate, 'd MMMM yyyy', { locale: id })}`, sigRightX, sigY, { align: 'center' });
       doc.text('Guru Mata Pelajaran', sigRightX, sigY + 5.5, { align: 'center' });
 
-      sigY += 25;
+      // Gambar QR/Scan (jika sudah diverifikasi)
+      const labelBottom = sigY + 5.5;
+      const qrTop = labelBottom + 2;
+      const qrSize = 30;
+
+      if (hasKepsekSig && kepsekSig?.signatureStampImage) {
+        try {
+          doc.addImage(
+            kepsekSig.signatureStampImage,
+            'PNG',
+            sigLeftX - qrSize / 2,
+            qrTop,
+            qrSize,
+            qrSize
+          );
+        } catch (e) {
+          console.error('Gagal tempel QR:', e);
+        }
+      }
+
+      // Posisi nama: 4mm di bawah QR (kalau ada QR), atau 25mm dari label (kalau tidak ada)
+      const nameY = hasKepsekSig ? qrTop + qrSize + 4 : sigY + 25;
 
       doc.setFont('times', 'bold');
-      doc.text(teacher.principalName || '................', sigLeftX, sigY, { align: 'center' });
-      doc.text(teacher.name || '................', sigRightX, sigY, { align: 'center' });
+      doc.text(teacher.principalName || '................', sigLeftX, nameY, { align: 'center' });
+      doc.text(teacher.name || '................', sigRightX, nameY, { align: 'center' });
 
       doc.setFont('times', 'normal');
-      doc.text(`NIP. ${teacher.principalNip || '................'}`, sigLeftX, sigY + 5.5, { align: 'center' });
-      doc.text(`NIP. ${teacher.nip || '................'}`, sigRightX, sigY + 5.5, { align: 'center' });
+      doc.text(`NIP. ${teacher.principalNip || '................'}`, sigLeftX, nameY + 5.5, { align: 'center' });
+      doc.text(`NIP. ${teacher.nip || '................'}`, sigRightX, nameY + 5.5, { align: 'center' });
     }
 
     const monthStr = useTriwulan ? `Triwulan_${filterTriwulan}` : monthsList[monthIdx];
