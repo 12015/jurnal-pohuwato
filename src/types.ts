@@ -22,7 +22,6 @@ export interface TeacherData {
   districtLogo?: string;
   profilePhoto?: string;
   signatureImage?: string;
-  stampImage?: string;
   birthPlaceDate?: string;
   letterNumber?: string;
 }
@@ -79,7 +78,6 @@ export const INITIAL_TEACHER_DATA: TeacherData = {
   districtLogo: '',
   profilePhoto: '',
   signatureImage: '',
-  stampImage: '',
   birthPlaceDate: '',
   letterNumber: '',
 };

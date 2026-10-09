@@ -41,10 +41,8 @@ export async function loadTeacher(): Promise<TeacherData | null> {
     districtLogo: data.district_logo || '',
     profilePhoto: data.profile_photo || '',
     signatureImage: data.signature_image || '',
-    stampImage: data.stamp_image || '',
     birthPlaceDate: data.birth_place_date || '',
     letterNumber: data.letter_number || '',
-    agreementLetterNumber: data.agreement_letter_number || '',
   };
 }
 
@@ -74,12 +72,10 @@ export async function saveTeacher(t: TeacherData): Promise<void> {
       head_of_dept_name: t.headOfDeptName || '',
       head_of_dept_nip: t.headOfDeptNip || '',
       letter_number: t.letterNumber || '',
-      agreement_letter_number: t.agreementLetterNumber || '',
       target_email: t.targetEmail,
       gas_url: t.gasUrl,
       profile_photo: t.profilePhoto || '',
       signature_image: t.signatureImage || '',
-      stamp_image: t.stampImage || '',
       district_logo: t.districtLogo || '',
       school_logo: t.schoolLogo || '',
       updated_at: new Date().toISOString(),
@@ -669,8 +665,7 @@ export async function rejectKepsek(
 export interface OfficerSignature {
   name: string;
   nip: string;
-  signatureImage?: string;
-  stampImage?: string;
+  signatureStampImage?: string;
 }
 
 /**
@@ -694,7 +689,7 @@ export async function getKepsekSignature(
 
   const { data: teachers, error: tErr } = await supabase
     .from('teachers')
-    .select('user_id, name, nip, work_unit, signature_image, stamp_image')
+    .select('user_id, name, nip, work_unit, signature_stamp_image')
     .in('user_id', kepsekIds);
 
   if (tErr || !teachers) return null;
@@ -708,8 +703,7 @@ export async function getKepsekSignature(
   return {
     name: match.name || '',
     nip: match.nip || '',
-    signatureImage: match.signature_image || undefined,
-    stampImage: match.stamp_image || undefined,
+    signatureStampImage: match.signature_stamp_image || undefined,
   };
 }
 
@@ -733,7 +727,7 @@ export async function getPengawasSignature(
 
   const { data: teachers, error: tErr } = await supabase
     .from('teachers')
-    .select('user_id, name, nip, work_unit, signature_image, stamp_image')
+    .select('user_id, name, nip, work_unit, signature_stamp_image')
     .in('user_id', pengawasIds);
 
   if (tErr || !teachers) return null;
@@ -748,7 +742,6 @@ export async function getPengawasSignature(
   return {
     name: match.name || '',
     nip: match.nip || '',
-    signatureImage: match.signature_image || undefined,
-    stampImage: match.stamp_image || undefined,
+    signatureStampImage: match.signature_stamp_image || undefined,
   };
 }

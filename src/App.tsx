@@ -772,16 +772,10 @@ function ProfileForm({
                 Upload scan tanda tangan dan cap Anda. Keduanya akan muncul otomatis di PDF jurnal/rekomendasi yang Anda verifikasi.
               </p>
               <LogoUploader
-                label="Scan Tanda Tangan"
-                value={form.signatureImage}
-                onChange={(val) => setForm({ ...form, signatureImage: val })}
-                hint="PNG transparan disarankan"
-              />
-              <LogoUploader
-                label="Scan Cap"
-                value={form.stampImage}
-                onChange={(val) => setForm({ ...form, stampImage: val })}
-                hint="PNG transparan disarankan"
+                label="Scan TTD + Cap"
+                value={form.signatureStampImage}
+                onChange={(val) => setForm({ ...form, signatureStampImage: val })}
+                hint="Gabung TTD & cap dalam 1 gambar"
               />
             </div>
           )}
