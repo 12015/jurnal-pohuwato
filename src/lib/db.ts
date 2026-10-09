@@ -546,3 +546,116 @@ export async function unlockJournalForRevision(
     .eq('period_key', periodKey);
   if (error) throw error;
 }
+
+// ============ B4: Verifikasi oleh Kepala Sekolah ============
+
+export interface PendingVerification {
+  id: string;
+  guruId: string;
+  guruName: string;
+  guruNip: string;
+  guruPosition: string;
+  periodKey: string;
+  guruSubmittedAt?: string;
+  kepsekStatus: 'pending' | 'approved' | 'rejected';
+  kepsekNote?: string;
+  kepsekVerifiedAt?: string;
+  pengawasStatus: 'pending' | 'approved' | 'rejected';
+}
+
+export async function getPendingVerificationsForKepsek(
+  workUnitBina: string
+): Promise<PendingVerification[]> {
+  // Ambil semua guru di sekolah tersebut
+  const { data: teachers, error: tErr } = await supabase
+    .from('teachers')
+    .select('user_id, name, nip, position, work_unit');
+
+  if (tErr) {
+    console.error('getPendingVerifications teachers:', tErr);
+    return [];
+  }
+
+  const guruIds = new Set(
+    (teachers || [])
+      .filter(
+        (t) => (t.work_unit || '').toLowerCase().trim() === workUnitBina.toLowerCase().trim()
+      )
+      .map((t) => t.user_id)
+  );
+
+  if (guruIds.size === 0) return [];
+
+  const teacherMap = new Map(
+    (teachers || [])
+      .filter((t) => guruIds.has(t.user_id))
+      .map((t) => [t.user_id, t])
+  );
+
+  const { data: verifs, error: vErr } = await supabase
+    .from('verifications')
+    .select('*')
+    .in('guru_id', Array.from(guruIds))
+    .order('guru_submitted_at', { ascending: false });
+
+  if (vErr) {
+    console.error('getPendingVerifications verifications:', vErr);
+    return [];
+  }
+
+  return (verifs || []).map((v: any) => {
+    const t = teacherMap.get(v.guru_id);
+    return {
+      id: v.id,
+      guruId: v.guru_id,
+      guruName: t?.name || '(Tanpa Nama)',
+      guruNip: t?.nip || '',
+      guruPosition: t?.position || '',
+      periodKey: v.period_key,
+      guruSubmittedAt: v.guru_submitted_at,
+      kepsekStatus: v.kepsek_status || 'pending',
+      kepsekNote: v.kepsek_note,
+      kepsekVerifiedAt: v.kepsek_verified_at,
+      pengawasStatus: v.pengawas_status || 'pending',
+    };
+  });
+}
+
+export async function approveKepsek(
+  verificationId: string,
+  kepsekUserId: string,
+  note?: string
+): Promise<void> {
+  const { error } = await supabase
+    .from('verifications')
+    .update({
+      kepsek_status: 'approved',
+      kepsek_verified_by: kepsekUserId,
+      kepsek_verified_at: new Date().toISOString(),
+      kepsek_note: note || null,
+      updated_at: new Date().toISOString(),
+    })
+    .eq('id', verificationId);
+  if (error) throw error;
+}
+
+export async function rejectKepsek(
+  verificationId: string,
+  kepsekUserId: string,
+  note: string
+): Promise<void> {
+  if (!note.trim()) throw new Error('Catatan wajib diisi saat menolak');
+
+  const { error } = await supabase
+    .from('verifications')
+    .update({
+      kepsek_status: 'rejected',
+      kepsek_verified_by: kepsekUserId,
+      kepsek_verified_at: new Date().toISOString(),
+      kepsek_note: note.trim(),
+      is_locked: false,
+      updated_at: new Date().toISOString(),
+    })
+    .eq('id', verificationId);
+  if (error) throw error;
+}
