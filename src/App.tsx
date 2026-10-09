@@ -227,7 +227,6 @@ const tabTitles: Record<TabKey, string> = {
   ks_teachers: 'Semua Guru',
   ks_history: 'Riwayat Verifikasi',
   ks_sptjm: 'SPTJM Sekolah',
-  ks_perjanjian: 'Perjanjian',
   help: 'Bantuan',
   about: 'Tentang Aplikasi',
 };
@@ -1294,7 +1293,8 @@ async function downloadJurnalPDF(
   filterYear: number,
   useTriwulan: boolean,
   filterTriwulan: number,
-  addNotification: (message: string, type: 'success' | 'error') => void
+  addNotification: (message: string, type: 'success' | 'error') => void,
+  paperSize: 'A4' | 'F4' = 'F4'
 ) {
   const monthsList = [
     'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni',
@@ -1304,10 +1304,12 @@ async function downloadJurnalPDF(
   try {
     addNotification('Menyiapkan PDF Jurnal...', 'success');
 
+    const paperDims: [number, number] = paperSize === 'A4' ? [297, 210] : [330, 215];
+
     const doc = new jsPDF({
       orientation: 'landscape',
       unit: 'mm',
-      format: [330, 215],
+      format: paperDims,
     });
 
     const pageW = 330;
@@ -1412,7 +1414,7 @@ async function downloadJurnalPDF(
 
       // Halaman baru untuk bulan kedua dan seterusnya
       if (b > 0) {
-        doc.addPage([330, 215], 'landscape');
+        doc.addPage(paperDims, 'landscape');
       }
 
       // Gambar kop untuk bulan ini
@@ -1492,7 +1494,7 @@ async function downloadJurnalPDF(
 
       // Kalau tidak muat di halaman ini, buat halaman baru
       if (sigY + sigBlockHeight > pageH - marginB) {
-        doc.addPage([330, 215], 'landscape');
+        doc.addPage(paperDims, 'landscape');
         drawKop(marginT, bulanLabel);
         sigY = startTableY;
       }
@@ -1529,7 +1531,7 @@ async function downloadJurnalPDF(
   }
 }
 
-type PreviewType = 'jurnal' | 'rekomendasi' | 'sptjm' | 'pernyataan' | 'perjanjian';
+type PreviewType = 'jurnal' | 'rekomendasi' | 'sptjm' | 'pernyataan';
 
 function PreviewSection({
   teacher,
@@ -1552,7 +1554,7 @@ function PreviewSection({
   const [filterTriwulan, setFilterTriwulan] = useState<number>(Math.floor(getMonth(new Date()) / 3) + 1);
   const [useTriwulan, setUseTriwulan] = useState(false);
   const [showSecretMenu, setShowSecretMenu] = useState(false);
-
+  const [letterPaperSize, setLetterPaperSize] = useState<'A4' | 'F4'>('F4');
   const [secretMonth, setSecretMonth] = useState<number>(getMonth(new Date()));
   const [secretTriwulan, setSecretTriwulan] = useState<number>(Math.floor(getMonth(new Date()) / 3) + 1);
   const [secretType, setSecretType] = useState<'m' | 'q'>('m');
@@ -1672,7 +1674,7 @@ function PreviewSection({
     return approvals.includes(`q-${q}-${filterYear}`);
   };
 
-  const downloadPDF = async (id: string, _filename: string, isRekomendasi = false) => {
+  const downloadPDF = async (id: string, _filename: string, isRekomendasi = false, paperSize: 'A4' | 'F4' = 'F4') => {
     try {
       addNotification('Sedang menyiapkan PDF...', 'success');
       const element = document.getElementById(id);
@@ -1803,7 +1805,7 @@ function PreviewSection({
 
       for (let i = 0; i < pagesToRender.length; i++) {
         const pageEl = pagesToRender[i];
-        const isLandscape = pageEl.classList.contains('paper-a4-landscape') || pageEl.classList.contains('paper-f4-landscape') || pageEl.offsetWidth > pageEl.offsetHeight;
+        const isLandscape = pageEl.classList.contains('paper-a4-landscape') || pageEl.classList.contains('paper-f4-landscape');
         const orientation = isLandscape ? 'l' : 'p';
 
         const clone = pageEl.cloneNode(true) as HTMLElement;
@@ -1883,7 +1885,10 @@ function PreviewSection({
           },
         });
 
-        const formatF4 = isLandscape ? [330, 215] : [215, 330];
+        const paperDims = paperSize === 'A4'
+          ? (isLandscape ? [297, 210] : [210, 297])
+          : (isLandscape ? [330, 215] : [215, 330]);
+        const formatF4 = paperDims;
 
         if (i === 0) {
           pdf = new jsPDF({
@@ -2176,16 +2181,49 @@ function PreviewSection({
                       filterYear,
                       useTriwulan,
                       filterTriwulan,
-                      addNotification
+                      addNotification,
+                      letterPaperSize
                     );
                   } else {
-                                        downloadPDF('preview-content', `Dokumen_${type}.pdf`, type === 'rekomendasi');
+                    downloadPDF(
+                      'preview-content',
+                      `Dokumen_${type}.pdf`,
+                      type === 'rekomendasi',
+                      letterPaperSize
+                    );
                   }
                 }}
                 className="uppercase text-xs"
               >
                 <Download className="w-3.5 h-3.5" /> DOWNLOAD PDF
               </Button>
+
+              <div className="flex bg-slate-100 p-1 rounded-lg">
+                  <button
+                    type="button"
+                    onClick={() => setLetterPaperSize('A4')}
+                    className={cn(
+                      'px-2.5 py-1 text-[10px] font-bold rounded-md transition-all',
+                      letterPaperSize === 'A4'
+                        ? 'bg-white text-slate-800 shadow-sm'
+                        : 'text-slate-500 hover:text-slate-800'
+                    )}
+                  >
+                    A4
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setLetterPaperSize('F4')}
+                    className={cn(
+                      'px-2.5 py-1 text-[10px] font-bold rounded-md transition-all',
+                      letterPaperSize === 'F4'
+                        ? 'bg-white text-slate-800 shadow-sm'
+                        : 'text-slate-500 hover:text-slate-800'
+                    )}
+                  >
+                    F4
+                  </button>
+                </div>
             </div>
           </div>
         </div>
@@ -2831,7 +2869,7 @@ function RekomendasiLetter({
       style={{ padding: '20mm' }}
     >
       <KopSurat teacher={teacher} compact />
-      <h3 className="text-center font-bold underline mb-3 text-[13pt] uppercase tracking-wide text-black">REKOMENDASI PENGAWAS</h3>
+      <h3 className="text-center font-bold mb-3 text-[13pt] uppercase tracking-wide text-black">REKOMENDASI PENGAWAS</h3>
 
       <div className="text-[12pt] space-y-2 font-tnr leading-[1.5] text-black">
         <p>Yang bertanda tangan di bawah ini:</p>
@@ -2883,7 +2921,7 @@ function RekomendasiLetter({
               <p style={{ margin: 0 }}>Pohuwato, {format(displayDate, 'd MMMM yyyy', { locale: id })}</p>
               <p style={{ margin: 0 }}>Pengawas Bina,</p>
               <div style={{ height: '48px' }}></div>
-              <p style={{ margin: 0, fontWeight: 'bold', textDecoration: 'underline' }}>{teacher.supervisorName}</p>
+              <p style={{ margin: 0, fontWeight: 'bold', }}>{teacher.supervisorName}</p>
               <p style={{ margin: 0 }}>NIP. {teacher.supervisorNip}</p>
             </td>
           </tr>
@@ -3004,10 +3042,19 @@ function PernyataanLetter({
 }) {
   const romanNumerals = ['I', 'II', 'III', 'IV'];
   const terbilang = ['Satu', 'Dua', 'Tiga', 'Empat'];
+  const monthsList = [
+    'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni',
+    'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'
+  ];
 
-  // Triwulan berdasarkan filter
+  // Text periode: kalau triwulan → "Triwulan III (Tiga) Tahun 2026"
+  //                kalau bulanan → "Agustus 2026"
+  const periodText = useTriwulan
+    ? `Triwulan ${romanNumerals[filterTriwulan - 1]} (${terbilang[filterTriwulan - 1]}) Tahun ${year}`
+    : `Bulan ${monthsList[filterMonth]} ${year}`;
+
+  // Untuk tanggal TTD: tetap hitung triwulan dari bulan kalau mode bulanan
   const triwulanIdx = useTriwulan ? filterTriwulan : Math.floor(filterMonth / 3) + 1;
-  const triwulanText = `Triwulan ${romanNumerals[triwulanIdx - 1]} (${terbilang[triwulanIdx - 1]})`;
 
   // Tanggal otomatis di akhir periode
   const startMonth = (triwulanIdx - 1) * 3;
@@ -3024,7 +3071,7 @@ function PernyataanLetter({
       style={{ padding: '20mm 20mm 10mm 20mm' }}
     >
       <div className="text-center mb-6">
-        <h3 className="font-bold underline text-[13pt] uppercase tracking-wide text-black">
+        <h3 className="font-bold text-[13pt] uppercase tracking-wide text-black">
           SURAT PERNYATAAN TANGGUNG JAWAB MUTLAK
         </h3>
       </div>
@@ -3040,7 +3087,7 @@ function PernyataanLetter({
         </div>
 
         <p className="text-justify pt-3 leading-[1.5]">
-          Bahwa Saya sebagai penerima Tunjangan Profesi Guru <strong>{triwulanText} Tahun {year}</strong> dengan ini menyatakan:
+          Bahwa Saya sebagai penerima Tunjangan Profesi Guru <strong>{periodText}</strong> dengan ini menyatakan:
         </p>
 
         <ol className="list-decimal ml-5 space-y-2 text-justify leading-[1.5]">
@@ -3081,13 +3128,13 @@ function PernyataanLetter({
           </tr>
           <tr style={{ border: 'none' }}>
             <td style={{ width: '50%', border: 'none', textAlign: 'center', verticalAlign: 'bottom', padding: '0 8px', color: '#000000' }}>
-              <p style={{ margin: 0, fontWeight: 'bold', textDecoration: 'underline' }}>
+              <p style={{ margin: 0, fontWeight: 'bold', }}>
                 {teacher.principalName || '......................................................'}
               </p>
               <p style={{ margin: 0 }}>NIP. {teacher.principalNip || '................................................'}</p>
             </td>
             <td style={{ width: '50%', border: 'none', textAlign: 'center', verticalAlign: 'bottom', padding: '0 8px', color: '#000000' }}>
-              <p style={{ margin: 0, fontWeight: 'bold', textDecoration: 'underline' }}>
+              <p style={{ margin: 0, fontWeight: 'bold', }}>
                 {teacher.name || '......................................................'}
               </p>
               <p style={{ margin: 0 }}>NIP. {teacher.nip || '................................................'}</p>
@@ -3099,107 +3146,4 @@ function PernyataanLetter({
   );
 }
 
-function PerjanjianLetter({
-  teacher,
-  triwulan,
-  isApproved,
-  months,
-  useTriwulan,
-  filterMonth,
-  year
-}: {
-  teacher: TeacherData;
-  triwulan: number;
-  isApproved: boolean;
-  months: string[];
-  useTriwulan: boolean;
-  filterMonth: number;
-  year: number;
-}) {
-  const startMonth = (triwulan - 1) * 3;
 
-  const displayMonths = useTriwulan
-    ? [months[startMonth], months[startMonth + 1], months[startMonth + 2]].join(', ')
-    : months[filterMonth];
-
-  const displayDate = useTriwulan
-    ? endOfMonth(new Date(year, startMonth + 2))
-    : endOfMonth(new Date(year, filterMonth));
-
-  return (
-  <div
-    className="paper-a4 paper-a4-bordered font-tnr text-[12pt] leading-[1.5] text-black"
-    style={{ padding: '20mm 20mm 10mm 20mm' }}
-  >
-            <div className="text-center mb-6 mt-4">
-        <h3 className="font-bold underline text-[13pt] uppercase tracking-wide text-black">SURAT PERJANJIAN / PERNYATAAN</h3>
-      </div>
-      <div className="text-[12pt] space-y-1.5 font-tnr leading-[1.5] text-black">
-        <p>Yang bertanda tangan dibawah ini :</p>
-        <div className="ml-5 space-y-0.5">
-          <DataRow label="Nama Guru" value={teacher.name || '......................................................'} colonPos="140px" />
-          <DataRow label="NIP" value={teacher.nip || '......................................................'} colonPos="140px" />
-          <DataRow label="Jabatan" value={teacher.position || '......................................................'} colonPos="140px" />
-          <DataRow label="Unit Kerja" value={teacher.workUnit || '......................................................'} colonPos="140px" />
-        </div>
-
-        <p className="pt-0.5">Dengan ini menyatakan bahwa:</p>
-        <ol className="list-decimal ml-5 space-y-1 text-justify leading-[1.5]">
-          <li>
-            Saya mengakui belum melaksanakan kewajiban dalam mengisi Jurnal Kegiatan Harian Guru pada bulan {displayMonths}.
-          </li>
-          <li>
-            Saya berjanji akan mengisi Jurnal Kegiatan Harian Guru secara rutin dan lengkap pada bulan berikutnya sesuai dengan ketentuan yang berlaku.
-          </li>
-          <li>
-            Saya siap memperbaiki dan meningkatkan kedisiplinan dalam pelaporan kinerja sebagai guru.
-          </li>
-          <li>
-            Apabila pada bulan berikutnya saya masih tidak melaksanakan kewajiban tersebut, maka saya bersedia menerima konsekuensi sesuai aturan yang berlaku, termasuk tidak menerima Tunjangan Profesi Guru (TPG).
-          </li>
-        </ol>
-
-        <p className="text-justify leading-[1.5] pt-0.5">
-          Demikian surat pernyataan ini saya buat dengan sebenar-benarnya tanpa paksaan dari pihak manapun untuk dipergunakan sebagaimana mestinya.
-        </p>
-      </div>
-
-      <table className="w-full border-none mt-4 text-[12pt] font-tnr leading-[1.5] text-black" style={{ width: '100%', borderCollapse: 'collapse', border: 'none', tableLayout: 'fixed' }}>
-        <tbody>
-          <tr style={{ border: 'none' }}>
-            <td style={{ width: '50%', border: 'none', textAlign: 'center', verticalAlign: 'top', padding: '0 8px', color: '#000000' }}>
-              <p style={{ margin: 0 }}>Mengetahui,</p>
-              <p style={{ margin: 0 }}>Kepala Satuan Pendidikan</p>
-            </td>
-            <td style={{ width: '50%', border: 'none', textAlign: 'center', verticalAlign: 'top', padding: '0 8px', color: '#000000' }}>
-              <p style={{ margin: 0 }}>Pohuwato, {format(displayDate, 'd MMMM yyyy', { locale: id })}</p>
-              <p style={{ margin: 0 }}>Yang membuat pernyataan,</p>
-            </td>
-          </tr>
-          <tr style={{ border: 'none' }}>
-            <td style={{ height: '48px', border: 'none' }}></td>
-            <td style={{ height: '48px', border: 'none' }}></td>
-          </tr>
-          <tr style={{ border: 'none' }}>
-            <td style={{ width: '50%', border: 'none', textAlign: 'center', verticalAlign: 'bottom', padding: '0 8px', color: '#000000' }}>
-              <p style={{ margin: 0, fontWeight: 'bold', textDecoration: 'underline' }}>{teacher.principalName || '......................................................'}</p>
-              <p style={{ margin: 0 }}>NIP. {teacher.principalNip || '................................................'}</p>
-            </td>
-            <td style={{ width: '50%', border: 'none', textAlign: 'center', verticalAlign: 'bottom', padding: '0 8px', color: '#000000' }}>
-              <p style={{ margin: 0, fontWeight: 'bold', textDecoration: 'underline' }}>{teacher.name || '......................................................'}</p>
-              <p style={{ margin: 0 }}>NIP. {teacher.nip || '................................................'}</p>
-            </td>
-          </tr>
-        </tbody>
-      </table>
-
-      <div style={{ marginTop: '16px', textAlign: 'center', color: '#000000' }} className="text-[12pt] font-tnr leading-[1.5]">
-        <p style={{ margin: 0, fontWeight: 'bold', textTransform: 'uppercase', letterSpacing: '1px' }}>{isApproved ? 'DISETUJUI' : 'BELUM DISETUJUI'}</p>
-        <p style={{ margin: 0 }}>Pengawas Bina,</p>
-        <div style={{ height: '42px' }}></div>
-        <p style={{ margin: 0, fontWeight: 'bold', textDecoration: 'underline' }}>{teacher.supervisorName || '......................................................'}</p>
-        <p style={{ margin: 0 }}>NIP. {teacher.supervisorNip || '................................................'}</p>
-      </div>
-    </div>
-  );
-}

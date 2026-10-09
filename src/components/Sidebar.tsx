@@ -2,7 +2,7 @@ import type { ReactNode } from 'react';
 import {
   LayoutDashboard, User, FileText, Eye, History, HelpCircle, Info,
   Users, ClipboardCheck, CheckSquare, FileCheck, LogOut, BookOpen,
-  FileSignature, FileSpreadsheet,
+  FileSpreadsheet,
 } from 'lucide-react';
 import type { TeacherData, UserProfile, TabKey } from '../types';
 import { cn } from '../lib/utils';
@@ -72,7 +72,6 @@ const kepsekSections: MenuSection[] = [
     title: 'DOKUMEN',
     items: [
       { key: 'ks_sptjm', label: 'SPTJM Sekolah', icon: <FileSpreadsheet className="w-5 h-5" /> },
-      { key: 'ks_perjanjian', label: 'Perjanjian', icon: <FileSignature className="w-5 h-5" /> },
     ],
   },
   {

@@ -73,11 +73,19 @@
 }
 /* Preview area — override hanya untuk tampilan, tidak memengaruhi PDF */
 #preview-content .paper-a4-landscape,
-#preview-content .paper-a4 {
+#preview-content .paper-f4-landscape {
   width: 100% !important;
   max-width: 100% !important;
-  margin: 0 auto !important;
-  box-shadow: none !important;
+  margin: 8px auto !important;
+  box-shadow: 0 0 0 1px #e2e8f0 !important;
+}
+
+#preview-content .paper-a4,
+#preview-content .paper-f4 {
+  width: 100% !important;
+  max-width: 794px !important;
+  margin: 8px auto !important;
+  box-shadow: 0 0 0 1px #e2e8f0 !important;
 }
 .font-tnr {
   font-family: "Times New Roman", Times, serif !important;

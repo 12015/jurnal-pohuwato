@@ -23,7 +23,6 @@ export interface TeacherData {
   profilePhoto?: string;
   birthPlaceDate?: string;
   letterNumber?: string;
-  agreementLetterNumber?: string;
 }
 
 export interface JournalActivity {
@@ -79,7 +78,6 @@ export const INITIAL_TEACHER_DATA: TeacherData = {
   profilePhoto: '',
   birthPlaceDate: '',
   letterNumber: '',
-  agreementLetterNumber: '',
 };
 
 export const HOLIDAYS_2026 = [
@@ -112,6 +110,5 @@ export type TabKey =
   | 'ks_teachers'
   | 'ks_history'
   | 'ks_sptjm'
-  | 'ks_perjanjian'
   | 'help'
   | 'about';
