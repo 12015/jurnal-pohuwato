@@ -2082,9 +2082,7 @@ function PreviewSection({
           <div className="flex gap-2">
             <Button variant={type === 'jurnal' ? 'primary' : 'outline'} onClick={() => setType('jurnal')} className="uppercase text-xs font-bold">JURNAL</Button>
             <Button variant={type === 'rekomendasi' ? 'primary' : 'outline'} onClick={() => setType('rekomendasi')} className="uppercase text-xs font-bold">REKOMENDASI</Button>
-            <Button variant={type === 'sptjm' ? 'primary' : 'outline'} onClick={() => setType('sptjm')} className="uppercase text-xs font-bold">SPTJM SEKOLAH</Button>
             <Button variant={type === 'pernyataan' ? 'primary' : 'outline'} onClick={() => setType('pernyataan')} className="uppercase text-xs font-bold">PERNYATAAN</Button>
-            <Button variant={type === 'perjanjian' ? 'primary' : 'outline'} onClick={() => setType('perjanjian')} className="uppercase text-xs font-bold">PERJANJIAN</Button>
           </div>
 
           <div className="flex items-center gap-4">
@@ -2252,15 +2250,6 @@ function PreviewSection({
             filterMonth={filterMonth}
           />
         )}
-        {type === 'sptjm' && (
-          <SPTJMLetter
-            teacher={teacher}
-            triwulan={filterTriwulan}
-            year={filterYear}
-            useTriwulan={useTriwulan}
-            filterMonth={filterMonth}
-          />
-        )}
         {type === 'pernyataan' && (
           <PernyataanLetter
             teacher={teacher}
@@ -2268,17 +2257,6 @@ function PreviewSection({
             useTriwulan={useTriwulan}
             filterMonth={filterMonth}
             filterTriwulan={filterTriwulan}
-          />
-        )}
-        {type === 'perjanjian' && (
-          <PerjanjianLetter
-            teacher={teacher}
-            triwulan={filterTriwulan}
-            isApproved={useTriwulan ? isTriwulanApproved(filterTriwulan) : isMonthApproved(filterMonth)}
-            months={months}
-            useTriwulan={useTriwulan}
-            filterMonth={filterMonth}
-            year={filterYear}
           />
         )}
       </div>
