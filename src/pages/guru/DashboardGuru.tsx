@@ -1,16 +1,12 @@
-import { useMemo } from 'react';
-import {
-  FileText, Activity, TrendingUp, CheckCircle2, AlertCircle,
-  Plus, Eye, Calendar, Award, Clock,
-} from 'lucide-react';
-import {
-  format, parseISO, startOfMonth, endOfMonth, eachDayOfInterval,
-  isWeekend, isSameDay, subDays, getMonth, getYear,
-} from 'date-fns';
+import { useEffect, useMemo, useState } from 'react';
+import { FileText, Activity, TrendingUp, CheckCircle2, AlertCircle, Plus, Eye, Calendar, Award, Clock, } from 'lucide-react';
+import { format, parseISO, startOfMonth, endOfMonth, eachDayOfInterval, isWeekend, isSameDay, subDays, getMonth, getYear, } from 'date-fns';
 import { id as localeId } from 'date-fns/locale';
 import type { TeacherData, JournalEntry, TabKey } from '../../types';
 import { HOLIDAYS_2026 } from '../../types';
+import { getVerificationStatus, submitJournalForVerification, type VerificationStatus } from '../../lib/db';
 import { cn } from '../../lib/utils';
+import { supabase } from '../../lib/supabase';
 
 interface DashboardGuruProps {
   teacher: TeacherData;
@@ -29,6 +25,23 @@ export function DashboardGuru({
   const todayStr = format(today, 'yyyy-MM-dd');
   const monthIdx = getMonth(today);
   const yearNow = getYear(today);
+  const [verification, setVerification] = useState<VerificationStatus | null>(null);
+  const [loadingVerif, setLoadingVerif] = useState(true);
+  const [submitting, setSubmitting] = useState(false);
+  const periodKey = `m-${monthIdx}-${yearNow}`;
+  useEffect(() => {
+    let mounted = true;
+    (async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+      const v = await getVerificationStatus(user.id, periodKey);
+      if (mounted) {
+        setVerification(v);
+        setLoadingVerif(false);
+      }
+    })();
+    return () => { mounted = false; };
+  }, [periodKey]); 
 
   // Hitung hari kerja bulan ini
   const monthStart = startOfMonth(today);
@@ -154,6 +167,103 @@ export function DashboardGuru({
           </div>
         </div>
       </div>
+      {/* Status Verifikasi */}
+      {!loadingVerif && (
+        <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-5">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-3">
+            <div>
+              <p className="font-semibold text-slate-800 text-sm flex items-center gap-2">
+                📋 Status Verifikasi {format(today, 'MMMM yyyy', { locale: localeId })}
+              </p>
+              <p className="text-[11px] text-slate-500 mt-0.5">
+                Alur: Guru → Kepala Sekolah → Pengawas
+              </p>
+            </div>
+            {!verification?.guruSubmittedAt && filledDays > 0 && (
+              <button
+                onClick={async () => {
+                  setSubmitting(true);
+                  try {
+                    const { data: { user } } = await (await import('../../lib/supabase')).supabase.auth.getUser();
+                    if (!user) throw new Error('Tidak login');
+                    await submitJournalForVerification(user.id, periodKey);
+                    const v = await getVerificationStatus(user.id, periodKey);
+                    setVerification(v);
+                  } catch (e) {
+                    alert('Gagal kirim: ' + (e as Error).message);
+                  } finally {
+                    setSubmitting(false);
+                  }
+                }}
+                disabled={submitting}
+                className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white text-sm font-semibold rounded-lg transition-colors flex items-center justify-center gap-2 shrink-0"
+              >
+                {submitting ? 'Mengirim...' : '📤 Kirim ke Kepala Sekolah'}
+              </button>
+            )}
+          </div>
+
+          {/* Timeline */}
+          <div className="space-y-2">
+            <div className="flex items-center gap-3">
+              <div className="w-6 h-6 rounded-full bg-emerald-500 text-white flex items-center justify-center text-xs">✓</div>
+              <span className="text-sm text-slate-700">Jurnal diisi ({filledDays}/{requiredDays} hari)</span>
+            </div>
+            <div className="flex items-center gap-3">
+              <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs ${verification?.guruSubmittedAt ? 'bg-emerald-500 text-white' : 'bg-slate-200 text-slate-500'}`}>
+                {verification?.guruSubmittedAt ? '✓' : '○'}
+              </div>
+              <span className={`text-sm ${verification?.guruSubmittedAt ? 'text-slate-700' : 'text-slate-400'}`}>
+                {verification?.guruSubmittedAt
+                  ? `Dikirim ke Kepala Sekolah — ${format(parseISO(verification.guruSubmittedAt), 'd MMM yyyy', { locale: localeId })}`
+                  : 'Belum dikirim ke Kepala Sekolah'}
+              </span>
+            </div>
+            <div className="flex items-center gap-3">
+              <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs ${
+                verification?.kepsekStatus === 'approved' ? 'bg-emerald-500 text-white'
+                : verification?.kepsekStatus === 'rejected' ? 'bg-rose-500 text-white'
+                : 'bg-slate-200 text-slate-500'}`}>
+                {verification?.kepsekStatus === 'approved' ? '✓' : verification?.kepsekStatus === 'rejected' ? '✕' : '○'}
+              </div>
+              <span className={`text-sm ${
+                verification?.kepsekStatus === 'approved' ? 'text-slate-700'
+                : verification?.kepsekStatus === 'rejected' ? 'text-rose-700'
+                : 'text-slate-400'}`}>
+                {verification?.kepsekStatus === 'approved'
+                  ? `Diverifikasi Kepala Sekolah — ${verification.kepsekVerifiedAt ? format(parseISO(verification.kepsekVerifiedAt), 'd MMM yyyy', { locale: localeId }) : ''}`
+                  : verification?.kepsekStatus === 'rejected'
+                  ? `Ditolak Kepala Sekolah: ${verification.kepsekNote || 'Tidak ada catatan'}`
+                  : 'Menunggu verifikasi Kepala Sekolah'}
+              </span>
+            </div>
+            <div className="flex items-center gap-3">
+              <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs ${
+                verification?.pengawasStatus === 'approved' ? 'bg-emerald-500 text-white'
+                : verification?.pengawasStatus === 'rejected' ? 'bg-rose-500 text-white'
+                : 'bg-slate-200 text-slate-500'}`}>
+                {verification?.pengawasStatus === 'approved' ? '✓' : verification?.pengawasStatus === 'rejected' ? '✕' : '○'}
+              </div>
+              <span className={`text-sm ${
+                verification?.pengawasStatus === 'approved' ? 'text-slate-700'
+                : verification?.pengawasStatus === 'rejected' ? 'text-rose-700'
+                : 'text-slate-400'}`}>
+                {verification?.pengawasStatus === 'approved'
+                  ? `Disetujui Pengawas — ${verification.pengawasVerifiedAt ? format(parseISO(verification.pengawasVerifiedAt), 'd MMM yyyy', { locale: localeId }) : ''}`
+                  : verification?.pengawasStatus === 'rejected'
+                  ? `Ditolak Pengawas: ${verification.pengawasNote || 'Tidak ada catatan'}`
+                  : 'Menunggu validasi Pengawas'}
+              </span>
+            </div>
+          </div>
+
+          {verification?.isLocked && (
+            <div className="mt-3 p-2 bg-amber-50 border border-amber-200 rounded-lg text-xs text-amber-800">
+              🔒 Jurnal bulan ini terkunci. Hubungi Kepala Sekolah untuk revisi.
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Pengingat: belum isi jurnal hari ini */}
       {isTodayWorkday && !hasFilledToday && (

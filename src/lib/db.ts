@@ -426,3 +426,123 @@ export async function getRekomendasiHistory(
     };
   });
 }
+
+// ============ VERIFIKASI JURNAL (3 TAHAP) ============
+
+export interface VerificationStatus {
+  id?: string;
+  guruId: string;
+  periodKey: string;
+  guruSubmittedAt?: string;
+  kepsekStatus: 'pending' | 'approved' | 'rejected';
+  kepsekVerifiedAt?: string;
+  kepsekNote?: string;
+  pengawasStatus: 'pending' | 'approved' | 'rejected';
+  pengawasVerifiedAt?: string;
+  pengawasNote?: string;
+  isLocked: boolean;
+  revisionCount: number;
+}
+
+function rowToVerification(row: any): VerificationStatus {
+  return {
+    id: row.id,
+    guruId: row.guru_id,
+    periodKey: row.period_key,
+    guruSubmittedAt: row.guru_submitted_at,
+    kepsekStatus: row.kepsek_status || 'pending',
+    kepsekVerifiedAt: row.kepsek_verified_at,
+    kepsekNote: row.kepsek_note,
+    pengawasStatus: row.pengawas_status || 'pending',
+    pengawasVerifiedAt: row.pengawas_verified_at,
+    pengawasNote: row.pengawas_note,
+    isLocked: !!row.is_locked,
+    revisionCount: row.revision_count || 0,
+  };
+}
+
+export async function getVerificationStatus(
+  guruId: string,
+  periodKey: string
+): Promise<VerificationStatus | null> {
+  const { data, error } = await supabase
+    .from('verifications')
+    .select('*')
+    .eq('guru_id', guruId)
+    .eq('period_key', periodKey)
+    .maybeSingle();
+  if (error) {
+    console.error('getVerificationStatus:', error);
+    return null;
+  }
+  if (!data) return null;
+  return rowToVerification(data);
+}
+
+export async function getAllVerifications(guruId: string): Promise<VerificationStatus[]> {
+  const { data, error } = await supabase
+    .from('verifications')
+    .select('*')
+    .eq('guru_id', guruId)
+    .order('period_key', { ascending: false });
+  if (error) {
+    console.error('getAllVerifications:', error);
+    return [];
+  }
+  return (data || []).map(rowToVerification);
+}
+
+export async function submitJournalForVerification(
+  guruId: string,
+  periodKey: string
+): Promise<void> {
+  // Cek dulu apakah sudah ada
+  const existing = await getVerificationStatus(guruId, periodKey);
+
+  if (existing) {
+    // Update: set submitted_at + lock + reset status
+    const { error } = await supabase
+      .from('verifications')
+      .update({
+        guru_submitted_at: new Date().toISOString(),
+        kepsek_status: 'pending',
+        pengawas_status: 'pending',
+        is_locked: true,
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', existing.id);
+    if (error) throw error;
+  } else {
+    // Insert baru
+    const { error } = await supabase.from('verifications').insert({
+      guru_id: guruId,
+      period_key: periodKey,
+      guru_submitted_at: new Date().toISOString(),
+      kepsek_status: 'pending',
+      pengawas_status: 'pending',
+      is_locked: true,
+      revision_count: 0,
+    });
+    if (error) throw error;
+  }
+}
+
+export async function unlockJournalForRevision(
+  guruId: string,
+  periodKey: string
+): Promise<void> {
+  const { error } = await supabase
+    .from('verifications')
+    .update({
+      is_locked: false,
+      kepsek_status: 'pending',
+      pengawas_status: 'pending',
+      revision_count: (await getVerificationStatus(guruId, periodKey))?.revisionCount
+        ? ((await getVerificationStatus(guruId, periodKey))?.revisionCount || 0) + 1
+        : 1,
+      updated_at: new Date().toISOString(),
+    })
+    .eq('guru_id', guruId)
+    .eq('period_key', periodKey);
+  if (error) throw error;
+}
