@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react';
 import {
-  LayoutDashboard, User, FileText, Eye, History, HelpCircle, Info,
+  LayoutDashboard, User, FileText, Eye, History,
   Users, ClipboardCheck, CheckSquare, FileCheck, LogOut, BookOpen,
   FileSpreadsheet,
 } from 'lucide-react';
@@ -44,14 +44,8 @@ const guruSections: MenuSection[] = [
       { key: 'history', label: 'Riwayat Jurnal', icon: <History className="w-5 h-5" /> },
     ],
   },
-  {
-    title: 'INFORMASI',
-    items: [
-      { key: 'help', label: 'Bantuan', icon: <HelpCircle className="w-5 h-5" /> },
-      { key: 'about', label: 'Tentang', icon: <Info className="w-5 h-5" /> },
-    ],
-  },
 ];
+
 const kepsekSections: MenuSection[] = [
   {
     title: 'UTAMA',
@@ -77,13 +71,6 @@ const kepsekSections: MenuSection[] = [
       { key: 'ks_sptjm', label: 'SPTJM Sekolah', icon: <FileSpreadsheet className="w-5 h-5" /> },
     ],
   },
-  {
-    title: 'INFORMASI',
-    items: [
-      { key: 'help', label: 'Bantuan', icon: <HelpCircle className="w-5 h-5" /> },
-      { key: 'about', label: 'Tentang', icon: <Info className="w-5 h-5" /> },
-    ],
-  },
 ];
 
 const pengawasSections: MenuSection[] = [
@@ -106,13 +93,6 @@ const pengawasSections: MenuSection[] = [
     title: 'DOKUMEN',
     items: [
       { key: 'pw_rec_history', label: 'Riwayat Rekomendasi', icon: <FileCheck className="w-5 h-5" /> },
-    ],
-  },
-  {
-    title: 'INFORMASI',
-    items: [
-      { key: 'help', label: 'Bantuan', icon: <HelpCircle className="w-5 h-5" /> },
-      { key: 'about', label: 'Tentang', icon: <Info className="w-5 h-5" /> },
     ],
   },
 ];

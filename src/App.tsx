@@ -54,8 +54,6 @@ import { Sidebar } from './components/Sidebar';
 import { PlaceholderPage } from './components/PlaceholderPage';
 import { DashboardGuru } from './pages/guru/DashboardGuru';
 import { RiwayatJurnal } from './pages/guru/RiwayatJurnal';
-import { Bantuan } from './pages/shared/Bantuan';
-import { Tentang } from './pages/shared/Tentang';
 import { DashboardPengawas } from './pages/pengawas/DashboardPengawas';
 import { DaftarGuruBinaan } from './pages/pengawas/DaftarGuruBinaan';
 import { DashboardKepsek } from './pages/kepsek/DashboardKepsek';
@@ -233,8 +231,6 @@ const tabTitles: Record<TabKey, string> = {
   ks_sptjm: 'SPTJM Sekolah',
   ks_journal: 'Input Jurnal',
   ks_journal_history: 'Riwayat Jurnal',
-  help: 'Bantuan',
-  about: 'Tentang Aplikasi',
 };
 function AppContent({
   user: _user,
@@ -535,18 +531,6 @@ const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
                     profile={profile}
                     addNotification={addNotification}
                   />
-                </motion.div>
-              )}
-
-              {activeTab === 'help' && (
-                <motion.div key="help" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }}>
-                  <Bantuan role={role} />
-                </motion.div>
-              )}
-
-              {activeTab === 'about' && (
-                <motion.div key="about" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }}>
-                  <Tentang />
                 </motion.div>
               )}
               {activeTab === 'profile' && (

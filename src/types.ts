@@ -116,5 +116,4 @@ export type TabKey =
   | 'ks_journal_history'
   | 'ks_preview'
   | 'ks_sptjm'
-  | 'help'
-  | 'about';
+;
