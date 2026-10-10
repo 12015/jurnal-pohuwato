@@ -893,66 +893,6 @@ function JournalInput({
     addNotification('Mode edit dibatalkan', 'error');
   };
 
-  const handleKirim = async () => {
-    const validRows = rows.filter(r =>
-      (r.jam || '').trim() !== '' ||
-      (r.jenisKegiatan || '').trim() !== '' ||
-      (r.agendaMapel || r.subject || '').trim() !== '' ||
-      (r.lokasiKelas || r.class || '').trim() !== '' ||
-      (r.kegiatanTujuan || r.goal || r.activity || '').trim() !== '' ||
-      (r.keterangan || '').trim() !== ''
-    );
-
-    if (validRows.length === 0) {
-      addNotification('Minimal isi satu kegiatan!', 'error');
-      return;
-    }
-
-    const isTeacherDataValid = teacher.name && teacher.workUnit && teacher.kecamatan && teacher.gasUrl;
-    if (!isTeacherDataValid) {
-      addNotification('Semua data profil (termasuk URL Web App di Profil) wajib diisi', 'error');
-      return;
-    }
-
-    setIsSendingKirim(true);
-    try {
-      for (let i = 0; i < validRows.length; i++) {
-        const row = validRows[i];
-        const payload = {
-          "No": (i + 1).toString(),
-          "Hari / Tanggal": format(selectedDate, 'EEEE, d MMMM yyyy', { locale: id }),
-          "Nama Guru": teacher.name,
-          "Unit Kerja": teacher.workUnit,
-          "Kecamatan": teacher.kecamatan,
-          "JAM": row.jam || '',
-          "Jenis Kegiatan": row.jenisKegiatan || '',
-          "Agenda / Mapel": row.agendaMapel || row.subject || '',
-          "Lokasi / Kelas": row.lokasiKelas || row.class || '',
-          "Kegiatan / Tujuan Pembelajaran": row.kegiatanTujuan || row.goal || row.activity || '',
-          "Keterangan / Lampiran": row.keterangan || (row.studentCount !== undefined ? `${row.studentCount} Siswa` : '')
-        };
-
-        await fetch(teacher.gasUrl, {
-          method: 'POST',
-          mode: 'no-cors',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify(payload),
-        });
-      }
-
-      addNotification('Data terkirim ke Google Sheet (tidak dapat diverifikasi)', 'success');
-      setRows([{ jam: '', jenisKegiatan: '', agendaMapel: '', lokasiKelas: '', kegiatanTujuan: '', keterangan: '' }]);
-      setEditingId(null);
-    } catch (error) {
-      console.error('Kirim Error:', error);
-      addNotification('Gagal mengirim data', 'error');
-    } finally {
-      setIsSendingKirim(false);
-    }
-  };
-
   const handleSubmit = async () => {
     const validRows = rows.filter(r =>
       (r.agendaMapel || r.subject || '').trim() !== '' ||
@@ -1007,69 +947,6 @@ function JournalInput({
     } catch {
       // error sudah di-handle di parent
     }
-  };
-
-  const handleKirimEmailToday = () => {
-    if (!teacher.targetEmail || !teacher.targetEmail.trim()) {
-      addNotification('Silakan isi email tujuan terlebih dahulu di Data Guru!', 'error');
-      return;
-    }
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(teacher.targetEmail.trim())) {
-      addNotification('Format email tidak valid!', 'error');
-      return;
-    }
-
-    const validRows = rows.filter(r =>
-      (r.jam || '').trim() !== '' ||
-      (r.jenisKegiatan || '').trim() !== '' ||
-      (r.agendaMapel || r.subject || '').trim() !== '' ||
-      (r.lokasiKelas || r.class || '').trim() !== '' ||
-      (r.kegiatanTujuan || r.goal || r.activity || '').trim() !== '' ||
-      (r.keterangan || '').trim() !== ''
-    );
-    if (validRows.length === 0) {
-      addNotification('Minimal isi satu kegiatan!', 'error');
-      return;
-    }
-
-    let body = `Yth. Bapak/Ibu,\n\n`;
-    body += `Berikut kami kirimkan Jurnal Kegiatan Harian Guru untuk:\n\n`;
-    body += `--- PROFIL GURU ---\n`;
-    body += `Nama Lengkap     : ${teacher.name || '-'}\n`;
-    body += `NIP              : ${teacher.nip || '-'}\n`;
-    body += `Jabatan          : ${teacher.position || '-'}\n`;
-    body += `Mata Pelajaran   : ${teacher.subject || '-'}\n`;
-    body += `Unit Kerja       : ${teacher.workUnit || '-'}\n`;
-    body += `Kecamatan        : ${teacher.kecamatan || '-'}\n`;
-    body += `Pangkat/Golongan : ${teacher.grade || '-'}\n`;
-    body += `NPSN             : ${teacher.npsn || '-'}\n`;
-    body += `Tanggal Jurnal   : ${format(selectedDate, 'EEEE, d MMMM yyyy', { locale: id })}\n\n`;
-
-    body += `--- KEGIATAN JURNAL ---\n\n`;
-
-    validRows.forEach((row, index) => {
-      body += `Kegiatan #${index + 1}\n`;
-      body += `JAM                           : ${row.jam || '-'}\n`;
-      body += `Jenis Kegiatan                : ${row.jenisKegiatan || '-'}\n`;
-      body += `Agenda / Mapel                : ${row.agendaMapel || row.subject || '-'}\n`;
-      body += `Lokasi / Kelas                : ${row.lokasiKelas || row.class || '-'}\n`;
-      body += `Kegiatan / Tujuan Pembelajaran: ${row.kegiatanTujuan || row.goal || row.activity || '-'}\n`;
-      body += `Keterangan / Lampiran         : ${row.keterangan || (row.studentCount !== undefined ? `${row.studentCount} Siswa` : '-')}\n`;
-      body += `--------------------------------------------------\n\n`;
-    });
-
-    body += `--- PEJABAT TERKAIT ---\n`;
-    body += `Kepala Sekolah : ${teacher.principalName || '-'} (NIP. ${teacher.principalNip || '-'})\n`;
-    body += `Pengawas Bina  : ${teacher.supervisorName || '-'} (NIP. ${teacher.supervisorNip || '-'})\n\n`;
-
-    body += `Dikirim dari Aplikasi Jurnal Harian Guru.`;
-
-    const subject = `Jurnal Kegiatan Harian Guru - ${teacher.name || 'Guru'} (${format(selectedDate, 'd MMM yyyy', { locale: id })})`;
-    const mailtoUrl = `mailto:${encodeURIComponent(teacher.targetEmail.trim())}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
-
-    window.location.href = mailtoUrl;
-    addNotification('Aplikasi email berhasil dibuka!', 'success');
   };
 
   const removeRow = (index: number) => {
@@ -1697,7 +1574,6 @@ function PreviewSection({
   const [filterYear, setFilterYear] = useState<number>(getYear(new Date()));
   const [filterTriwulan, setFilterTriwulan] = useState<number>(Math.floor(getMonth(new Date()) / 3) + 1);
   const [useTriwulan, setUseTriwulan] = useState(false);
-  const [showSecretMenu, setShowSecretMenu] = useState(false);
   const [letterPaperSize, setLetterPaperSize] = useState<'A4' | 'F4'>('F4');
   const [secretMonth, setSecretMonth] = useState<number>(getMonth(new Date()));
   const [secretTriwulan, setSecretTriwulan] = useState<number>(Math.floor(getMonth(new Date()) / 3) + 1);
@@ -1718,77 +1594,6 @@ function PreviewSection({
       return getMonth(d) === filterMonth && getYear(d) === filterYear;
     })
     .sort((a, b) => parseISO(a.date).getTime() - parseISO(b.date).getTime());
-
-  const generateEmailBody = () => {
-    const periodText = useTriwulan
-      ? `Triwulan ${filterTriwulan} (${filterYear})`
-      : `${months[filterMonth]} ${filterYear}`;
-
-    let body = `Yth. Bapak/Ibu,\n\n`;
-    body += `Berikut kami kirimkan Jurnal Kegiatan Harian Guru untuk:\n\n`;
-    body += `--- PROFIL GURU ---\n`;
-    body += `Nama Lengkap     : ${teacher.name || '-'}\n`;
-    body += `NIP              : ${teacher.nip || '-'}\n`;
-    body += `Jabatan          : ${teacher.position || '-'}\n`;
-    body += `Mata Pelajaran   : ${teacher.subject || '-'}\n`;
-    body += `Unit Kerja       : ${teacher.workUnit || '-'}\n`;
-    body += `Kecamatan        : ${teacher.kecamatan || '-'}\n`;
-    body += `Pangkat/Golongan : ${teacher.grade || '-'}\n`;
-    body += `NPSN             : ${teacher.npsn || '-'}\n`;
-    body += `Periode Jurnal   : ${periodText}\n\n`;
-
-    body += `--- TABEL KEGIATAN JURNAL ---\n\n`;
-
-    if (filteredJournals.length === 0) {
-      body += `Belum ada data jurnal untuk periode ini.\n`;
-    } else {
-      let counter = 1;
-      const sortedJournals = [...filteredJournals].sort((a, b) => parseISO(a.date).getTime() - parseISO(b.date).getTime());
-
-      sortedJournals.forEach(j => {
-        const formattedDate = format(parseISO(j.date), 'EEEE, d MMMM yyyy', { locale: id });
-        j.activities.forEach(act => {
-          body += `Kegiatan #${counter}\n`;
-          body += `Hari / Tanggal               : ${formattedDate}\n`;
-          body += `JAM                          : ${act.jam || '-'}\n`;
-          body += `Jenis Kegiatan               : ${act.jenisKegiatan || '-'}\n`;
-          body += `Agenda / Mapel               : ${act.agendaMapel || act.subject || '-'}\n`;
-          body += `Lokasi / Kelas               : ${act.lokasiKelas || act.class || '-'}\n`;
-          body += `Kegiatan / Tujuan Pembelajaran: ${act.kegiatanTujuan || [act.goal, act.activity].filter(Boolean).join(' - ') || '-'}\n`;
-          body += `Keterangan / Lampiran        : ${act.keterangan || (act.studentCount !== undefined ? `${act.studentCount} Siswa` : '-')}\n`;
-          body += `--------------------------------------------------\n\n`;
-          counter++;
-        });
-      });
-    }
-
-    body += `--- PEJABAT TERKAIT ---\n`;
-    body += `Kepala Sekolah : ${teacher.principalName || '-'} (NIP. ${teacher.principalNip || '-'})\n`;
-    body += `Pengawas Bina  : ${teacher.supervisorName || '-'} (NIP. ${teacher.supervisorNip || '-'})\n\n`;
-
-    body += `Dikirim dari Aplikasi Jurnal Harian Guru.`;
-    return body;
-  };
-
-  const handleKirimEmail = () => {
-    if (!teacher.targetEmail || !teacher.targetEmail.trim()) {
-      addNotification('Silakan isi email tujuan terlebih dahulu!', 'error');
-      return;
-    }
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(teacher.targetEmail.trim())) {
-      addNotification('Format email tidak valid!', 'error');
-      return;
-    }
-
-    const subject = `Jurnal Kegiatan Harian Guru - ${teacher.name || 'Guru'}`;
-    const bodyText = generateEmailBody();
-
-    const mailtoUrl = `mailto:${encodeURIComponent(teacher.targetEmail.trim())}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(bodyText)}`;
-
-    window.location.href = mailtoUrl;
-    addNotification('Aplikasi email berhasil dibuka!', 'success');
-  };
 
   const getEligibility = (monthIdx: number) => {
     const start = startOfMonth(new Date(filterYear, monthIdx));
@@ -2373,66 +2178,6 @@ function PreviewSection({
         </div>
       </Card>
 
-      {/* Secret Menu (Disguised) */}
-      <div className="flex flex-col items-center gap-2 no-print">
-        <button
-          onClick={() => setShowSecretMenu(!showSecretMenu)}
-          className="text-[8px] text-slate-200 hover:text-indigo-200 transition-colors"
-          title="Supervisor Approval Toggle"
-        >
-          .
-        </button>
-
-        {showSecretMenu && (
-          <div className="bg-white border border-slate-200 rounded-lg p-3 shadow-lg flex items-center gap-3">
-            <span className="text-[10px] font-bold text-slate-500 uppercase">Input Persetujuan:</span>
-            <select
-              className="text-xs border rounded p-1"
-              value={secretType}
-              onChange={(e) => setSecretType(e.target.value as 'm' | 'q')}
-            >
-              <option value="m">Bulan</option>
-              <option value="q">Triwulan</option>
-            </select>
-
-            {secretType === 'm' ? (
-              <select
-                className="text-xs border rounded p-1"
-                value={secretMonth}
-                onChange={(e) => setSecretMonth(parseInt(e.target.value))}
-              >
-                {months.map((m, i) => <option key={i} value={i}>{m}</option>)}
-              </select>
-            ) : (
-              <select
-                className="text-xs border rounded p-1"
-                value={secretTriwulan}
-                onChange={(e) => setSecretTriwulan(parseInt(e.target.value))}
-              >
-                <option value={1}>T-1 (Jan-Mar)</option>
-                <option value={2}>T-2 (Apr-Jun)</option>
-                <option value={3}>T-3 (Jul-Sep)</option>
-                <option value={4}>T-4 (Okt-Des)</option>
-              </select>
-            )}
-
-            <Button
-              variant="secondary"
-              className="py-1 px-3 text-[10px]"
-              onClick={() => {
-                const key = secretType === 'm'
-                  ? `m-${secretMonth}-${filterYear}`
-                  : `q-${secretTriwulan}-${filterYear}`;
-                onToggleApproval(key);
-              }}
-            >
-              {approvals.includes(secretType === 'm' ? `m-${secretMonth}-${filterYear}` : `q-${secretTriwulan}-${filterYear}`)
-                ? 'Batalkan Setuju'
-                : 'Setujui'}
-            </Button>
-          </div>
-        )}
-      </div>
       <div id="preview-content" className="flex flex-col items-center gap-4 p-4 rounded-lg border border-slate-200 bg-white overflow-y-auto">
         {type === 'jurnal' && (
           <>
