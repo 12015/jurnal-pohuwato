@@ -883,7 +883,7 @@ export async function removePengawasSekolah(
 
 export async function getPengawasSekolah(
   pengawasId: string
-): Promise<{ npsn: string; namaSekolah?: string }[]> {
+): Promise<{ npsn: string; namaSekolah?: string; kecamatan?: string }[]> {
   const { data, error } = await supabase
     .from('pengawas_sekolah')
     .select('npsn')
@@ -896,22 +896,24 @@ export async function getPengawasSekolah(
   const npsnList = (data || []).map((r: any) => r.npsn);
   if (npsnList.length === 0) return [];
 
-  const { data: teachers } = await supabase
-    .from('teachers')
-    .select('npsn, work_unit')
+  const { data: masters } = await supabase
+    .from('master_sekolah')
+    .select('npsn, nama_sekolah, kecamatan')
     .in('npsn', npsnList);
 
-  const nameMap = new Map<string, string>();
-  (teachers || []).forEach((t: any) => {
-    if (t.npsn && t.work_unit && !nameMap.has(t.npsn)) {
-      nameMap.set(t.npsn, t.work_unit);
-    }
+  const map = new Map<string, { nama_sekolah: string; kecamatan?: string }>();
+  (masters || []).forEach((s: any) => {
+    map.set(s.npsn, { nama_sekolah: s.nama_sekolah, kecamatan: s.kecamatan });
   });
 
-  return npsnList.map((npsn: string) => ({
-    npsn,
-    namaSekolah: nameMap.get(npsn) || `NPSN ${npsn}`,
-  }));
+  return npsnList.map((npsn: string) => {
+    const found = map.get(npsn);
+    return {
+      npsn,
+      namaSekolah: found?.nama_sekolah || `NPSN ${npsn}`,
+      kecamatan: found?.kecamatan,
+    };
+  });
 }
 
 
@@ -919,13 +921,13 @@ export async function getPengawasSekolah(
 
 export async function lookupSekolahByNpsn(
   npsnList: string[]
-): Promise<{ npsn: string; namaSekolah: string }[]> {
+): Promise<{ npsn: string; namaSekolah: string; kecamatan?: string }[]> {
   const cleanList = npsnList.map((n) => n.trim()).filter((n) => n.length > 0);
   if (cleanList.length === 0) return [];
 
   const { data, error } = await supabase
-    .from('teachers')
-    .select('npsn, work_unit')
+    .from('master_sekolah')
+    .select('npsn, nama_sekolah, kecamatan')
     .in('npsn', cleanList);
 
   if (error) {
@@ -933,15 +935,16 @@ export async function lookupSekolahByNpsn(
     return cleanList.map((npsn) => ({ npsn, namaSekolah: `NPSN ${npsn}` }));
   }
 
-  const nameMap = new Map<string, string>();
-  (data || []).forEach((t: any) => {
-    if (t.npsn && t.work_unit && !nameMap.has(t.npsn)) {
-      nameMap.set(t.npsn, t.work_unit);
-    }
+  const map = new Map<string, { nama_sekolah: string; kecamatan?: string }>();
+  (data || []).forEach((s: any) => {
+    map.set(s.npsn, { nama_sekolah: s.nama_sekolah, kecamatan: s.kecamatan });
   });
 
-  return cleanList.map((npsn) => ({
-    npsn,
-    namaSekolah: nameMap.get(npsn) || `NPSN ${npsn} (tidak ditemukan)`,
-  }));
+  return cleanList.map((npsn) => {
+    const found = map.get(npsn);
+    if (found) {
+      return { npsn, namaSekolah: found.nama_sekolah, kecamatan: found.kecamatan };
+    }
+    return { npsn, namaSekolah: `NPSN ${npsn} (tidak ditemukan)` };
+  });
 }
