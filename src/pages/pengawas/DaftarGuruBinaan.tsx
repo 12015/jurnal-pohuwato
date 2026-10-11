@@ -17,6 +17,7 @@ interface DaftarGuruBinaanProps {
   profile: UserProfile;
   onNavigate: (tab: TabKey) => void;
   addNotification: (message: string, type: 'success' | 'error') => void;
+  title?: string;
 }
 
 type StatusType = 'lengkap' | 'kurang' | 'belum';
@@ -54,6 +55,7 @@ export function DaftarGuruBinaan({
   profile,
   onNavigate,
   addNotification,
+  title = 'Daftar Guru Binaan',
 }: DaftarGuruBinaanProps) {
   const [gurus, setGurus] = useState<GuruBinaanSummary[]>([]);
   const [loading, setLoading] = useState(true);
@@ -83,7 +85,8 @@ export function DaftarGuruBinaan({
   const fetchData = async () => {
     setLoading(true);
     try {
-      const data = await getGuruBinaan(profile.npsnBinaList || []);
+      const npsnList = profile.npsnBinaList || (profile.npsnBina ? [profile.npsnBina] : []);
+      const data = await getGuruBinaan(npsnList);
       setGurus(data);
     } catch (e) {
       console.error(e);
@@ -146,7 +149,7 @@ export function DaftarGuruBinaan({
           <div>
             <h2 className="font-bold text-slate-800 text-base flex items-center gap-2">
               <Users className="w-5 h-5 text-indigo-600" />
-              Daftar Guru Binaan
+              {title}
             </h2>
             <p className="text-xs text-slate-500 mt-0.5">
               Unit Kerja: <span className="font-semibold">{profile.workUnitBina || '-'}</span>

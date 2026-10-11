@@ -381,6 +381,21 @@ const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
           teacherNip={teacher.nip}
           teacherPhoto={teacher.profilePhoto}
           onToggleSidebar={() => setMobileSidebarOpen(true)}
+          rightContent={
+            (activeTab === 'journal' || activeTab === 'ks_journal') ? (
+              <div className="flex items-center gap-2">
+                <CalendarIcon className="w-3.5 h-3.5" />
+                <span className="text-xs font-semibold">
+                  {format(selectedDate, 'EEEE, d MMMM yyyy', { locale: id })}
+                </span>
+                {!isWorkDay && (
+                  <span className="text-[10px] px-1.5 py-0.5 bg-amber-200 text-amber-900 rounded font-medium">
+                    Hari Libur / Akhir Pekan
+                  </span>
+                )}
+              </div>
+            ) : null
+          }
         />
 
         <div className="flex-1 overflow-y-auto px-4 sm:px-6 pb-4 sm:pb-6">
@@ -403,6 +418,17 @@ const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
 />
                 </motion.div>
               )}
+              {activeTab === 'ks_teachers' && profile && (
+                <motion.div key="ks_teachers" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }}>
+                  <DaftarGuruBinaan
+                    profile={profile}
+                    onNavigate={setActiveTab}
+                    addNotification={addNotification}
+                    title="Semua Guru"
+                  />
+                </motion.div>
+              )}
+
               {activeTab === 'ks_queue' && profile && (
                 <motion.div key="ks_queue" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }}>
                   <AntrianVerifikasi profile={profile} addNotification={addNotification} />
@@ -694,9 +720,9 @@ function ProfileForm({
 
   return (
     <Card className="p-5 sm:p-6 lg:p-8">
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-        {/* Kolom KIRI: Identitas */}
-        <div className="lg:col-span-7 space-y-4">
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-stretch">
+        {/* Kolom KIRI: Identitas + Tombol Simpan */}
+        <div className="lg:col-span-7 flex flex-col gap-4">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
             <Input label="Nama Lengkap" value={form.name} onChange={(v) => setForm({ ...form, name: v })} placeholder="Nama Lengkap & Gelar" required />
             <Input label="NIP" value={form.nip} onChange={(v) => setForm({ ...form, nip: v })} placeholder="19xxxxxxxxxxxxxx" required />
@@ -724,11 +750,21 @@ function ProfileForm({
               <Input label="Alamat Unit Kerja" value={form.schoolAddress} onChange={(v) => setForm({ ...form, schoolAddress: v })} placeholder="Jl. xxxx No. xx" />
             )}
           </div>
+
+          {/* Tombol Simpan - menempel bawah kolom kiri */}
+          <div className="mt-auto pt-4 border-t border-slate-200 flex justify-end">
+            <Button
+              onClick={() => onSave(form)}
+              className="px-6 py-2.5 text-xs sm:text-sm font-semibold uppercase tracking-wide"
+            >
+              <Save className="w-4 h-4" /> SIMPAN PROFIL
+            </Button>
+          </div>
         </div>
 
-        {/* Kolom KANAN: Foto, Logo, Pejabat, TTD */}
-        <div className="lg:col-span-5 space-y-4">
-          {/* Foto Profil — semua role */}
+        {/* Kolom KANAN */}
+        <div className="lg:col-span-5 flex flex-col gap-4">
+          {/* Foto Profil */}
           <div className="p-3.5 sm:p-4 bg-slate-50/80 rounded-xl border border-slate-200/80 space-y-2.5">
             <h4 className="text-xs sm:text-sm font-bold text-slate-800 flex items-center gap-1.5 uppercase tracking-wide">
               <User className="w-4 h-4 text-indigo-600" /> FOTO PROFIL
@@ -741,11 +777,11 @@ function ProfileForm({
             />
           </div>
 
-          {/* Logo Kop — guru & kepsek */}
+          {/* Logo Kop */}
           {!isPengawas && (
             <div className="p-3.5 sm:p-4 bg-slate-50/80 rounded-xl border border-slate-200/80 space-y-2.5">
               <h4 className="text-xs sm:text-sm font-bold text-slate-800 flex items-center gap-1.5 uppercase tracking-wide">
-                <Upload className="w-4 h-4 text-indigo-600" /> LOGO KOP SURAT (KIRI & KANAN)
+                <Upload className="w-4 h-4 text-indigo-600" /> LOGO KOP SURAT (KIRI &amp; KANAN)
               </h4>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <LogoUploader
@@ -762,7 +798,7 @@ function ProfileForm({
             </div>
           )}
 
-          {/* Pejabat Terkait — guru & kepsek */}
+          {/* Pejabat Terkait */}
           {!isPengawas && (
             <div className="p-3.5 sm:p-4 bg-indigo-50/60 rounded-xl border border-indigo-100 space-y-2.5">
               <h4 className="text-xs sm:text-sm font-bold text-indigo-900 flex items-center gap-1.5 uppercase tracking-wide">
@@ -787,11 +823,11 @@ function ProfileForm({
             </div>
           )}
 
-          {/* TTD & Cap — kepsek & pengawas, di kolom kanan (bukan full width lagi) */}
+          {/* TTD & Cap */}
           {(isKepsek || isPengawas) && (
             <div className="p-3.5 sm:p-4 bg-amber-50/60 rounded-xl border border-amber-100 space-y-2.5">
               <h4 className="text-xs sm:text-sm font-bold text-amber-900 flex items-center gap-1.5 uppercase tracking-wide">
-                <ShieldCheck className="w-4 h-4 text-amber-600" /> TANDA TANGAN & CAP DIGITAL
+                <ShieldCheck className="w-4 h-4 text-amber-600" /> TANDA TANGAN &amp; CAP DIGITAL
               </h4>
               <p className="text-[11px] text-amber-800 leading-relaxed">
                 Upload scan tanda tangan dan cap Anda. Keduanya akan muncul otomatis di PDF jurnal/rekomendasi yang Anda verifikasi.
@@ -806,18 +842,10 @@ function ProfileForm({
           )}
         </div>
       </div>
-
-      <div className="flex justify-end pt-5 mt-5 border-t border-slate-200">
-        <Button
-          onClick={() => onSave(form)}
-          className="px-6 py-2.5 text-xs sm:text-sm font-semibold uppercase tracking-wide"
-        >
-          <Save className="w-4 h-4" /> SIMPAN PROFIL
-        </Button>
-      </div>
     </Card>
   );
 }
+
 
 function JournalInput({
   onAdd,
@@ -1007,48 +1035,6 @@ function JournalInput({
           </div>
         )}
 
-        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-3 mb-4 pb-3 border-b border-slate-200">
-          <div>
-            <div className="flex items-center gap-2">
-              <h3 className="text-lg font-bold text-slate-800 uppercase tracking-wide">
-                {editingId ? 'EDIT JURNAL KEGIATAN' : 'INPUT JURNAL KEGIATAN'}
-              </h3>
-              {editingId && (
-                <span className="text-[11px] font-bold px-2 py-0.5 bg-amber-100 text-amber-800 rounded-full">
-                  Mode Edit
-                </span>
-              )}
-            </div>
-            <p
-              onClick={onOpenDatePicker}
-              className="text-slate-500 text-xs flex items-center gap-2 mt-0.5 cursor-pointer hover:text-indigo-600 transition-colors"
-              title="Klik untuk Ganti Tanggal via Profil"
-            >
-              <CalendarIcon className="w-3.5 h-3.5 text-indigo-600" />
-              <span className="font-semibold text-slate-700 hover:underline">
-                {format(selectedDate, 'EEEE, d MMMM yyyy', { locale: id })}
-              </span>
-              {!isWorkDay && (
-                <span className="text-[10px] px-1.5 py-0.5 bg-amber-100 text-amber-800 rounded font-medium">
-                  Hari Libur / Akhir Pekan
-                </span>
-              )}
-            </p>
-          </div>
-
-          <div className="flex flex-wrap items-center gap-2 w-full md:w-auto">
-            {rows.length < 9 && (
-              <button
-                onClick={addRow}
-                className="px-3 py-1.5 bg-indigo-600 text-white hover:bg-indigo-700 rounded-xl transition-all flex items-center gap-1.5 text-xs font-semibold shadow-xs cursor-pointer"
-                title="Tambah Kegiatan Berikutnya (+)"
-              >
-                <Plus className="w-4 h-4 text-white" />
-                <span>Tambah Kegiatan</span>
-              </button>
-            )}
-          </div>
-        </div>
 
         <div className="space-y-3">
           {rows.map((row, index) => (
@@ -1124,7 +1110,7 @@ function JournalInput({
           {canInput && rows.length < 9 && (
             <button
               onClick={addRow}
-              className="w-full py-2 border border-dashed border-slate-300 rounded-lg text-slate-500 hover:border-indigo-500 hover:text-indigo-500 transition-all flex items-center justify-center gap-1.5 text-xs font-semibold cursor-pointer"
+              className="w-full py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg transition-all flex items-center justify-center gap-1.5 text-xs font-semibold shadow-sm cursor-pointer"
             >
               <Plus className="w-4 h-4" /> Tambah Kegiatan
             </button>

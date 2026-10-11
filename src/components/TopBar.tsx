@@ -1,4 +1,5 @@
 import { Menu, User } from 'lucide-react';
+import type { ReactNode } from 'react';
 
 interface TopBarProps {
   title: string;
@@ -6,6 +7,7 @@ interface TopBarProps {
   teacherNip: string;
   teacherPhoto?: string;
   onToggleSidebar: () => void;
+  rightContent?: ReactNode;
 }
 
 export function TopBar({
@@ -14,6 +16,7 @@ export function TopBar({
   teacherNip,
   teacherPhoto,
   onToggleSidebar,
+  rightContent,
 }: TopBarProps) {
   return (
     <header className="no-print bg-white px-4 sm:px-6 pb-3">
@@ -22,7 +25,7 @@ export function TopBar({
         <div className="flex-1 min-w-0 bg-[var(--color-brand-800)] text-white rounded-lg px-4 py-2.5 flex items-center gap-3 shadow-sm">
           <button
             onClick={onToggleSidebar}
-            className="lg:hidden p-1.5 hover:bg-white/10 rounded-md transition-colors"
+            className="lg:hidden p-1.5 hover:bg-white/10 rounded-md transition-colors shrink-0"
             title="Buka Menu"
           >
             <Menu className="w-5 h-5" />
@@ -30,9 +33,10 @@ export function TopBar({
           <span className="w-6 h-6 rounded bg-white/15 flex items-center justify-center text-xs font-bold shrink-0">
             📓
           </span>
-          <h1 className="text-sm sm:text-base font-bold uppercase tracking-wide truncate">
+          <h1 className="flex-1 min-w-0 text-sm sm:text-base font-bold uppercase tracking-wide truncate">
             {title}
           </h1>
+          {rightContent && <div className="shrink-0">{rightContent}</div>}
         </div>
 
         {/* Kartu 2: Foto + Nama + NIP (PUTIH) */}

@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import {
-  Users, CheckCircle2, Clock, AlertCircle, Loader2, Send, RefreshCw, FileText,
+  Users, CheckCircle2, Clock, AlertCircle, Loader2, Send, FileText,
 } from 'lucide-react';
 import {
   format, parseISO, startOfMonth, endOfMonth, eachDayOfInterval, isWeekend,
@@ -17,7 +17,6 @@ import {
 import { supabase } from '../../lib/supabase';
 import type { TeacherData, UserProfile } from '../../types';
 import { isHoliday } from '../../lib/holidays';
-import { cn } from '../../lib/utils';
 
 interface DashboardKepsekProps {
   profile: UserProfile;
@@ -36,12 +35,53 @@ function getStatus(count: number, required: number): StatusType {
   return 'belum';
 }
 
+type ColorKey = 'blue' | 'emerald' | 'amber' | 'rose' | 'slate' | 'purple';
+
+const colorMap: Record<ColorKey, { bg: string; fg: string }> = {
+  blue: { bg: 'bg-blue-50', fg: 'text-blue-600' },
+  emerald: { bg: 'bg-emerald-50', fg: 'text-emerald-600' },
+  amber: { bg: 'bg-amber-50', fg: 'text-amber-600' },
+  rose: { bg: 'bg-rose-50', fg: 'text-rose-600' },
+  slate: { bg: 'bg-slate-100', fg: 'text-slate-500' },
+  purple: { bg: 'bg-purple-50', fg: 'text-purple-600' },
+};
+
+function SmallCard({
+  icon,
+  color,
+  label,
+  value,
+}: {
+  icon: React.ReactNode;
+  color: ColorKey;
+  label: string;
+  value: string | number;
+}) {
+  const c = colorMap[color];
+  return (
+    <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-3 flex items-center gap-3">
+      <div className={`w-10 h-10 rounded-lg ${c.bg} flex items-center justify-center shrink-0`}>
+        <span className={c.fg}>{icon}</span>
+      </div>
+      <div className="min-w-0 flex-1">
+        <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wide leading-tight truncate">
+          {label}
+        </p>
+        <p className="text-lg font-bold text-slate-900 leading-tight truncate">
+          {value}
+        </p>
+      </div>
+    </div>
+  );
+}
+
 export function DashboardKepsek({
   profile,
   teacher,
   journals = [],
   addNotification,
 }: DashboardKepsekProps) {
+  void teacher;
   const today = new Date();
   const monthIdx = getMonth(today);
   const yearNow = getYear(today);
@@ -57,7 +97,6 @@ export function DashboardKepsek({
     else console.log(msg);
   });
 
-  // Hitung hari kerja bulan ini
   const workDaysThisMonth = eachDayOfInterval({
     start: startOfMonth(today),
     end: endOfMonth(today),
@@ -97,7 +136,6 @@ export function DashboardKepsek({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [profile.workUnitBina]);
 
-  // Jurnal kepsek bulan ini
   const myJournals = journals.filter((j: any) => {
     const d = parseISO(j.date);
     return getMonth(d) === monthIdx && getYear(d) === yearNow;
@@ -141,149 +179,116 @@ export function DashboardKepsek({
 
   return (
     <div className="space-y-4">
-
-      {/* Kartu Status Jurnal Saya */}
-      <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-5">
-        <div className="mb-3">
-          <p className="font-semibold text-slate-800 text-sm flex items-center gap-2">
-            <FileText className="w-4 h-4 text-emerald-600" />
-            Status Jurnal Saya — {format(today, 'MMMM yyyy', { locale: localeId })}
-          </p>
-          <p className="text-[11px] text-slate-500 mt-0.5">
-            Alur: Kepala Sekolah → Pengawas Bina
-          </p>
+      {/* Header compact: Status Jurnal Saya */}
+      <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-4">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-lg bg-emerald-50 flex items-center justify-center shrink-0">
+              <FileText className="w-5 h-5 text-emerald-600" />
+            </div>
+            <div>
+              <p className="text-sm font-bold text-slate-800">Status Jurnal Saya</p>
+              <p className="text-[11px] text-slate-500">
+                {format(today, 'MMMM yyyy', { locale: localeId })} · Alur: Kepala Sekolah → Pengawas
+              </p>
+            </div>
+          </div>
+          {!loadingVerif && !isSentToPengawas && myFilledDays > 0 && (
+            <button
+              onClick={handleKirimKePengawas}
+              disabled={submitting}
+              className="px-3.5 py-2 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed text-white text-xs font-semibold rounded-lg transition-colors flex items-center justify-center gap-1.5 shrink-0"
+            >
+              {submitting ? (
+                <Loader2 className="w-3.5 h-3.5 animate-spin" />
+              ) : (
+                <Send className="w-3.5 h-3.5" />
+              )}
+              Kirim Jurnal ke Pengawas
+            </button>
+          )}
         </div>
 
-        {loadingVerif ? (
-          <div className="py-4 text-center">
-            <Loader2 className="w-5 h-5 animate-spin text-emerald-600 mx-auto" />
+        {loadingVerif && (
+          <div className="mt-3 py-2 text-center">
+            <Loader2 className="w-4 h-4 animate-spin text-emerald-600 mx-auto" />
           </div>
-        ) : (
-          <div className="space-y-2">
-            <div className="flex items-center gap-3">
-              <div className={cn(
-                'w-6 h-6 rounded-full flex items-center justify-center text-xs shrink-0',
-                myFilledDays > 0 ? 'bg-emerald-500 text-white' : 'bg-slate-200 text-slate-500'
-              )}>
-                {myFilledDays > 0 ? '✓' : '○'}
-              </div>
-              <span className="text-sm text-slate-700">
-                Jurnal diisi: <span className="font-semibold">{myFilledDays}/{required}</span> hari ({myPercent}%)
-              </span>
-            </div>
-
-            <div className="flex items-center gap-3">
-              <div className={cn(
-                'w-6 h-6 rounded-full flex items-center justify-center text-xs shrink-0',
-                isSentToPengawas ? 'bg-emerald-500 text-white' : 'bg-slate-200 text-slate-500'
-              )}>
-                {isSentToPengawas ? '✓' : '○'}
-              </div>
-              <span className={cn('text-sm', isSentToPengawas ? 'text-slate-700' : 'text-slate-400')}>
-                {isSentToPengawas
-                  ? `Dikirim ke Pengawas — ${verification?.guruSubmittedAt ? format(parseISO(verification.guruSubmittedAt), 'd MMM yyyy', { locale: localeId }) : ''}`
-                  : 'Belum dikirim ke Pengawas'}
-              </span>
-            </div>
-
-            <div className="flex items-center gap-3">
-              <div className={cn(
-                'w-6 h-6 rounded-full flex items-center justify-center text-xs shrink-0',
-                isApprovedPengawas ? 'bg-emerald-500 text-white'
-                  : isRejectedPengawas ? 'bg-rose-500 text-white'
-                  : 'bg-slate-200 text-slate-500'
-              )}>
-                {isApprovedPengawas ? '✓' : isRejectedPengawas ? '✕' : '○'}
-              </div>
-              <span className={cn(
-                'text-sm',
-                isApprovedPengawas ? 'text-slate-700'
-                  : isRejectedPengawas ? 'text-rose-700'
-                  : 'text-slate-400'
-              )}>
-                {isApprovedPengawas
-                  ? `Disetujui Pengawas — ${verification?.pengawasVerifiedAt ? format(parseISO(verification.pengawasVerifiedAt), 'd MMM yyyy', { locale: localeId }) : ''}`
-                  : isRejectedPengawas
-                  ? `Ditolak Pengawas: ${verification?.pengawasNote || 'Tidak ada catatan'}`
-                  : 'Menunggu validasi Pengawas'}
-              </span>
-            </div>
-          </div>
-        )}
-
-        {/* Tombol Kirim ke Pengawas — full-width, konsisten dengan guru */}
-        {!loadingVerif && !isSentToPengawas && myFilledDays > 0 && (
-          <button
-            onClick={handleKirimKePengawas}
-            disabled={submitting}
-            className="w-full mt-4 px-4 py-3 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed text-white text-sm font-semibold rounded-lg transition-colors flex items-center justify-center gap-2"
-          >
-            {submitting ? (
-              <>
-                <Loader2 className="w-4 h-4 animate-spin" />
-                Mengirim...
-              </>
-            ) : (
-              <>
-                <Send className="w-4 h-4" />
-                Kirim Jurnal Bulan Ini ke Pengawas
-              </>
-            )}
-          </button>
         )}
 
         {isApprovedPengawas && (
-          <div className="mt-3 p-3 bg-emerald-50 border border-emerald-200 rounded-lg text-xs text-emerald-800">
-            ✅ Jurnal Anda sudah disetujui Pengawas. Anda dapat mencetak jurnal & rekomendasi di menu Preview & Cetak.
+          <div className="mt-3 p-2.5 bg-emerald-50 border border-emerald-200 rounded-lg text-[11px] text-emerald-800">
+            ✅ Jurnal Anda sudah disetujui Pengawas. Anda dapat mencetak jurnal &amp; rekomendasi di menu Preview &amp; Cetak.
+          </div>
+        )}
+        {isRejectedPengawas && (
+          <div className="mt-3 p-2.5 bg-rose-50 border border-rose-200 rounded-lg text-[11px] text-rose-800">
+            ❌ Ditolak Pengawas: {verification?.pengawasNote || 'Tidak ada catatan'}
           </div>
         )}
       </div>
 
-      {/* Statistik Guru Binaan */}
-      <div className="grid grid-cols-2 gap-3">
-        <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-4">
-          <div className="w-9 h-9 rounded-lg bg-blue-50 flex items-center justify-center mb-3">
-            <Users className="w-5 h-5 text-blue-600" />
-          </div>
-          <p className="text-[11px] font-semibold text-slate-500 uppercase tracking-wide mb-1">
-            Total Guru
-          </p>
-          <p className="text-2xl font-bold text-slate-900">{loadingGurus ? '-' : stats.total}</p>
-          <p className="text-[11px] text-slate-500 mt-1">Guru di sekolah</p>
-        </div>
-
-        <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-4">
-          <div className="w-9 h-9 rounded-lg bg-emerald-50 flex items-center justify-center mb-3">
-            <CheckCircle2 className="w-5 h-5 text-emerald-600" />
-          </div>
-          <p className="text-[11px] font-semibold text-slate-500 uppercase tracking-wide mb-1">
-            Lengkap
-          </p>
-          <p className="text-2xl font-bold text-emerald-600">{loadingGurus ? '-' : stats.lengkap}</p>
-          <p className="text-[11px] text-slate-500 mt-1">≥80% terisi</p>
-        </div>
-
-        <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-4">
-          <div className="w-9 h-9 rounded-lg bg-amber-50 flex items-center justify-center mb-3">
-            <Clock className="w-5 h-5 text-amber-600" />
-          </div>
-          <p className="text-[11px] font-semibold text-slate-500 uppercase tracking-wide mb-1">
-            Kurang
-          </p>
-          <p className="text-2xl font-bold text-amber-600">{loadingGurus ? '-' : stats.kurang}</p>
-          <p className="text-[11px] text-slate-500 mt-1">40-79% terisi</p>
-        </div>
-
-        <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-4">
-          <div className="w-9 h-9 rounded-lg bg-rose-50 flex items-center justify-center mb-3">
-            <AlertCircle className="w-5 h-5 text-rose-600" />
-          </div>
-          <p className="text-[11px] font-semibold text-slate-500 uppercase tracking-wide mb-1">
-            Perlu Perhatian
-          </p>
-          <p className="text-2xl font-bold text-rose-600">{loadingGurus ? '-' : stats.belum}</p>
-          <p className="text-[11px] text-slate-500 mt-1">&lt;40% terisi</p>
-        </div>
+      {/* Grid kartu-kartu kecil */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        <SmallCard
+          icon={<FileText className="w-5 h-5" />}
+          color="blue"
+          label="Jurnal Diisi"
+          value={`${myFilledDays}/${required} (${myPercent}%)`}
+        />
+        <SmallCard
+          icon={<Send className="w-5 h-5" />}
+          color={isSentToPengawas ? 'emerald' : 'slate'}
+          label="Dikirim ke Pengawas"
+          value={
+            isSentToPengawas && verification?.guruSubmittedAt
+              ? format(parseISO(verification.guruSubmittedAt), 'd MMM yyyy', { locale: localeId })
+              : '—'
+          }
+        />
+        <SmallCard
+          icon={
+            isApprovedPengawas ? (
+              <CheckCircle2 className="w-5 h-5" />
+            ) : isRejectedPengawas ? (
+              <AlertCircle className="w-5 h-5" />
+            ) : (
+              <Clock className="w-5 h-5" />
+            )
+          }
+          color={isApprovedPengawas ? 'emerald' : isRejectedPengawas ? 'rose' : 'amber'}
+          label="Verifikasi Pengawas"
+          value={
+            isApprovedPengawas
+              ? 'Disetujui'
+              : isRejectedPengawas
+              ? 'Ditolak'
+              : 'Menunggu'
+          }
+        />
+        <SmallCard
+          icon={<Users className="w-5 h-5" />}
+          color="purple"
+          label="Total Guru"
+          value={loadingGurus ? '—' : stats.total}
+        />
+        <SmallCard
+          icon={<CheckCircle2 className="w-5 h-5" />}
+          color="emerald"
+          label="Guru Lengkap"
+          value={loadingGurus ? '—' : stats.lengkap}
+        />
+        <SmallCard
+          icon={<Clock className="w-5 h-5" />}
+          color="amber"
+          label="Guru Kurang"
+          value={loadingGurus ? '—' : stats.kurang}
+        />
+        <SmallCard
+          icon={<AlertCircle className="w-5 h-5" />}
+          color="rose"
+          label="Guru Belum"
+          value={loadingGurus ? '—' : stats.belum}
+        />
       </div>
     </div>
   );
