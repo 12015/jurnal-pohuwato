@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import {
-  Users, CheckCircle2, Clock, AlertCircle, Loader2, Send, FileText,
+  Users, CheckCircle2, Clock, AlertCircle, Loader2, Send, FileText, BarChart3,
 } from 'lucide-react';
 import {
   format, parseISO, startOfMonth, endOfMonth, eachDayOfInterval, isWeekend,
@@ -215,7 +215,6 @@ export function DashboardKepsek({
 
       {/* Grid kartu - 2 kolom seimbang */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-        {/* Baris 1 */}
         <SmallCard
           icon={<FileText className="w-5 h-5" />}
           color="blue"
@@ -232,7 +231,6 @@ export function DashboardKepsek({
               : 'Belum'
           }
         />
-        {/* Baris 2 */}
         <SmallCard
           icon={
             isApprovedPengawas ? (
@@ -255,20 +253,66 @@ export function DashboardKepsek({
           label="Total Guru"
           value={loadingGurus ? '—' : stats.total}
         />
-        {/* Baris 3 */}
         <SmallCard
           icon={<CheckCircle2 className="w-5 h-5" />}
           color="emerald"
-          label="Guru Lengkap"
-          value={loadingGurus ? '—' : stats.lengkap}
+          label="Guru Sudah Lengkap"
+          value={loadingGurus ? '—' : `${stats.lengkap} dari ${stats.total}`}
         />
         <SmallCard
           icon={<AlertCircle className="w-5 h-5" />}
           color={perluPerhatian > 0 ? 'rose' : 'slate'}
           label="Guru Perlu Perhatian"
-          value={loadingGurus ? '—' : perluPerhatian}
+          value={loadingGurus ? '—' : `${perluPerhatian} dari ${stats.total}`}
         />
       </div>
+
+      {/* Chart: Kelengkapan Jurnal per Guru */}
+      {!loadingGurus && gurus.length > 0 && (
+        <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-4">
+          <div className="flex items-center gap-2 mb-3">
+            <BarChart3 className="w-4 h-4 text-indigo-600" />
+            <p className="text-sm font-bold text-slate-800">Kelengkapan Jurnal Guru</p>
+            <span className="text-[10px] text-slate-500 ml-auto">
+              Bulan {format(today, 'MMMM yyyy', { locale: localeId })}
+            </span>
+          </div>
+          <div className="space-y-2.5">
+            {gurus.map((g) => {
+              const percent = required > 0 ? Math.round((g.journalCount / required) * 100) : 0;
+              const barColor =
+                percent >= 80 ? 'bg-emerald-500' : percent >= 40 ? 'bg-amber-500' : 'bg-rose-500';
+              return (
+                <div key={g.userId}>
+                  <div className="flex items-center justify-between gap-2 mb-1">
+                    <p className="text-xs font-semibold text-slate-700 truncate">{g.name}</p>
+                    <p className="text-xs text-slate-500 shrink-0">
+                      <span className="font-bold text-slate-800">{g.journalCount}</span>/{required} ({percent}%)
+                    </p>
+                  </div>
+                  <div className="w-full h-2.5 bg-slate-100 rounded-full overflow-hidden">
+                    <div
+                      className={`h-full ${barColor} transition-all duration-500`}
+                      style={{ width: `${Math.min(percent, 100)}%` }}
+                    />
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+          <div className="flex items-center gap-3 mt-3 pt-3 border-t border-slate-100 text-[10px] text-slate-500">
+            <span className="flex items-center gap-1">
+              <span className="w-2.5 h-2.5 rounded-full bg-emerald-500"></span> ≥ 80%
+            </span>
+            <span className="flex items-center gap-1">
+              <span className="w-2.5 h-2.5 rounded-full bg-amber-500"></span> 40-79%
+            </span>
+            <span className="flex items-center gap-1">
+              <span className="w-2.5 h-2.5 rounded-full bg-rose-500"></span> &lt; 40%
+            </span>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

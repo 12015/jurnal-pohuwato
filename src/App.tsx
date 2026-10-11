@@ -60,7 +60,6 @@ import { DashboardKepsek } from './pages/kepsek/DashboardKepsek';
 import { AntrianVerifikasi } from './pages/kepsek/AntrianVerifikasi';
 import { SPTJMSekolah } from './pages/kepsek/SPTJMSekolah';
 import { Persetujuan } from './pages/pengawas/Persetujuan';
-import { RiwayatRekomendasi } from './pages/pengawas/RiwayatRekomendasi';
 import type { TabKey } from './types';
 import { TopBar } from './components/TopBar';
 import { getVerificationStatus, getKepsekSignature, getPengawasSignature } from './lib/db';
@@ -219,11 +218,9 @@ const tabTitles: Record<TabKey, string> = {
   pw_dashboard: 'Dashboard Pengawas',
   pw_teachers: 'Daftar Guru Binaan',
   pw_approve: 'Verifikasi Rekomendasi',
-  pw_rec_history: 'Riwayat Rekomendasi',
   ks_dashboard: 'Dashboard Kepala Sekolah',
   ks_queue: 'Verifikasi Jurnal',
   ks_teachers: 'Semua Guru',
-  ks_history: 'Riwayat Verifikasi',
   ks_preview: 'Preview Dokumen',
   ks_sptjm: 'SPTJM Sekolah',
   ks_journal: 'Input Jurnal',
@@ -525,15 +522,6 @@ const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
                   />
                 </motion.div>
               )}
-
-              {activeTab === 'pw_rec_history' && profile && (
-                <motion.div key="pw_rec_history" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }}>
-                  <RiwayatRekomendasi
-                    profile={profile}
-                    addNotification={addNotification}
-                  />
-                </motion.div>
-              )}
               {activeTab === 'profile' && (
                 <motion.div
                   key="profile"
@@ -757,9 +745,6 @@ function ProfileForm({
               <h4 className="text-xs sm:text-sm font-bold text-amber-900 flex items-center gap-1.5 uppercase tracking-wide">
                 <ShieldCheck className="w-4 h-4 text-amber-600" /> TANDA TANGAN &amp; CAP DIGITAL
               </h4>
-              <p className="text-[11px] text-amber-800 leading-relaxed">
-                Upload scan tanda tangan dan cap Anda. Keduanya akan muncul otomatis di PDF jurnal/rekomendasi yang Anda verifikasi.
-              </p>
               <LogoUploader
                 label="Scan TTD + Cap"
                 value={form.signatureStampImage}
@@ -769,15 +754,6 @@ function ProfileForm({
             </div>
           )}
 
-          {/* Tombol Simpan - rata tengah, compact */}
-          <div className="mt-auto pt-4 border-t border-slate-200 flex justify-center">
-            <Button
-              onClick={() => onSave(form)}
-              className="px-5 py-2 text-xs sm:text-sm font-semibold uppercase tracking-wide"
-            >
-              <Save className="w-4 h-4" /> SIMPAN PROFIL
-            </Button>
-          </div>
         </div>
 
         {/* Kolom KANAN: Foto + Logo + Pejabat */}

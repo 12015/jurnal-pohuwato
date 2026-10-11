@@ -55,7 +55,7 @@ export function DaftarGuruBinaan({
   profile,
   onNavigate,
   addNotification,
-  title = 'Daftar Guru Binaan',
+  title = 'Daftar Guru',
 }: DaftarGuruBinaanProps) {
   const [gurus, setGurus] = useState<GuruBinaanSummary[]>([]);
   const [loading, setLoading] = useState(true);
@@ -85,8 +85,7 @@ export function DaftarGuruBinaan({
   const fetchData = async () => {
     setLoading(true);
     try {
-      const npsnList = profile.npsnBinaList || (profile.npsnBina ? [profile.npsnBina] : []);
-      const data = await getGuruBinaan(npsnList);
+      const data = await getGuruBinaan(profile.npsnBinaList || []);
       setGurus(data);
     } catch (e) {
       console.error(e);

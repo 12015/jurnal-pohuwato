@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react';
 import {
   LayoutDashboard, User, FileText, Eye, History,
-  Users, ClipboardCheck, CheckSquare, FileCheck, LogOut, BookOpen,
+  Users, ClipboardCheck, CheckSquare, LogOut, BookOpen,
   FileSpreadsheet,
 } from 'lucide-react';
 import type { TeacherData, UserProfile, TabKey } from '../types';
@@ -58,8 +58,7 @@ const kepsekSections: MenuSection[] = [
     title: 'VERIFIKASI',
     items: [
       { key: 'ks_queue', label: 'Verifikasi Jurnal', icon: <ClipboardCheck className="w-5 h-5" /> },
-      { key: 'ks_teachers', label: 'Semua Guru', icon: <Users className="w-5 h-5" /> },
-      { key: 'ks_history', label: 'Riwayat Verifikasi', icon: <History className="w-5 h-5" /> },
+      { key: 'ks_teachers', label: 'Daftar Guru', icon: <Users className="w-5 h-5" /> },
     ],
   },
   {
@@ -85,13 +84,7 @@ const pengawasSections: MenuSection[] = [
       { key: 'pw_teachers', label: 'Daftar Guru Binaan', icon: <Users className="w-5 h-5" /> },
       { key: 'pw_approve', label: 'Verifikasi Rekomendasi', icon: <CheckSquare className="w-5 h-5" /> },
     ],
-  },
-  {
-    title: 'DOKUMEN',
-    items: [
-      { key: 'pw_rec_history', label: 'Riwayat Rekomendasi', icon: <FileCheck className="w-5 h-5" /> },
-    ],
-  },
+  }
 ];
 
 export function Sidebar({
