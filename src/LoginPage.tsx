@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Loader2, LogIn, UserPlus, CheckCircle2, AlertCircle, School } from 'lucide-react';
+import { Loader2, LogIn, UserPlus, CheckCircle2, AlertCircle, School, Info } from 'lucide-react';
 import { useAuth } from './hooks/useAuth';
 import { lookupSekolahByNpsn } from './lib/db';
 
@@ -311,21 +311,29 @@ export function LoginPage() {
                       <div
                         key={r.npsn}
                         className={`flex items-start gap-2 text-xs ${
-                          notFound ? 'text-amber-700' : 'text-slate-700'
+                          notFound ? 'text-slate-500' : 'text-slate-700'
                         }`}
                       >
                         {notFound ? (
-                          <AlertCircle className="w-3.5 h-3.5 shrink-0 mt-0.5" />
+                          <Info className="w-3.5 h-3.5 shrink-0 mt-0.5 text-slate-400" />
                         ) : (
                           <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 shrink-0 mt-0.5" />
                         )}
                         <div className="min-w-0">
                           <p className="font-mono text-[10px] text-slate-500">{r.npsn}</p>
-                          <p className="font-medium">{r.namaSekolah}</p>
+                          <p className={`font-medium ${notFound ? 'italic' : ''}`}>
+                            {notFound ? 'Belum terdaftar di sistem' : r.namaSekolah}
+                          </p>
                         </div>
                       </div>
                     );
                   })}
+                  {lookupResult.some((r) => r.namaSekolah.includes('tidak ditemukan')) && (
+                    <p className="text-[10px] text-slate-500 italic pt-1.5 border-t border-slate-200 mt-1.5 leading-relaxed">
+                      NPSN yang belum terdaftar akan otomatis muncul setelah ada guru/kepsek
+                      dari sekolah tersebut mendaftar. Anda tetap bisa melanjutkan pendaftaran.
+                    </p>
+                  )}
                 </div>
               )}
             </>
