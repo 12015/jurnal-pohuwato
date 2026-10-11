@@ -144,27 +144,14 @@ export function DashboardKepsek({
 
       {/* Kartu Status Jurnal Saya */}
       <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-5">
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-3">
-          <div>
-            <p className="font-semibold text-slate-800 text-sm flex items-center gap-2">
-              <FileText className="w-4 h-4 text-emerald-600" />
-              Status Jurnal Saya — {format(today, 'MMMM yyyy', { locale: localeId })}
-            </p>
-            <p className="text-[11px] text-slate-500 mt-0.5">
-              Alur: Kepala Sekolah → Pengawas Bina
-            </p>
-          </div>
-          {!isSentToPengawas && (
-            <button
-              onClick={handleKirimKePengawas}
-              disabled={submitting || myFilledDays === 0}
-              className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed text-white text-sm font-semibold rounded-lg transition-colors flex items-center justify-center gap-2 shrink-0"
-              title={myFilledDays === 0 ? 'Isi jurnal dulu' : 'Kirim jurnal bulan ini ke pengawas'}
-            >
-              {submitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
-              Kirim ke Pengawas
-            </button>
-          )}
+        <div className="mb-3">
+          <p className="font-semibold text-slate-800 text-sm flex items-center gap-2">
+            <FileText className="w-4 h-4 text-emerald-600" />
+            Status Jurnal Saya — {format(today, 'MMMM yyyy', { locale: localeId })}
+          </p>
+          <p className="text-[11px] text-slate-500 mt-0.5">
+            Alur: Kepala Sekolah → Pengawas Bina
+          </p>
         </div>
 
         {loadingVerif ? (
@@ -224,9 +211,30 @@ export function DashboardKepsek({
           </div>
         )}
 
+        {/* Tombol Kirim ke Pengawas — full-width, konsisten dengan guru */}
+        {!loadingVerif && !isSentToPengawas && myFilledDays > 0 && (
+          <button
+            onClick={handleKirimKePengawas}
+            disabled={submitting}
+            className="w-full mt-4 px-4 py-3 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed text-white text-sm font-semibold rounded-lg transition-colors flex items-center justify-center gap-2"
+          >
+            {submitting ? (
+              <>
+                <Loader2 className="w-4 h-4 animate-spin" />
+                Mengirim...
+              </>
+            ) : (
+              <>
+                <Send className="w-4 h-4" />
+                Kirim Jurnal Bulan Ini ke Pengawas
+              </>
+            )}
+          </button>
+        )}
+
         {isApprovedPengawas && (
           <div className="mt-3 p-3 bg-emerald-50 border border-emerald-200 rounded-lg text-xs text-emerald-800">
-            ✅ Jurnal Anda sudah disetujui Pengawas. Anda dapat mencetak rekomendasi di menu Preview & Cetak.
+            ✅ Jurnal Anda sudah disetujui Pengawas. Anda dapat mencetak jurnal & rekomendasi di menu Preview & Cetak.
           </div>
         )}
       </div>

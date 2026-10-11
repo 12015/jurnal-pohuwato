@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import {
   FileText, Activity, TrendingUp, CheckCircle2, AlertCircle,
-  Plus, Eye, Award,
+  Plus, Eye, Award, Send, Loader2,
 } from 'lucide-react';
 import {
   format, parseISO, startOfMonth, endOfMonth, eachDayOfInterval,
@@ -253,7 +253,17 @@ export function DashboardGuru({
           disabled={submitting}
           className="w-full px-4 py-3 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white text-sm font-semibold rounded-lg transition-colors flex items-center justify-center gap-2"
         >
-          {submitting ? 'Mengirim...' : '📤 Kirim Jurnal Bulan Ini ke Kepala Sekolah'}
+          {submitting ? (
+            <>
+              <Loader2 className="w-4 h-4 animate-spin" />
+              Mengirim...
+            </>
+          ) : (
+            <>
+              <Send className="w-4 h-4" />
+              Kirim Jurnal Bulan Ini ke Kepala Sekolah
+            </>
+          )}
         </button>
       )}
 
