@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import {
-  ClipboardCheck, Loader2, CheckCircle2, XCircle, User, RefreshCw,
+  Loader2, CheckCircle2, XCircle, User, RefreshCw,
   X, Calendar, Eye,
 } from 'lucide-react';
 import { format, parseISO } from 'date-fns';
@@ -34,17 +34,17 @@ function parsePeriodKey(key: string): string {
   return key;
 }
 
+type StatusFilter = 'all' | 'pending' | 'approved' | 'rejected';
+
 export function AntrianVerifikasi({ profile, addNotification }: AntrianVerifikasiProps) {
   const [pending, setPending] = useState<PendingVerification[]>([]);
   const [loading, setLoading] = useState(true);
-  const [filter, setFilter] = useState<'pending' | 'approved' | 'rejected' | 'all'>('pending');
+  const [filter, setFilter] = useState<StatusFilter>('all');
 
-  // Modal Lihat
   const [viewTarget, setViewTarget] = useState<PendingVerification | null>(null);
   const [journals, setJournals] = useState<JournalEntry[]>([]);
   const [loadingDetail, setLoadingDetail] = useState(false);
 
-  // Modal Tolak
   const [rejectTarget, setRejectTarget] = useState<PendingVerification | null>(null);
   const [rejectNote, setRejectNote] = useState('');
 
@@ -68,10 +68,9 @@ export function AntrianVerifikasi({ profile, addNotification }: AntrianVerifikas
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [profile.npsnBina]);
 
-  const filtered = pending.filter((v) => {
-    if (filter === 'all') return true;
-    return v.kepsekStatus === filter;
-  });
+  const filtered = filter === 'all'
+    ? pending
+    : pending.filter((v) => v.kepsekStatus === filter);
 
   const stats = {
     total: pending.length,
@@ -88,7 +87,6 @@ export function AntrianVerifikasi({ profile, addNotification }: AntrianVerifikas
       const mIdx = parseInt(parts[1]);
       const year = parseInt(parts[2]);
       const js = await getJournalsByUser(item.guruId, mIdx, year);
-      // Sort desc: terbaru paling atas
       js.sort((a, b) => parseISO(b.date).getTime() - parseISO(a.date).getTime());
       setJournals(js);
     } catch (e) {
@@ -143,47 +141,47 @@ export function AntrianVerifikasi({ profile, addNotification }: AntrianVerifikas
 
   return (
     <div className="space-y-3">
-      {/* Statistik */}
+      {/* 4 Kartu Informasi */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
         <button
           onClick={() => setFilter('all')}
           className={cn(
-            'bg-white rounded-xl border-2 shadow-sm p-3 text-left transition-all',
+            'bg-white rounded-xl border-2 shadow-sm p-3 text-left transition-all hover:shadow-md',
             filter === 'all' ? 'border-indigo-500' : 'border-slate-200'
           )}
         >
-          <p className="text-[11px] font-semibold text-slate-500 uppercase tracking-wide">Total</p>
-          <p className="text-2xl font-bold text-slate-900 mt-1">{stats.total}</p>
+          <p className="text-[10px] font-semibold text-slate-500 uppercase tracking-wide">Total Guru</p>
+          <p className="text-xl font-bold text-slate-900 mt-0.5">{stats.total}</p>
         </button>
         <button
           onClick={() => setFilter('pending')}
           className={cn(
-            'bg-white rounded-xl border-2 shadow-sm p-3 text-left transition-all',
+            'bg-white rounded-xl border-2 shadow-sm p-3 text-left transition-all hover:shadow-md',
             filter === 'pending' ? 'border-amber-500' : 'border-slate-200'
           )}
         >
-          <p className="text-[11px] font-semibold text-amber-600 uppercase tracking-wide">Menunggu</p>
-          <p className="text-2xl font-bold text-amber-600 mt-1">{stats.pending}</p>
+          <p className="text-[10px] font-semibold text-amber-600 uppercase tracking-wide">Menunggu</p>
+          <p className="text-xl font-bold text-amber-600 mt-0.5">{stats.pending}</p>
         </button>
         <button
           onClick={() => setFilter('approved')}
           className={cn(
-            'bg-white rounded-xl border-2 shadow-sm p-3 text-left transition-all',
+            'bg-white rounded-xl border-2 shadow-sm p-3 text-left transition-all hover:shadow-md',
             filter === 'approved' ? 'border-emerald-500' : 'border-slate-200'
           )}
         >
-          <p className="text-[11px] font-semibold text-emerald-600 uppercase tracking-wide">Disetujui</p>
-          <p className="text-2xl font-bold text-emerald-600 mt-1">{stats.approved}</p>
+          <p className="text-[10px] font-semibold text-emerald-600 uppercase tracking-wide">Disetujui</p>
+          <p className="text-xl font-bold text-emerald-600 mt-0.5">{stats.approved}</p>
         </button>
         <button
           onClick={() => setFilter('rejected')}
           className={cn(
-            'bg-white rounded-xl border-2 shadow-sm p-3 text-left transition-all',
+            'bg-white rounded-xl border-2 shadow-sm p-3 text-left transition-all hover:shadow-md',
             filter === 'rejected' ? 'border-rose-500' : 'border-slate-200'
           )}
         >
-          <p className="text-[11px] font-semibold text-rose-600 uppercase tracking-wide">Ditolak</p>
-          <p className="text-2xl font-bold text-rose-600 mt-1">{stats.rejected}</p>
+          <p className="text-[10px] font-semibold text-rose-600 uppercase tracking-wide">Ditolak</p>
+          <p className="text-xl font-bold text-rose-600 mt-0.5">{stats.rejected}</p>
         </button>
       </div>
 
@@ -199,7 +197,7 @@ export function AntrianVerifikasi({ profile, addNotification }: AntrianVerifikas
         </button>
       </div>
 
-      {/* List */}
+      {/* Tabel */}
       <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
         {loading ? (
           <div className="p-12 text-center">
@@ -208,8 +206,8 @@ export function AntrianVerifikasi({ profile, addNotification }: AntrianVerifikas
           </div>
         ) : filtered.length === 0 ? (
           <div className="p-12 text-center">
-            <ClipboardCheck className="w-12 h-12 text-slate-300 mx-auto mb-3" />
-            <p className="font-semibold text-slate-700">
+            <Calendar className="w-12 h-12 text-slate-300 mx-auto mb-3" />
+            <p className="font-semibold text-slate-700 text-sm">
               {filter === 'pending' ? 'Tidak ada jurnal yang menunggu verifikasi' : 'Tidak ada data'}
             </p>
             <p className="text-xs text-slate-500 mt-1">
@@ -217,85 +215,99 @@ export function AntrianVerifikasi({ profile, addNotification }: AntrianVerifikas
             </p>
           </div>
         ) : (
-          <div className="divide-y divide-slate-100">
-            {filtered.map((v) => {
-              const isPending = v.kepsekStatus === 'pending';
-              const isApproved = v.kepsekStatus === 'approved';
-              const isRejected = v.kepsekStatus === 'rejected';
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead className="bg-slate-50 border-b border-slate-200">
+                <tr>
+                  <th className="text-left px-4 py-3 font-bold text-slate-700 text-xs uppercase tracking-wider">Nama</th>
+                  <th className="text-left px-4 py-3 font-bold text-slate-700 text-xs uppercase tracking-wider">NIP</th>
+                  <th className="text-center px-4 py-3 font-bold text-slate-700 text-xs uppercase tracking-wider">Aksi</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100">
+                {filtered.map((v) => {
+                  const isPending = v.kepsekStatus === 'pending';
+                  const isApproved = v.kepsekStatus === 'approved';
+                  const isRejected = v.kepsekStatus === 'rejected';
 
-              return (
-                <div key={v.id} className="p-3 flex flex-col sm:flex-row sm:items-center gap-3">
-                  <div className="w-10 h-10 rounded-full bg-slate-100 flex items-center justify-center overflow-hidden shrink-0 border border-slate-200">
-                    <User className="w-5 h-5 text-slate-400" />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <p className="font-semibold text-sm text-slate-800 truncate">{v.guruName}</p>
-                      {isApproved && (
-                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
-                          <CheckCircle2 className="w-3 h-3" /> Disetujui
-                        </span>
-                      )}
-                      {isRejected && (
-                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-rose-50 text-rose-700 border border-rose-200">
-                          <XCircle className="w-3 h-3" /> Ditolak
-                        </span>
-                      )}
-                      {isPending && (
-                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-50 text-amber-700 border border-amber-200">
-                          Menunggu
-                        </span>
-                      )}
-                    </div>
-                    <p className="text-[11px] text-slate-500 truncate mt-0.5">
-                      NIP {v.guruNip || '-'} · {v.guruPosition || '-'}
-                    </p>
-                    <p className="text-[11px] text-slate-500 mt-0.5">
-                      📅 {parsePeriodKey(v.periodKey)}
-                      {v.guruSubmittedAt && (
-                        <> · Dikirim {format(parseISO(v.guruSubmittedAt), 'd MMM yyyy', { locale: localeId })}</>
-                      )}
-                    </p>
-                  </div>
-                  <div className="flex items-center gap-1.5 shrink-0">
-                    {isPending ? (
-                      <>
-                        <button
-                          onClick={() => {
-                            setRejectTarget(v);
-                            setRejectNote('');
-                          }}
-                          disabled={processing === v.id}
-                          className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-[11px] font-semibold bg-rose-50 hover:bg-rose-100 text-rose-700 transition-colors disabled:opacity-40"
-                        >
-                          <XCircle className="w-3.5 h-3.5" />
-                          Tolak
-                        </button>
-                        <button
-                          onClick={() => handleApprove(v)}
-                          disabled={processing === v.id}
-                          className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-[11px] font-semibold bg-emerald-50 hover:bg-emerald-100 text-emerald-700 transition-colors disabled:opacity-40"
-                        >
-                          {processing === v.id ? (
-                            <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                          ) : (
-                            <CheckCircle2 className="w-3.5 h-3.5" />
+                  return (
+                    <tr key={v.id} className="hover:bg-slate-50 transition-colors">
+                      <td className="px-4 py-3">
+                        <div className="flex items-center gap-2.5">
+                          <div className="w-9 h-9 rounded-full bg-slate-100 flex items-center justify-center overflow-hidden shrink-0 border border-slate-200">
+                            <User className="w-4 h-4 text-slate-400" />
+                          </div>
+                          <div className="min-w-0">
+                            <div className="flex items-center gap-1.5 flex-wrap">
+                              <p className="font-semibold text-slate-800 truncate">{v.guruName}</p>
+                              {isApproved && (
+                                <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[9px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                                  <CheckCircle2 className="w-2.5 h-2.5" /> Disetujui
+                                </span>
+                              )}
+                              {isRejected && (
+                                <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[9px] font-bold bg-rose-50 text-rose-700 border border-rose-200">
+                                  <XCircle className="w-2.5 h-2.5" /> Ditolak
+                                </span>
+                              )}
+                              {isPending && (
+                                <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-[9px] font-bold bg-amber-50 text-amber-700 border border-amber-200">
+                                  Menunggu
+                                </span>
+                              )}
+                            </div>
+                            <p className="text-[10px] text-slate-500 mt-0.5">
+                              {v.guruPosition || '-'} · {parsePeriodKey(v.periodKey)}
+                            </p>
+                          </div>
+                        </div>
+                      </td>
+                      <td className="px-4 py-3 text-xs font-mono text-slate-700">
+                        {v.guruNip || '-'}
+                      </td>
+                      <td className="px-4 py-3 text-center">
+                        <div className="flex items-center justify-center gap-1.5">
+                          <button
+                            onClick={() => handleOpenView(v)}
+                            className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-[11px] font-semibold bg-indigo-50 hover:bg-indigo-100 text-indigo-700 transition-colors"
+                          >
+                            <Eye className="w-3.5 h-3.5" />
+                            Lihat
+                          </button>
+                          {isPending && (
+                            <>
+                              <button
+                                onClick={() => {
+                                  setRejectTarget(v);
+                                  setRejectNote('');
+                                }}
+                                disabled={processing === v.id}
+                                className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-[11px] font-semibold bg-rose-50 hover:bg-rose-100 text-rose-700 transition-colors disabled:opacity-40"
+                              >
+                                <XCircle className="w-3.5 h-3.5" />
+                                Tolak
+                              </button>
+                              <button
+                                onClick={() => handleApprove(v)}
+                                disabled={processing === v.id}
+                                className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-[11px] font-semibold bg-emerald-50 hover:bg-emerald-100 text-emerald-700 transition-colors disabled:opacity-40"
+                              >
+                                {processing === v.id ? (
+                                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                                ) : (
+                                  <CheckCircle2 className="w-3.5 h-3.5" />
+                                )}
+                                Approve
+                              </button>
+                            </>
                           )}
-                          Approve
-                        </button>
-                      </>
-                    ) : null}
-                    <button
-                      onClick={() => handleOpenView(v)}
-                      className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-[11px] font-semibold bg-indigo-50 hover:bg-indigo-100 text-indigo-700 transition-colors"
-                    >
-                      <Eye className="w-3.5 h-3.5" />
-                      Lihat
-                    </button>
-                  </div>
-                </div>
-              );
-            })}
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
           </div>
         )}
       </div>
