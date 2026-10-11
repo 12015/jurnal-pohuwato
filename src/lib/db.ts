@@ -529,25 +529,6 @@ export async function submitJournalForVerification(
   }
 }
 
-export async function unlockJournalForRevision(
-  guruId: string,
-  periodKey: string
-): Promise<void> {
-  const { error } = await supabase
-    .from('verifications')
-    .update({
-      is_locked: false,
-      kepsek_status: 'pending',
-      pengawas_status: 'pending',
-      revision_count: (await getVerificationStatus(guruId, periodKey))?.revisionCount
-        ? ((await getVerificationStatus(guruId, periodKey))?.revisionCount || 0) + 1
-        : 1,
-      updated_at: new Date().toISOString(),
-    })
-    .eq('guru_id', guruId)
-    .eq('period_key', periodKey);
-  if (error) throw error;
-}
 
 // ============ B4: Verifikasi oleh Kepala Sekolah ============
 
