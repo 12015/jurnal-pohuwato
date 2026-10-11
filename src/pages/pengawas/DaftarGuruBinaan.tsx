@@ -142,29 +142,6 @@ export function DaftarGuruBinaan({
 
   return (
     <div className="space-y-4">
-      {/* Toolbar */}
-      <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-4">
-        <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-3">
-          <div>
-            <h2 className="font-bold text-slate-800 text-base flex items-center gap-2">
-              <Users className="w-5 h-5 text-indigo-600" />
-              {title}
-            </h2>
-            <p className="text-xs text-slate-500 mt-0.5">
-              Unit Kerja: <span className="font-semibold">{profile.workUnitBina || '-'}</span>
-            </p>
-          </div>
-          <button
-            onClick={fetchData}
-            disabled={loading}
-            className="flex items-center gap-2 bg-slate-100 hover:bg-slate-200 px-3 py-2 rounded-lg transition-colors text-sm font-semibold text-slate-700 disabled:opacity-50 shrink-0"
-          >
-            {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />}
-            Segarkan
-          </button>
-        </div>
-      </div>
-
       {/* Statistik ringkas */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
         <button

@@ -818,10 +818,18 @@ function ProfileForm({
           )}
         </div>
       </div>
+    {/* Footer tombol simpan */}
+      <div className="pt-5 mt-5 border-t border-slate-200 flex justify-center">
+        <Button
+          onClick={() => onSave(form)}
+          className="px-6 py-2.5 text-xs sm:text-sm font-semibold uppercase tracking-wide"
+        >
+          <Save className="w-4 h-4" /> SIMPAN PROFIL
+        </Button>
+      </div>
     </Card>
   );
 }
-
 
 function JournalInput({
   onAdd,
