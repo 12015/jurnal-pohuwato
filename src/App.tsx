@@ -721,7 +721,7 @@ function ProfileForm({
   return (
     <Card className="p-5 sm:p-6 lg:p-8">
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-stretch">
-        {/* Kolom KIRI: Identitas + Tombol Simpan */}
+        {/* Kolom KIRI: Identitas + TTD + Tombol Simpan */}
         <div className="lg:col-span-7 flex flex-col gap-4">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
             <Input label="Nama Lengkap" value={form.name} onChange={(v) => setForm({ ...form, name: v })} placeholder="Nama Lengkap & Gelar" required />
@@ -751,18 +751,36 @@ function ProfileForm({
             )}
           </div>
 
-          {/* Tombol Simpan - menempel bawah kolom kiri */}
-          <div className="mt-auto pt-4 border-t border-slate-200 flex justify-end">
+          {/* TTD & Cap - pindah ke kolom kiri */}
+          {(isKepsek || isPengawas) && (
+            <div className="p-3.5 sm:p-4 bg-amber-50/60 rounded-xl border border-amber-100 space-y-2.5">
+              <h4 className="text-xs sm:text-sm font-bold text-amber-900 flex items-center gap-1.5 uppercase tracking-wide">
+                <ShieldCheck className="w-4 h-4 text-amber-600" /> TANDA TANGAN &amp; CAP DIGITAL
+              </h4>
+              <p className="text-[11px] text-amber-800 leading-relaxed">
+                Upload scan tanda tangan dan cap Anda. Keduanya akan muncul otomatis di PDF jurnal/rekomendasi yang Anda verifikasi.
+              </p>
+              <LogoUploader
+                label="Scan TTD + Cap"
+                value={form.signatureStampImage}
+                onChange={(val) => setForm({ ...form, signatureStampImage: val })}
+                hint="Gabung TTD & cap dalam 1 gambar"
+              />
+            </div>
+          )}
+
+          {/* Tombol Simpan - rata tengah, compact */}
+          <div className="mt-auto pt-4 border-t border-slate-200 flex justify-center">
             <Button
               onClick={() => onSave(form)}
-              className="px-6 py-2.5 text-xs sm:text-sm font-semibold uppercase tracking-wide"
+              className="px-5 py-2 text-xs sm:text-sm font-semibold uppercase tracking-wide"
             >
               <Save className="w-4 h-4" /> SIMPAN PROFIL
             </Button>
           </div>
         </div>
 
-        {/* Kolom KANAN */}
+        {/* Kolom KANAN: Foto + Logo + Pejabat */}
         <div className="lg:col-span-5 flex flex-col gap-4">
           {/* Foto Profil */}
           <div className="p-3.5 sm:p-4 bg-slate-50/80 rounded-xl border border-slate-200/80 space-y-2.5">
@@ -820,24 +838,6 @@ function ProfileForm({
                   </>
                 )}
               </div>
-            </div>
-          )}
-
-          {/* TTD & Cap */}
-          {(isKepsek || isPengawas) && (
-            <div className="p-3.5 sm:p-4 bg-amber-50/60 rounded-xl border border-amber-100 space-y-2.5">
-              <h4 className="text-xs sm:text-sm font-bold text-amber-900 flex items-center gap-1.5 uppercase tracking-wide">
-                <ShieldCheck className="w-4 h-4 text-amber-600" /> TANDA TANGAN &amp; CAP DIGITAL
-              </h4>
-              <p className="text-[11px] text-amber-800 leading-relaxed">
-                Upload scan tanda tangan dan cap Anda. Keduanya akan muncul otomatis di PDF jurnal/rekomendasi yang Anda verifikasi.
-              </p>
-              <LogoUploader
-                label="Scan TTD + Cap"
-                value={form.signatureStampImage}
-                onChange={(val) => setForm({ ...form, signatureStampImage: val })}
-                hint="Gabung TTD & cap dalam 1 gambar"
-              />
             </div>
           )}
         </div>
