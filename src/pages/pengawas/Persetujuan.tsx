@@ -166,51 +166,39 @@ export function Persetujuan({ profile, addNotification }: PersetujuanProps) {
       readyToApprove: visibleRows.filter((r) => r.eligible && !r.approved).length,
       notEligible: visibleRows.filter((r) => !r.eligible && !r.approved).length,
       waiting: rows.length - visibleRows.length,
+      rejected: rows.filter((r) => r.pengawasStatus === 'rejected').length,
     };
   }, [rows, visibleRows]);
 
   return (
     <div className="space-y-3">
-      {/* Toolbar */}
-      <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-3">
-        <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-2">
-          <div>
-            <h2 className="font-bold text-slate-800 text-sm flex items-center gap-2">
-              <CheckSquare className="w-4 h-4 text-indigo-600" />
-              Verifikasi Rekomendasi
-            </h2>
-            <p className="text-[11px] text-slate-500 mt-0.5">
-              Setujui rekomendasi guru (yang sudah diverifikasi Kepsek) dan Kepsek binaan
-            </p>
-          </div>
-          <div className="flex flex-wrap items-center gap-2">
-            <select
-              value={filterMonth}
-              onChange={(e) => setFilterMonth(parseInt(e.target.value))}
-              className="text-xs border border-slate-300 rounded-lg px-2 py-1.5 font-semibold text-slate-700"
-            >
-              {months.map((m, i) => (
-                <option key={i} value={i}>{m}</option>
-              ))}
-            </select>
-            <select
-              value={filterYear}
-              onChange={(e) => setFilterYear(parseInt(e.target.value))}
-              className="text-xs border border-slate-300 rounded-lg px-2 py-1.5 font-semibold text-slate-700"
-            >
-              {[2025, 2026, 2027].map((y) => (
-                <option key={y} value={y}>{y}</option>
-              ))}
-            </select>
-            <button
-              onClick={loadData}
-              disabled={loading}
-              className="flex items-center gap-2 bg-slate-100 hover:bg-slate-200 px-2.5 py-1.5 rounded-lg transition-colors text-xs font-semibold text-slate-700 disabled:opacity-50"
-            >
-              {loading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <RefreshCw className="w-3.5 h-3.5" />}
-            </button>
-          </div>
-        </div>
+      {/* Toolbar tipis */}
+      <div className="flex flex-wrap items-center justify-end gap-2 px-1">
+        <select
+          value={filterMonth}
+          onChange={(e) => setFilterMonth(parseInt(e.target.value))}
+          className="text-xs border border-slate-300 rounded-lg px-2 py-1.5 font-semibold text-slate-700"
+        >
+          {months.map((m, i) => (
+            <option key={i} value={i}>{m}</option>
+          ))}
+        </select>
+        <select
+          value={filterYear}
+          onChange={(e) => setFilterYear(parseInt(e.target.value))}
+          className="text-xs border border-slate-300 rounded-lg px-2 py-1.5 font-semibold text-slate-700"
+        >
+          {[2025, 2026, 2027].map((y) => (
+            <option key={y} value={y}>{y}</option>
+          ))}
+        </select>
+        <button
+          onClick={loadData}
+          disabled={loading}
+          className="flex items-center gap-2 bg-slate-100 hover:bg-slate-200 px-2.5 py-1.5 rounded-lg transition-colors text-xs font-semibold text-slate-700 disabled:opacity-50"
+        >
+          {loading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <RefreshCw className="w-3.5 h-3.5" />}
+        </button>
       </div>
 
       {/* Statistik */}
@@ -228,8 +216,8 @@ export function Persetujuan({ profile, addNotification }: PersetujuanProps) {
           <p className="text-xl font-bold text-amber-600">{stats.readyToApprove}</p>
         </div>
         <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-3">
-          <p className="text-[10px] font-semibold text-slate-600 uppercase tracking-wide mb-0.5">Menunggu</p>
-          <p className="text-xl font-bold text-slate-600">{stats.waiting}</p>
+          <p className="text-[10px] font-semibold text-rose-600 uppercase tracking-wide mb-0.5">Ditolak</p>
+          <p className="text-xl font-bold text-rose-600">{stats.rejected}</p>
         </div>
       </div>
 

@@ -29,23 +29,20 @@ function getStatus(count: number, required: number): StatusType {
   return 'belum';
 }
 
-const statusConfig: Record<StatusType, { label: string; color: string; barColor: string; icon: any }> = {
+const statusConfig: Record<StatusType, { label: string; color: string; icon: any }> = {
   lengkap: {
     label: 'Lengkap',
     color: 'text-emerald-700 bg-emerald-50 border-emerald-200',
-    barColor: 'bg-emerald-500',
     icon: CheckCircle2,
   },
   kurang: {
     label: 'Kurang',
     color: 'text-amber-700 bg-amber-50 border-amber-200',
-    barColor: 'bg-amber-500',
     icon: AlertCircle,
   },
   belum: {
     label: 'Belum',
     color: 'text-rose-700 bg-rose-50 border-rose-200',
-    barColor: 'bg-rose-500',
     icon: XCircle,
   },
 };
@@ -58,25 +55,15 @@ export function DaftarGuruBinaan({
   const [rows, setRows] = useState<BinaanSummary[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
-  const [filter, setFilter] = useState<'all' | StatusType>('all');
-  const [sortBy, setSortBy] = useState<'name' | 'status'>('status');
 
   const now = new Date();
-  const [filterMonth, setFilterMonth] = useState<number>(getMonth(now));
-  const [filterYear, setFilterYear] = useState<number>(getYear(now));
-
-  const months = [
-    'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni',
-    'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember',
-  ];
-
   const required = useMemo(() => {
-    const start = startOfMonth(new Date(filterYear, filterMonth));
-    const end = endOfMonth(new Date(filterYear, filterMonth));
+    const start = startOfMonth(now);
+    const end = endOfMonth(now);
     return eachDayOfInterval({ start, end }).filter(
       (d) => !isWeekend(d) && !isHoliday(format(d, 'yyyy-MM-dd'))
     ).length;
-  }, [filterMonth, filterYear]);
+  }, []);
 
   const fetchData = async () => {
     setLoading(true);
@@ -99,7 +86,6 @@ export function DaftarGuruBinaan({
 
   const filtered = useMemo(() => {
     let list = [...rows];
-
     if (search.trim()) {
       const q = search.toLowerCase();
       list = list.filter(
@@ -109,83 +95,15 @@ export function DaftarGuruBinaan({
           (r.namaSekolah || r.workUnit || '').toLowerCase().includes(q)
       );
     }
-
-    if (filter !== 'all') {
-      list = list.filter((r) => getStatus(r.journalCount, required) === filter);
-    }
-
-    if (sortBy === 'name') {
-      list.sort((a, b) => a.name.localeCompare(b.name));
-    } else {
-      const order: Record<StatusType, number> = { belum: 0, kurang: 1, lengkap: 2 };
-      list.sort((a, b) => {
-        const sA = getStatus(a.journalCount, required);
-        const sB = getStatus(b.journalCount, required);
-        return order[sA] - order[sB] || a.name.localeCompare(b.name);
-      });
-    }
-
+    list.sort((a, b) => a.name.localeCompare(b.name));
     return list;
-  }, [rows, search, filter, sortBy, required]);
-
-  const stats = useMemo(() => {
-    return {
-      total: rows.length,
-      lengkap: rows.filter((r) => getStatus(r.journalCount, required) === 'lengkap').length,
-      kurang: rows.filter((r) => getStatus(r.journalCount, required) === 'kurang').length,
-      belum: rows.filter((r) => getStatus(r.journalCount, required) === 'belum').length,
-    };
-  }, [rows, required]);
+  }, [rows, search]);
 
   return (
     <div className="space-y-3">
-      {/* Statistik ringkas */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-        <button
-          onClick={() => setFilter('all')}
-          className={cn(
-            'bg-white rounded-xl border-2 shadow-sm p-3 text-left transition-all hover:shadow-md',
-            filter === 'all' ? 'border-indigo-500' : 'border-slate-200'
-          )}
-        >
-          <p className="text-[11px] font-semibold text-slate-500 uppercase tracking-wide">Total</p>
-          <p className="text-2xl font-bold text-slate-900 mt-1">{stats.total}</p>
-        </button>
-        <button
-          onClick={() => setFilter('lengkap')}
-          className={cn(
-            'bg-white rounded-xl border-2 shadow-sm p-3 text-left transition-all hover:shadow-md',
-            filter === 'lengkap' ? 'border-emerald-500' : 'border-slate-200'
-          )}
-        >
-          <p className="text-[11px] font-semibold text-emerald-600 uppercase tracking-wide">Lengkap</p>
-          <p className="text-2xl font-bold text-emerald-600 mt-1">{stats.lengkap}</p>
-        </button>
-        <button
-          onClick={() => setFilter('kurang')}
-          className={cn(
-            'bg-white rounded-xl border-2 shadow-sm p-3 text-left transition-all hover:shadow-md',
-            filter === 'kurang' ? 'border-amber-500' : 'border-slate-200'
-          )}
-        >
-          <p className="text-[11px] font-semibold text-amber-600 uppercase tracking-wide">Kurang</p>
-          <p className="text-2xl font-bold text-amber-600 mt-1">{stats.kurang}</p>
-        </button>
-        <button
-          onClick={() => setFilter('belum')}
-          className={cn(
-            'bg-white rounded-xl border-2 shadow-sm p-3 text-left transition-all hover:shadow-md',
-            filter === 'belum' ? 'border-rose-500' : 'border-slate-200'
-          )}
-        >
-          <p className="text-[11px] font-semibold text-rose-600 uppercase tracking-wide">Belum</p>
-          <p className="text-2xl font-bold text-rose-600 mt-1">{stats.belum}</p>
-        </button>
-      </div>
-
-      {/* Filter bulan + pencarian */}
+      {/* Search + Refresh */}
       <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-3">
-        <div className="flex flex-col sm:flex-row gap-2">
+        <div className="flex gap-2">
           <div className="flex-1 relative">
             <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
             <input
@@ -196,32 +114,6 @@ export function DaftarGuruBinaan({
               className="w-full pl-9 pr-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none"
             />
           </div>
-          <select
-            value={filterMonth}
-            onChange={(e) => setFilterMonth(parseInt(e.target.value))}
-            className="px-3 py-2 border border-slate-300 rounded-lg text-sm font-medium text-slate-700 focus:ring-2 focus:ring-indigo-500 outline-none"
-          >
-            {months.map((m, i) => (
-              <option key={i} value={i}>{m}</option>
-            ))}
-          </select>
-          <select
-            value={filterYear}
-            onChange={(e) => setFilterYear(parseInt(e.target.value))}
-            className="px-3 py-2 border border-slate-300 rounded-lg text-sm font-medium text-slate-700 focus:ring-2 focus:ring-indigo-500 outline-none"
-          >
-            {[2025, 2026, 2027].map((y) => (
-              <option key={y} value={y}>{y}</option>
-            ))}
-          </select>
-          <select
-            value={sortBy}
-            onChange={(e) => setSortBy(e.target.value as 'name' | 'status')}
-            className="px-3 py-2 border border-slate-300 rounded-lg text-sm font-medium text-slate-700 focus:ring-2 focus:ring-indigo-500 outline-none"
-          >
-            <option value="status">Urut: Status</option>
-            <option value="name">Urut: Nama</option>
-          </select>
           <button
             onClick={fetchData}
             disabled={loading}
@@ -233,124 +125,99 @@ export function DaftarGuruBinaan({
         </div>
       </div>
 
-      {/* Grid cards 2 kolom */}
-      {loading ? (
-        <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-12 text-center">
-          <Loader2 className="w-6 h-6 animate-spin text-indigo-600 mx-auto mb-2" />
-          <p className="text-sm text-slate-500">Memuat data...</p>
-        </div>
-      ) : rows.length === 0 ? (
-        <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-12 text-center">
-          <Users className="w-12 h-12 text-slate-300 mx-auto mb-3" />
-          <p className="font-semibold text-slate-700">Belum ada binaan</p>
-          <p className="text-xs text-slate-500 mt-2 max-w-md mx-auto">
-            Pastikan user sudah mendaftar dengan NPSN sekolah yang menjadi binaan Anda.
-          </p>
-        </div>
-      ) : filtered.length === 0 ? (
-        <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-12 text-center">
-          <Search className="w-12 h-12 text-slate-300 mx-auto mb-3" />
-          <p className="font-semibold text-slate-700">Tidak ada yang cocok</p>
-          <p className="text-xs text-slate-500 mt-1">Coba ubah filter atau kata kunci</p>
-        </div>
-      ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-          {filtered.map((r) => {
-            const status = getStatus(r.journalCount, required);
-            const cfg = statusConfig[status];
-            const Icon = cfg.icon;
-            const percent = required > 0 ? Math.round((r.journalCount / required) * 100) : 0;
-
-            return (
-              <div
-                key={r.userId}
-                className="bg-white rounded-xl border border-slate-200 shadow-sm p-3 flex flex-col gap-2.5 hover:border-indigo-300 transition-colors"
-              >
-                {/* Header: avatar + nama + jabatan */}
-                <div className="flex items-start gap-3">
-                  <div className="w-11 h-11 rounded-full bg-slate-100 flex items-center justify-center overflow-hidden shrink-0 border border-slate-200">
-                    {r.profilePhoto ? (
-                      <img src={r.profilePhoto} alt="" className="w-full h-full object-cover" />
-                    ) : (
-                      <span className="text-slate-400 font-bold text-sm">
-                        {r.name.charAt(0).toUpperCase()}
-                      </span>
-                    )}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <p className="font-semibold text-sm text-slate-800 truncate">{r.name}</p>
+      {/* Tabel 3 kolom */}
+      <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+        {loading ? (
+          <div className="p-12 text-center">
+            <Loader2 className="w-6 h-6 animate-spin text-indigo-600 mx-auto mb-2" />
+            <p className="text-sm text-slate-500">Memuat data...</p>
+          </div>
+        ) : rows.length === 0 ? (
+          <div className="p-12 text-center">
+            <Users className="w-12 h-12 text-slate-300 mx-auto mb-3" />
+            <p className="font-semibold text-slate-700">Belum ada binaan</p>
+            <p className="text-xs text-slate-500 mt-2 max-w-md mx-auto">
+              Pastikan user sudah mendaftar dengan NPSN sekolah yang menjadi binaan Anda.
+            </p>
+          </div>
+        ) : filtered.length === 0 ? (
+          <div className="p-12 text-center">
+            <Search className="w-12 h-12 text-slate-300 mx-auto mb-3" />
+            <p className="font-semibold text-slate-700">Tidak ada yang cocok</p>
+            <p className="text-xs text-slate-500 mt-1">Coba ubah kata kunci</p>
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead className="bg-slate-50 border-b border-slate-200">
+                <tr>
+                  <th className="text-left px-4 py-3 font-bold text-slate-700 text-xs uppercase tracking-wider">Nama</th>
+                  <th className="text-left px-4 py-3 font-bold text-slate-700 text-xs uppercase tracking-wider">Sekolah</th>
+                  <th className="text-center px-4 py-3 font-bold text-slate-700 text-xs uppercase tracking-wider">Jabatan</th>
+                  <th className="text-center px-4 py-3 font-bold text-slate-700 text-xs uppercase tracking-wider">Aksi</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100">
+                {filtered.map((r) => (
+                  <tr key={r.userId} className="hover:bg-slate-50 transition-colors">
+                    <td className="px-4 py-3">
+                      <div className="flex items-center gap-2.5">
+                        <div className="w-9 h-9 rounded-full bg-slate-100 flex items-center justify-center overflow-hidden shrink-0 border border-slate-200">
+                          {r.profilePhoto ? (
+                            <img src={r.profilePhoto} alt="" className="w-full h-full object-cover" />
+                          ) : (
+                            <span className="text-slate-400 font-bold text-xs">
+                              {r.name.charAt(0).toUpperCase()}
+                            </span>
+                          )}
+                        </div>
+                        <div className="min-w-0">
+                          <p className="font-semibold text-slate-800 truncate">{r.name}</p>
+                          <p className="text-[10px] text-slate-500 truncate font-mono">
+                            NIP {r.nip || '-'}
+                          </p>
+                        </div>
+                      </div>
+                    </td>
+                    <td className="px-4 py-3 text-xs">
+                      <p className="font-medium text-slate-700 truncate max-w-[260px]">
+                        {r.namaSekolah || r.workUnit || '-'}
+                      </p>
+                      {r.npsn && (
+                        <p className="text-[10px] text-slate-400 font-mono">NPSN {r.npsn}</p>
+                      )}
+                    </td>
+                    <td className="px-4 py-3 text-center">
                       {r.role === 'kepala_sekolah' ? (
-                        <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[9px] font-bold bg-purple-50 text-purple-700 border border-purple-200 shrink-0">
-                          <UserCheck className="w-2.5 h-2.5" /> Kepsek
+                        <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-bold bg-purple-50 text-purple-700 border border-purple-200">
+                          <UserCheck className="w-3 h-3" /> Kepala Sekolah
                         </span>
                       ) : (
-                        <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-[9px] font-bold bg-blue-50 text-blue-700 border border-blue-200 shrink-0">
+                        <span className="inline-flex items-center px-2.5 py-1 rounded-full text-[10px] font-bold bg-blue-50 text-blue-700 border border-blue-200">
                           Guru
                         </span>
                       )}
-                    </div>
-                    <p className="text-[11px] text-slate-500 font-mono truncate mt-0.5">
-                      NIP {r.nip || '-'}
-                    </p>
-                  </div>
-                </div>
-
-                {/* Sekolah */}
-                <div className="px-2.5 py-1.5 bg-slate-50 rounded-lg border border-slate-100">
-                  <p className="text-[11px] font-semibold text-slate-700 truncate">
-                    {r.namaSekolah || r.workUnit || '-'}
-                  </p>
-                  {r.npsn && (
-                    <p className="text-[10px] text-slate-400 font-mono">NPSN {r.npsn}</p>
-                  )}
-                </div>
-
-                {/* Progress + Status */}
-                <div className="flex items-center gap-2">
-                  <div className="flex-1">
-                    <div className="flex items-baseline justify-between gap-2 mb-1">
-                      <span className="text-[10px] text-slate-500">
-                        {r.journalCount}/{required} hari
-                      </span>
-                      <span className={cn('text-xs font-bold', cfg.barColor.replace('bg-', 'text-'))}>
-                        {percent}%
-                      </span>
-                    </div>
-                    <div className="w-full h-1.5 bg-slate-100 rounded-full overflow-hidden">
-                      <div
-                        className={cn('h-full transition-all', cfg.barColor)}
-                        style={{ width: `${percent}%` }}
-                      />
-                    </div>
-                  </div>
-                  <span
-                    className={cn(
-                      'inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold border shrink-0',
-                      cfg.color
-                    )}
-                  >
-                    <Icon className="w-2.5 h-2.5" />
-                    {cfg.label}
-                  </span>
-                </div>
-
-                {/* Aksi */}
-                <button
-                  onClick={() => {
-                    addNotification(`Membuka verifikasi ${r.name}...`, 'success');
-                    onNavigate('pw_approve');
-                  }}
-                  className="w-full inline-flex items-center justify-center gap-1 px-3 py-1.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 text-xs font-semibold rounded-lg transition-colors"
-                >
-                  <Eye className="w-3.5 h-3.5" />
-                  Verifikasi Rekomendasi
-                </button>
-              </div>
-            );
-          })}
-        </div>
-      )}
+                    </td>
+                    <td className="px-4 py-3 text-center">
+                      <button
+                        onClick={() => {
+                          addNotification(`Membuka verifikasi ${r.name}...`, 'success');
+                          onNavigate('pw_approve');
+                        }}
+                        className="inline-flex items-center gap-1 px-3 py-1.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 text-xs font-semibold rounded-lg transition-colors"
+                        title="Verifikasi Rekomendasi"
+                      >
+                        <Eye className="w-3.5 h-3.5" />
+                        Verifikasi
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
     </div>
   );
 }
