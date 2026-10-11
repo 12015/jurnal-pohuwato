@@ -570,7 +570,22 @@ export interface PendingVerification {
 export async function getPendingVerificationsForKepsek(
   workUnitBina: string
 ): Promise<PendingVerification[]> {
-  // Ambil semua guru di sekolah tersebut
+  // 0. Ambil dulu daftar user_id yang role-nya 'guru' saja
+  //    (exclude kepsek, pengawas, dll)
+  const { data: guruProfiles, error: pErr } = await supabase
+    .from('profiles')
+    .select('id')
+    .eq('role', 'guru');
+
+  if (pErr) {
+    console.error('getPendingVerifications profiles:', pErr);
+    return [];
+  }
+
+  const guruProfileIds = new Set((guruProfiles || []).map((p) => p.id));
+  if (guruProfileIds.size === 0) return [];
+
+  // 1. Ambil teachers yang work_unit-nya sama
   const { data: teachers, error: tErr } = await supabase
     .from('teachers')
     .select('user_id, name, nip, position, work_unit');
@@ -580,22 +595,19 @@ export async function getPendingVerificationsForKepsek(
     return [];
   }
 
-  const guruIds = new Set(
-    (teachers || [])
-      .filter(
-        (t) => (t.work_unit || '').toLowerCase().trim() === workUnitBina.toLowerCase().trim()
-      )
-      .map((t) => t.user_id)
+  // 2. Filter: work_unit sama DAN role-nya 'guru'
+  const matchedTeachers = (teachers || []).filter(
+    (t) =>
+      (t.work_unit || '').toLowerCase().trim() === workUnitBina.toLowerCase().trim() &&
+      guruProfileIds.has(t.user_id)
   );
 
-  if (guruIds.size === 0) return [];
+  if (matchedTeachers.length === 0) return [];
 
-  const teacherMap = new Map(
-    (teachers || [])
-      .filter((t) => guruIds.has(t.user_id))
-      .map((t) => [t.user_id, t])
-  );
+  const guruIds = new Set(matchedTeachers.map((t) => t.user_id));
+  const teacherMap = new Map(matchedTeachers.map((t) => [t.user_id, t]));
 
+  // 3. Ambil verifications
   const { data: verifs, error: vErr } = await supabase
     .from('verifications')
     .select('*')
