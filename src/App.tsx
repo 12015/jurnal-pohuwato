@@ -1240,8 +1240,8 @@ async function downloadJurnalPDF(
       format: paperDims,
     });
 
-    const pageW = 330;
-    const pageH = 215;
+    const pageW = paperSize === 'A4' ? 297 : 330;
+    const pageH = paperSize === 'A4' ? 210 : 215;
     const marginL = 10;
     const marginR = 10;
     const marginT = 20;
