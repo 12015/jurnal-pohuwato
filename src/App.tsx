@@ -54,7 +54,6 @@ import { supabase } from './lib/supabase';
 import { Sidebar } from './components/Sidebar';
 import { PlaceholderPage } from './components/PlaceholderPage';
 import { DashboardGuru } from './pages/guru/DashboardGuru';
-import { RiwayatJurnal } from './pages/guru/RiwayatJurnal';
 import { DashboardPengawas } from './pages/pengawas/DashboardPengawas';
 import { DaftarGuruBinaan } from './pages/pengawas/DaftarGuruBinaan';
 import { DashboardKepsek } from './pages/kepsek/DashboardKepsek';
@@ -218,7 +217,6 @@ const tabTitles: Record<TabKey, string> = {
   profile: 'Profil',
   journal: 'Jurnal Kegiatan Harian',
   preview: 'Preview Dokumen',
-  history: 'Riwayat Jurnal',
   pw_dashboard: 'Dashboard Pengawas',
   pw_teachers: 'Daftar Guru Binaan',
   pw_verify: 'Verifikasi Jurnal',
@@ -231,7 +229,6 @@ const tabTitles: Record<TabKey, string> = {
   ks_preview: 'Preview Dokumen',
   ks_sptjm: 'SPTJM Sekolah',
   ks_journal: 'Input Jurnal',
-  ks_journal_history: 'Riwayat Jurnal',
 };
 function AppContent({
   user: _user,
@@ -464,16 +461,6 @@ const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
                 </motion.div>
               )}
 
-              {activeTab === 'ks_journal_history' && (
-                <motion.div key="ks_journal_history" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }}>
-                  <RiwayatJurnal
-                    journals={journals}
-                    onNavigate={setActiveTab}
-                    onDelete={handleDeleteJournal}
-                  />
-                </motion.div>
-              )}
-
                                           {activeTab === 'dashboard' && (
                 <motion.div key="dashboard" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }}>
                   <DashboardGuru
@@ -481,16 +468,6 @@ const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
                     journals={journals}
                     approvals={approvals}
                     onNavigate={setActiveTab}
-                  />
-                </motion.div>
-              )}
-
-              {activeTab === 'history' && (
-                <motion.div key="history" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }}>
-                  <RiwayatJurnal
-                    journals={journals}
-                    onNavigate={setActiveTab}
-                    onDelete={handleDeleteJournal}
                   />
                 </motion.div>
               )}

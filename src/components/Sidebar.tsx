@@ -41,7 +41,6 @@ const guruSections: MenuSection[] = [
     title: 'DOKUMEN',
     items: [
       { key: 'preview', label: 'Preview & Cetak', icon: <Eye className="w-5 h-5" /> },
-      { key: 'history', label: 'Riwayat Jurnal', icon: <History className="w-5 h-5" /> },
     ],
   },
 ];
@@ -67,7 +66,6 @@ const kepsekSections: MenuSection[] = [
     title: 'DOKUMEN',
     items: [
       { key: 'ks_preview', label: 'Preview & Cetak', icon: <Eye className="w-5 h-5" /> },
-      { key: 'ks_journal_history', label: 'Riwayat Jurnal', icon: <History className="w-5 h-5" /> },
       { key: 'ks_sptjm', label: 'SPTJM Sekolah', icon: <FileSpreadsheet className="w-5 h-5" /> },
     ],
   },

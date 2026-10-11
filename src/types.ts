@@ -98,7 +98,6 @@ export type TabKey =
   | 'profile'
   | 'journal'
   | 'preview'
-  | 'history'
   | 'pw_dashboard'
   | 'pw_teachers'
   | 'pw_verify'
@@ -109,7 +108,6 @@ export type TabKey =
   | 'ks_teachers'
   | 'ks_history'
   | 'ks_journal'
-  | 'ks_journal_history'
   | 'ks_preview'
   | 'ks_sptjm'
 ;
