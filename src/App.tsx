@@ -59,7 +59,6 @@ import { DaftarGuruBinaan } from './pages/pengawas/DaftarGuruBinaan';
 import { DashboardKepsek } from './pages/kepsek/DashboardKepsek';
 import { AntrianVerifikasi } from './pages/kepsek/AntrianVerifikasi';
 import { SPTJMSekolah } from './pages/kepsek/SPTJMSekolah';
-import { VerifikasiJurnal } from './pages/pengawas/VerifikasiJurnal';
 import { Persetujuan } from './pages/pengawas/Persetujuan';
 import { RiwayatRekomendasi } from './pages/pengawas/RiwayatRekomendasi';
 import type { TabKey } from './types';
@@ -219,7 +218,6 @@ const tabTitles: Record<TabKey, string> = {
   preview: 'Preview Dokumen',
   pw_dashboard: 'Dashboard Pengawas',
   pw_teachers: 'Daftar Guru Binaan',
-  pw_verify: 'Verifikasi Jurnal',
   pw_approve: 'Verifikasi Rekomendasi',
   pw_rec_history: 'Riwayat Rekomendasi',
   ks_dashboard: 'Dashboard Kepala Sekolah',
@@ -488,15 +486,6 @@ const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
                   <DaftarGuruBinaan
                     profile={profile}
                     onNavigate={setActiveTab}
-                    addNotification={addNotification}
-                  />
-                </motion.div>
-              )}
-
-              {activeTab === 'pw_verify' && profile && (
-                <motion.div key="pw_verify" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }}>
-                  <VerifikasiJurnal
-                    profile={profile}
                     addNotification={addNotification}
                   />
                 </motion.div>

@@ -100,7 +100,6 @@ export type TabKey =
   | 'preview'
   | 'pw_dashboard'
   | 'pw_teachers'
-  | 'pw_verify'
   | 'pw_approve'
   | 'pw_rec_history'
   | 'ks_dashboard'

@@ -364,7 +364,7 @@ export function DaftarGuruBinaan({
                         <button
                           onClick={() => {
                             addNotification(`Detail verifikasi ${g.name} - segera hadir`, 'success');
-                            onNavigate('pw_verify');
+                            onNavigate('pw_approve');
                           }}
                           className="inline-flex items-center gap-1 px-3 py-1.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 text-xs font-semibold rounded-lg transition-colors"
                           title="Verifikasi Jurnal"
