@@ -20,7 +20,6 @@ export function DaftarGuruBinaan({
   profile,
   addNotification,
 }: DaftarGuruBinaanProps) {
-  void onNavigate;
   const [rows, setRows] = useState<BinaanSummary[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
