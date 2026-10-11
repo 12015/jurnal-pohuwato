@@ -9,6 +9,7 @@ import {
   getPendingVerificationsForKepsek,
   approveKepsek,
   rejectKepsek,
+  resetKepsekStatus,
   getJournalsByUser,
   type PendingVerification,
 } from '../../lib/db';
@@ -47,6 +48,7 @@ export function AntrianVerifikasi({ profile, addNotification }: AntrianVerifikas
 
   const [rejectTarget, setRejectTarget] = useState<PendingVerification | null>(null);
   const [rejectNote, setRejectNote] = useState('');
+  const [resetTarget, setResetTarget] = useState<PendingVerification | null>(null);
 
   const [processing, setProcessing] = useState<string | null>(null);
 
@@ -109,6 +111,28 @@ export function AntrianVerifikasi({ profile, addNotification }: AntrianVerifikas
     } catch (e) {
       console.error(e);
       addNotification('Gagal: ' + (e as Error).message, 'error');
+    } finally {
+      setProcessing(null);
+    }
+  };
+
+  const handleReset = async () => {
+    if (!resetTarget) return;
+    setProcessing(resetTarget.id);
+    try {
+      await resetKepsekStatus(resetTarget.id);
+      addNotification(`Keputusan ${resetTarget.guruName} direset ke Menunggu`, 'success');
+      setPending((prev) =>
+        prev.map((p) =>
+          p.id === resetTarget.id
+            ? { ...p, kepsekStatus: 'pending' as const, kepsekNote: undefined }
+            : p
+        )
+      );
+      setResetTarget(null);
+    } catch (e) {
+      console.error(e);
+      addNotification('Gagal reset: ' + (e as Error).message, 'error');
     } finally {
       setProcessing(null);
     }
@@ -301,6 +325,22 @@ export function AntrianVerifikasi({ profile, addNotification }: AntrianVerifikas
                               </button>
                             </>
                           )}
+                          {!isPending && v.pengawasStatus !== 'approved' && (
+                            <button
+                              onClick={() => setResetTarget(v)}
+                              disabled={processing === v.id}
+                              className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-[11px] font-semibold bg-amber-50 hover:bg-amber-100 text-amber-700 transition-colors disabled:opacity-40"
+                              title="Kembalikan ke Menunggu"
+                            >
+                              <RefreshCw className="w-3.5 h-3.5" />
+                              Batalkan
+                            </button>
+                          )}
+                          {!isPending && v.pengawasStatus === 'approved' && (
+                            <span className="inline-flex items-center px-2 py-1 rounded-lg text-[10px] font-semibold bg-slate-100 text-slate-500">
+                              🔒 Final
+                            </span>
+                          )}
                         </div>
                       </td>
                     </tr>
@@ -377,6 +417,62 @@ export function AntrianVerifikasi({ profile, addNotification }: AntrianVerifikas
                   ))}
                 </div>
               )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal RESET */}
+      {resetTarget && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 backdrop-blur-sm p-4">
+          <div className="bg-white rounded-2xl p-5 max-w-md w-full shadow-2xl border border-slate-200 space-y-3">
+            <div className="flex items-start gap-3">
+              <div className="w-10 h-10 rounded-full bg-amber-100 text-amber-600 flex items-center justify-center shrink-0">
+                <RefreshCw className="w-5 h-5" />
+              </div>
+              <div className="flex-1">
+                <h4 className="font-bold text-slate-800 text-sm">Batalkan Keputusan?</h4>
+                <p className="text-xs text-slate-600 mt-0.5">
+                  {resetTarget.guruName} — {parsePeriodKey(resetTarget.periodKey)}
+                </p>
+              </div>
+              <button
+                onClick={() => setResetTarget(null)}
+                className="p-1 hover:bg-slate-100 rounded-lg transition-colors"
+              >
+                <X className="w-4 h-4 text-slate-500" />
+              </button>
+            </div>
+
+            <div className="p-3 bg-amber-50 border border-amber-200 rounded-lg">
+              <p className="text-xs text-amber-800 leading-relaxed">
+                Status verifikasi akan dikembalikan ke <strong>Menunggu</strong>.
+                Anda dapat memverifikasi ulang (Tolak/Approve) setelah ini.
+              </p>
+              <p className="text-[11px] text-amber-700 mt-1.5">
+                ⚠️ Keputusan ini tidak bisa dibatalkan setelah Pengawas menyetujui.
+              </p>
+            </div>
+
+            <div className="flex justify-end gap-2 pt-2 border-t border-slate-100">
+              <button
+                onClick={() => setResetTarget(null)}
+                className="px-3.5 py-1.5 rounded-lg text-xs font-semibold text-slate-600 hover:bg-slate-100 transition-colors"
+              >
+                Batal
+              </button>
+              <button
+                onClick={handleReset}
+                disabled={processing === resetTarget.id}
+                className="px-3.5 py-1.5 rounded-lg text-xs font-semibold bg-amber-600 hover:bg-amber-700 disabled:opacity-50 text-white transition-colors flex items-center gap-1.5"
+              >
+                {processing === resetTarget.id ? (
+                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                ) : (
+                  <RefreshCw className="w-3.5 h-3.5" />
+                )}
+                Ya, Batalkan
+              </button>
             </div>
           </div>
         </div>

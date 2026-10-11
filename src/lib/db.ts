@@ -1083,3 +1083,23 @@ export async function rejectPengawasApproval(
   // Hapus dari approval list
   await setApprovalForUser(guruId, periodKey, false);
 }
+
+
+// ============ KEPSEK: batalkan keputusan verifikasi ============
+
+export async function resetKepsekStatus(
+  verificationId: string
+): Promise<void> {
+  const { error } = await supabase
+    .from('verifications')
+    .update({
+      kepsek_status: 'pending',
+      kepsek_verified_by: null,
+      kepsek_verified_at: null,
+      kepsek_note: null,
+      is_locked: false,
+      updated_at: new Date().toISOString(),
+    })
+    .eq('id', verificationId);
+  if (error) throw error;
+}
