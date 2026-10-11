@@ -913,3 +913,35 @@ export async function getPengawasSekolah(
     namaSekolah: nameMap.get(npsn) || `NPSN ${npsn}`,
   }));
 }
+
+
+// ============ LOOKUP SEKOLAH DARI NPSN ============
+
+export async function lookupSekolahByNpsn(
+  npsnList: string[]
+): Promise<{ npsn: string; namaSekolah: string }[]> {
+  const cleanList = npsnList.map((n) => n.trim()).filter((n) => n.length > 0);
+  if (cleanList.length === 0) return [];
+
+  const { data, error } = await supabase
+    .from('teachers')
+    .select('npsn, work_unit')
+    .in('npsn', cleanList);
+
+  if (error) {
+    console.error('lookupSekolahByNpsn:', error);
+    return cleanList.map((npsn) => ({ npsn, namaSekolah: `NPSN ${npsn}` }));
+  }
+
+  const nameMap = new Map<string, string>();
+  (data || []).forEach((t: any) => {
+    if (t.npsn && t.work_unit && !nameMap.has(t.npsn)) {
+      nameMap.set(t.npsn, t.work_unit);
+    }
+  });
+
+  return cleanList.map((npsn) => ({
+    npsn,
+    namaSekolah: nameMap.get(npsn) || `NPSN ${npsn} (tidak ditemukan)`,
+  }));
+}

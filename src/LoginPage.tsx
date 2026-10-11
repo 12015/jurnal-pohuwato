@@ -1,6 +1,7 @@
-import { useState } from 'react';
-import { Loader2, LogIn, UserPlus } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { Loader2, LogIn, UserPlus, CheckCircle2, AlertCircle, School } from 'lucide-react';
 import { useAuth } from './hooks/useAuth';
+import { lookupSekolahByNpsn } from './lib/db';
 
 type RegisterMode = 'guru' | 'pejabat';
 
@@ -14,10 +15,11 @@ export function LoginPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirm, setConfirm] = useState('');
-  const [workUnitBina, setWorkUnitBina] = useState('');
   const [npsnBina, setNpsnBina] = useState('');
   const [npsnBinaText, setNpsnBinaText] = useState('');
   const [inviteCode, setInviteCode] = useState('');
+  const [lookupResult, setLookupResult] = useState<{ npsn: string; namaSekolah: string }[]>([]);
+  const [lookingUp, setLookingUp] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [info, setInfo] = useState('');
@@ -38,10 +40,42 @@ export function LoginPage() {
     setMode('register');
     setRegisterAs(as);
     setInviteCode('');
-    setWorkUnitBina('');
     setNpsnBina('');
     setNpsnBinaText('');
+    setLookupResult([]);
     resetMessages();
+  };
+
+  // Reset lookup ketika input berubah
+  useEffect(() => {
+    setLookupResult([]);
+  }, [npsnBina, npsnBinaText, isKepsek]);
+
+  const doLookup = async () => {
+    const list = isKepsek
+      ? npsnBina.trim()
+        ? [npsnBina.trim()]
+        : []
+      : npsnBinaText
+          .split(/[\n,;]+/)
+          .map((s) => s.trim())
+          .filter((s) => s.length > 0);
+
+    if (list.length === 0) {
+      setLookupResult([]);
+      return;
+    }
+
+    setLookingUp(true);
+    try {
+      const result = await lookupSekolahByNpsn(list);
+      setLookupResult(result);
+    } catch (e) {
+      console.error(e);
+      setLookupResult([]);
+    } finally {
+      setLookingUp(false);
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -54,7 +88,6 @@ export function LoginPage() {
         return;
       }
 
-      // ==== REGISTER ====
       if (password.length < 6) throw new Error('Password minimal 6 karakter');
       if (password !== confirm) throw new Error('Konfirmasi password tidak cocok');
 
@@ -68,8 +101,6 @@ export function LoginPage() {
       }
 
       // ==== REGISTER PEJABAT ====
-      if (!workUnitBina.trim()) throw new Error('Unit Kerja wajib diisi');
-
       const targetRole = isKepsek ? 'kepala_sekolah' : 'pengawas';
       const expectedCode = targetRole === 'kepala_sekolah' ? INVITE_KEPSEK : INVITE_PENGAWAS;
 
@@ -88,9 +119,20 @@ export function LoginPage() {
           .map((s) => s.trim())
           .filter((s) => s.length > 0);
         if (npsnList.length === 0) throw new Error('Isi minimal 1 NPSN sekolah binaan');
+        if (npsnList.length > 5) throw new Error('Maksimal 5 sekolah binaan');
         const invalid = npsnList.find((n) => !/^\d{8}$/.test(n));
         if (invalid) throw new Error(`NPSN "${invalid}" tidak valid (harus 8 digit angka)`);
       }
+
+      // Auto-generate workUnitBina dari hasil lookup atau fallback
+      const finalLookup = lookupResult.length > 0
+        ? lookupResult
+        : await lookupSekolahByNpsn(npsnList);
+
+      const workUnitBina = finalLookup
+        .map((r) => r.namaSekolah)
+        .filter((n) => n && !n.includes('tidak ditemukan'))
+        .join(', ') || (isKepsek ? `NPSN ${npsnList[0]}` : `Binaan ${npsnList.length} sekolah`);
 
       await signUp(email.trim(), password, targetRole, workUnitBina.trim(), npsnList);
 
@@ -99,9 +141,9 @@ export function LoginPage() {
       setPassword('');
       setConfirm('');
       setInviteCode('');
-      setWorkUnitBina('');
       setNpsnBina('');
       setNpsnBinaText('');
+      setLookupResult([]);
     } catch (err) {
       setError((err as Error).message || 'Terjadi kesalahan');
     } finally {
@@ -215,23 +257,6 @@ export function LoginPage() {
                 </p>
               </div>
 
-              <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1.5">
-                  {isKepsek ? 'UNIT KERJA SEKOLAH' : 'UNIT KERJA YANG DIBINA'}
-                </label>
-                <input
-                  type="text"
-                  required
-                  value={workUnitBina}
-                  onChange={(e) => setWorkUnitBina(e.target.value)}
-                  placeholder="SMP Negeri 1 Randangan"
-                  className="w-full px-3 py-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none text-sm"
-                />
-                <p className="text-[11px] text-slate-500 mt-1">
-                  Hanya untuk tampilan.
-                </p>
-              </div>
-
               {isKepsek ? (
                 <div>
                   <label className="block text-xs font-semibold text-slate-700 mb-1.5">
@@ -244,11 +269,12 @@ export function LoginPage() {
                     maxLength={8}
                     value={npsnBina}
                     onChange={(e) => setNpsnBina(e.target.value.replace(/\D/g, ''))}
+                    onBlur={doLookup}
                     placeholder="40500733"
                     className="w-full px-3 py-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none text-sm font-mono"
                   />
                   <p className="text-[11px] text-slate-500 mt-1">
-                    NPSN sekolah (8 digit). Guru dengan NPSN ini akan masuk daftar verifikasi Anda.
+                    NPSN sekolah (8 digit). Sistem akan mencari nama sekolah secara otomatis.
                   </p>
                 </div>
               ) : (
@@ -261,12 +287,45 @@ export function LoginPage() {
                     rows={4}
                     value={npsnBinaText}
                     onChange={(e) => setNpsnBinaText(e.target.value)}
+                    onBlur={doLookup}
                     placeholder={'40500733\n40401234\n40405678'}
                     className="w-full px-3 py-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none text-sm font-mono resize-none"
                   />
                   <p className="text-[11px] text-slate-500 mt-1">
-                    Satu NPSN per baris (8 digit). Maksimal 5 sekolah. Bisa pisah dengan koma atau titik-koma.
+                    Satu NPSN per baris (8 digit). Maksimal 5 sekolah.
                   </p>
+                </div>
+              )}
+
+              {/* Preview hasil lookup */}
+              {(lookingUp || lookupResult.length > 0) && (
+                <div className="p-3 bg-slate-50 border border-slate-200 rounded-lg space-y-1.5">
+                  <div className="flex items-center gap-1.5 text-[11px] font-semibold text-slate-600 uppercase tracking-wide">
+                    <School className="w-3.5 h-3.5" />
+                    Sekolah Terdeteksi
+                    {lookingUp && <Loader2 className="w-3 h-3 animate-spin ml-1" />}
+                  </div>
+                  {lookupResult.map((r) => {
+                    const notFound = r.namaSekolah.includes('tidak ditemukan');
+                    return (
+                      <div
+                        key={r.npsn}
+                        className={`flex items-start gap-2 text-xs ${
+                          notFound ? 'text-amber-700' : 'text-slate-700'
+                        }`}
+                      >
+                        {notFound ? (
+                          <AlertCircle className="w-3.5 h-3.5 shrink-0 mt-0.5" />
+                        ) : (
+                          <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 shrink-0 mt-0.5" />
+                        )}
+                        <div className="min-w-0">
+                          <p className="font-mono text-[10px] text-slate-500">{r.npsn}</p>
+                          <p className="font-medium">{r.namaSekolah}</p>
+                        </div>
+                      </div>
+                    );
+                  })}
                 </div>
               )}
             </>
