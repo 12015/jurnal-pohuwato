@@ -8,8 +8,7 @@ import {
   getMonth, getYear,
 } from 'date-fns';
 import {
-  getAllBinaan, getJournalsByUser, getApprovalsByUser, setApprovalForUser,
-  getVerificationStatus,
+  getAllBinaan, setApprovalForUser, getBatchBinaanStats,
   type BinaanSummary,
 } from '../../lib/db';
 import type { UserProfile } from '../../types';
@@ -60,40 +59,31 @@ export function Persetujuan({ profile, addNotification }: PersetujuanProps) {
       const binaan = await getAllBinaan(profile.npsnBinaList || []);
       const monthKey = `m-${filterMonth}-${filterYear}`;
 
-      const enriched: BinaanApprovalRow[] = await Promise.all(
-        binaan.map(async (b) => {
-          const [journals, approvals, verification] = await Promise.all([
-            getJournalsByUser(b.userId, filterMonth, filterYear),
-            getApprovalsByUser(b.userId),
-            getVerificationStatus(b.userId, monthKey),
-          ]);
+      const userIds = binaan.map((b) => b.userId);
+      const statsMap = await getBatchBinaanStats(userIds, filterMonth, filterYear);
 
-          const filledCount = journals.length;
-          const percent = required > 0 ? Math.round((filledCount / required) * 100) : 0;
-          const eligible = percent >= 80;
-          const approved = approvals.includes(monthKey);
+      const enriched: BinaanApprovalRow[] = binaan.map((b) => {
+        const stats = statsMap.get(b.userId);
+        const filledCount = stats?.journalCount || 0;
+        const percent = required > 0 ? Math.round((filledCount / required) * 100) : 0;
+        const eligible = percent >= 80;
+        const approved = stats?.approved || false;
+        const kepsekStatus = stats?.kepsekStatus || 'pending';
+        const pengawasStatus = stats?.pengawasStatus || 'pending';
+        const hasSubmitted = kepsekStatus === 'approved' || pengawasStatus === 'approved';
 
-          const kepsekStatus: 'pending' | 'approved' | 'rejected' =
-            (verification?.kepsekStatus as 'pending' | 'approved' | 'rejected') || 'pending';
-
-          const pengawasStatus: 'pending' | 'approved' | 'rejected' =
-            (verification?.pengawasStatus as 'pending' | 'approved' | 'rejected') || 'pending';
-
-          const hasSubmitted = !!verification?.guruSubmittedAt;
-
-          return {
-            ...b,
-            filledCount,
-            percent,
-            eligible,
-            approved,
-            kepsekStatus,
-            kepsekApproved: kepsekStatus === 'approved',
-            hasSubmitted,
-            pengawasStatus,
-          };
-        })
-      );
+        return {
+          ...b,
+          filledCount,
+          percent,
+          eligible,
+          approved,
+          kepsekStatus,
+          kepsekApproved: kepsekStatus === 'approved',
+          hasSubmitted,
+          pengawasStatus,
+        };
+      });
       setRows(enriched);
     } catch (e) {
       console.error(e);

@@ -948,3 +948,85 @@ export async function lookupSekolahByNpsn(
     return { npsn, namaSekolah: `NPSN ${npsn} (tidak ditemukan)` };
   });
 }
+
+
+// ============ BATCH: statistik binaan (untuk Persetujuan / Dashboard) ============
+
+export interface BatchBinaanStats {
+  userId: string;
+  journalCount: number;
+  approved: boolean;
+  kepsekStatus: 'pending' | 'approved' | 'rejected';
+  pengawasStatus: 'pending' | 'approved' | 'rejected';
+}
+
+/**
+ * Ambil statistik batch untuk N user sekaligus (1 bulan tertentu).
+ * Menggantikan N+1 query — dari 3×N query jadi 3 query total.
+ */
+export async function getBatchBinaanStats(
+  userIds: string[],
+  monthIdx: number,
+  year: number
+): Promise<Map<string, BatchBinaanStats>> {
+  if (userIds.length === 0) return new Map();
+
+  const monthKey = `m-${monthIdx}-${year}`;
+  const start = format(startOfMonth(new Date(year, monthIdx)), 'yyyy-MM-dd');
+  const end = format(endOfMonth(new Date(year, monthIdx)), 'yyyy-MM-dd');
+
+  const [journalsRes, approvalsRes, verifsRes] = await Promise.all([
+    supabase
+      .from('journals')
+      .select('user_id')
+      .in('user_id', userIds)
+      .gte('date', start)
+      .lte('date', end),
+    supabase
+      .from('approvals')
+      .select('user_id, period_key, approved')
+      .in('user_id', userIds)
+      .eq('period_key', monthKey)
+      .eq('approved', true),
+    supabase
+      .from('verifications')
+      .select('guru_id, kepsek_status, pengawas_status')
+      .in('guru_id', userIds)
+      .eq('period_key', monthKey),
+  ]);
+
+  // Hitung jumlah journal per user
+  const journalMap = new Map<string, number>();
+  (journalsRes.data || []).forEach((j: any) => {
+    journalMap.set(j.user_id, (journalMap.get(j.user_id) || 0) + 1);
+  });
+
+  // Set user yang sudah di-approve bulan ini
+  const approvalSet = new Set<string>();
+  (approvalsRes.data || []).forEach((a: any) => {
+    if (a.approved) approvalSet.add(a.user_id);
+  });
+
+  // Map status verifikasi
+  const verifMap = new Map<string, { kepsek: any; pengawas: any }>();
+  (verifsRes.data || []).forEach((v: any) => {
+    verifMap.set(v.guru_id, {
+      kepsek: v.kepsek_status || 'pending',
+      pengawas: v.pengawas_status || 'pending',
+    });
+  });
+
+  const result = new Map<string, BatchBinaanStats>();
+  userIds.forEach((uid) => {
+    const v = verifMap.get(uid);
+    result.set(uid, {
+      userId: uid,
+      journalCount: journalMap.get(uid) || 0,
+      approved: approvalSet.has(uid),
+      kepsekStatus: (v?.kepsek || 'pending') as 'pending' | 'approved' | 'rejected',
+      pengawasStatus: (v?.pengawas || 'pending') as 'pending' | 'approved' | 'rejected',
+    });
+  });
+
+  return result;
+}
