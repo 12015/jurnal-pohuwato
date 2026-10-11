@@ -62,7 +62,7 @@ import { SPTJMSekolah } from './pages/kepsek/SPTJMSekolah';
 import { Persetujuan } from './pages/pengawas/Persetujuan';
 import type { TabKey } from './types';
 import { TopBar } from './components/TopBar';
-import { getVerificationStatus, getKepsekSignature, getPengawasSignature } from './lib/db';
+import { getVerificationStatus, getKepsekSignature, getPengawasSignature, getPengawasSekolah } from './lib/db';
 import { submitKepsekJournal } from './lib/db';
 
 // --- Components ---
@@ -529,7 +529,7 @@ const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, y: -20 }}
                 >
-                  <ProfileForm data={teacher} onSave={handleSaveTeacher} role={role} />
+                  <ProfileForm data={teacher} onSave={handleSaveTeacher} role={role} profile={profile} />
                 </motion.div>
               )}
 
@@ -691,16 +691,27 @@ function ProfileForm({
   data,
   onSave,
   role = 'guru',
+  profile,
 }: {
   data: TeacherData;
   onSave: (d: TeacherData) => void;
   role?: 'guru' | 'kepala_sekolah' | 'pengawas';
+  profile?: import('./types').UserProfile | null;
 }) {
   const [form, setForm] = useState<TeacherData>(data);
+  const [sekolahList, setSekolahList] = useState<{ npsn: string; namaSekolah?: string }[]>([]);
 
   useEffect(() => {
     setForm(data);
   }, [data]);
+
+  // Khusus pengawas: load daftar sekolah binaan
+  useEffect(() => {
+    if (role !== 'pengawas' || !profile?.id) return;
+    getPengawasSekolah(profile.id)
+      .then(setSekolahList)
+      .catch((e) => console.error('getPengawasSekolah:', e));
+  }, [role, profile?.id]);
 
   const isPengawas = role === 'pengawas';
   const isKepsek = role === 'kepala_sekolah';
@@ -739,21 +750,6 @@ function ProfileForm({
             )}
           </div>
 
-          {/* TTD & Cap - pindah ke kolom kiri */}
-          {(isKepsek || isPengawas) && (
-            <div className="p-3.5 sm:p-4 bg-amber-50/60 rounded-xl border border-amber-100 space-y-2.5">
-              <h4 className="text-xs sm:text-sm font-bold text-amber-900 flex items-center gap-1.5 uppercase tracking-wide">
-                <ShieldCheck className="w-4 h-4 text-amber-600" /> TANDA TANGAN &amp; CAP DIGITAL
-              </h4>
-              <LogoUploader
-                label="Scan TTD + Cap"
-                value={form.signatureStampImage}
-                onChange={(val) => setForm({ ...form, signatureStampImage: val })}
-                hint="Gabung TTD & cap dalam 1 gambar"
-              />
-            </div>
-          )}
-
         </div>
 
         {/* Kolom KANAN: Foto + Logo + Pejabat */}
@@ -770,6 +766,21 @@ function ProfileForm({
               hint="Foto profil sudut kanan atas header"
             />
           </div>
+
+          {/* TTD & Cap - khusus kepsek/pengawas, di kolom kanan */}
+          {(isKepsek || isPengawas) && (
+            <div className="p-3.5 sm:p-4 bg-amber-50/60 rounded-xl border border-amber-100 space-y-2.5">
+              <h4 className="text-xs sm:text-sm font-bold text-amber-900 flex items-center gap-1.5 uppercase tracking-wide">
+                <ShieldCheck className="w-4 h-4 text-amber-600" /> TANDA TANGAN &amp; CAP DIGITAL
+              </h4>
+              <LogoUploader
+                label="Scan TTD + Cap"
+                value={form.signatureStampImage}
+                onChange={(val) => setForm({ ...form, signatureStampImage: val })}
+                hint="Gabung TTD & cap dalam 1 gambar"
+              />
+            </div>
+          )}
 
           {/* Logo Kop */}
           {!isPengawas && (
@@ -818,6 +829,34 @@ function ProfileForm({
           )}
         </div>
       </div>
+      {/* Sekolah Binaan - khusus pengawas */}
+      {isPengawas && (
+        <div className="mt-4 p-3.5 sm:p-4 bg-blue-50/60 rounded-xl border border-blue-100 space-y-2">
+          <h4 className="text-xs sm:text-sm font-bold text-blue-900 flex items-center gap-1.5 uppercase tracking-wide">
+            <BookOpen className="w-4 h-4 text-blue-600" /> SEKOLAH BINAAN ({sekolahList.length})
+          </h4>
+          {sekolahList.length === 0 ? (
+            <p className="text-[11px] text-blue-800 italic">Belum ada sekolah binaan terdaftar.</p>
+          ) : (
+            <div className="space-y-1.5">
+              {sekolahList.map((s) => (
+                <div
+                  key={s.npsn}
+                  className="flex items-start gap-2 bg-white rounded-lg border border-blue-200 px-2.5 py-2"
+                >
+                  <span className="font-mono text-[10px] text-slate-500 shrink-0 mt-0.5">
+                    {s.npsn}
+                  </span>
+                  <span className="text-xs font-semibold text-slate-800 truncate">
+                    {s.namaSekolah || `NPSN ${s.npsn}`}
+                  </span>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
     {/* Footer tombol simpan */}
       <div className="pt-5 mt-5 border-t border-slate-200 flex justify-center">
         <Button
