@@ -173,62 +173,49 @@ export function DashboardKepsek({
     belum: gurus.filter((g) => getStatus(g.journalCount, required) === 'belum').length,
   };
 
+  const perluPerhatian = stats.kurang + stats.belum;
+
   const isSentToPengawas = !!verification?.guruSubmittedAt;
   const isApprovedPengawas = verification?.pengawasStatus === 'approved';
   const isRejectedPengawas = verification?.pengawasStatus === 'rejected';
 
   return (
-    <div className="space-y-4">
-      {/* Header compact: Status Jurnal Saya */}
-      <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-4">
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-lg bg-emerald-50 flex items-center justify-center shrink-0">
-              <FileText className="w-5 h-5 text-emerald-600" />
-            </div>
-            <div>
-              <p className="text-sm font-bold text-slate-800">Status Jurnal Saya</p>
-              <p className="text-[11px] text-slate-500">
-                {format(today, 'MMMM yyyy', { locale: localeId })} · Alur: Kepala Sekolah → Pengawas
-              </p>
-            </div>
-          </div>
-          {!loadingVerif && !isSentToPengawas && myFilledDays > 0 && (
-            <button
-              onClick={handleKirimKePengawas}
-              disabled={submitting}
-              className="px-3.5 py-2 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed text-white text-xs font-semibold rounded-lg transition-colors flex items-center justify-center gap-1.5 shrink-0"
-            >
-              {submitting ? (
-                <Loader2 className="w-3.5 h-3.5 animate-spin" />
-              ) : (
-                <Send className="w-3.5 h-3.5" />
-              )}
-              Kirim Jurnal ke Pengawas
-            </button>
-          )}
-        </div>
-
-        {loadingVerif && (
-          <div className="mt-3 py-2 text-center">
-            <Loader2 className="w-4 h-4 animate-spin text-emerald-600 mx-auto" />
-          </div>
+    <div className="space-y-3">
+      {/* Toolbar tipis */}
+      <div className="flex flex-wrap items-center justify-between gap-2 px-1">
+        <p className="text-xs text-slate-500">
+          {format(today, 'MMMM yyyy', { locale: localeId })} · Jurnal diisi{' '}
+          <span className="font-semibold text-slate-700">{myFilledDays}/{required} ({myPercent}%)</span>
+        </p>
+        {!loadingVerif && !isSentToPengawas && myFilledDays > 0 && (
+          <button
+            onClick={handleKirimKePengawas}
+            disabled={submitting}
+            className="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed text-white text-xs font-semibold rounded-lg transition-colors flex items-center gap-1.5"
+          >
+            {submitting ? (
+              <Loader2 className="w-3.5 h-3.5 animate-spin" />
+            ) : (
+              <Send className="w-3.5 h-3.5" />
+            )}
+            Kirim Jurnal ke Pengawas
+          </button>
         )}
-
         {isApprovedPengawas && (
-          <div className="mt-3 p-2.5 bg-emerald-50 border border-emerald-200 rounded-lg text-[11px] text-emerald-800">
-            ✅ Jurnal Anda sudah disetujui Pengawas. Anda dapat mencetak jurnal &amp; rekomendasi di menu Preview &amp; Cetak.
-          </div>
+          <span className="text-[11px] px-2.5 py-1 bg-emerald-50 text-emerald-700 border border-emerald-200 rounded-full font-semibold">
+            ✅ Disetujui Pengawas
+          </span>
         )}
         {isRejectedPengawas && (
-          <div className="mt-3 p-2.5 bg-rose-50 border border-rose-200 rounded-lg text-[11px] text-rose-800">
-            ❌ Ditolak Pengawas: {verification?.pengawasNote || 'Tidak ada catatan'}
-          </div>
+          <span className="text-[11px] px-2.5 py-1 bg-rose-50 text-rose-700 border border-rose-200 rounded-full font-semibold">
+            ❌ Ditolak Pengawas
+          </span>
         )}
       </div>
 
-      {/* Grid kartu-kartu kecil */}
+      {/* Grid kartu - 2 kolom seimbang */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        {/* Baris 1 */}
         <SmallCard
           icon={<FileText className="w-5 h-5" />}
           color="blue"
@@ -242,9 +229,10 @@ export function DashboardKepsek({
           value={
             isSentToPengawas && verification?.guruSubmittedAt
               ? format(parseISO(verification.guruSubmittedAt), 'd MMM yyyy', { locale: localeId })
-              : '—'
+              : 'Belum'
           }
         />
+        {/* Baris 2 */}
         <SmallCard
           icon={
             isApprovedPengawas ? (
@@ -258,11 +246,7 @@ export function DashboardKepsek({
           color={isApprovedPengawas ? 'emerald' : isRejectedPengawas ? 'rose' : 'amber'}
           label="Verifikasi Pengawas"
           value={
-            isApprovedPengawas
-              ? 'Disetujui'
-              : isRejectedPengawas
-              ? 'Ditolak'
-              : 'Menunggu'
+            isApprovedPengawas ? 'Disetujui' : isRejectedPengawas ? 'Ditolak' : 'Menunggu'
           }
         />
         <SmallCard
@@ -271,6 +255,7 @@ export function DashboardKepsek({
           label="Total Guru"
           value={loadingGurus ? '—' : stats.total}
         />
+        {/* Baris 3 */}
         <SmallCard
           icon={<CheckCircle2 className="w-5 h-5" />}
           color="emerald"
@@ -278,16 +263,10 @@ export function DashboardKepsek({
           value={loadingGurus ? '—' : stats.lengkap}
         />
         <SmallCard
-          icon={<Clock className="w-5 h-5" />}
-          color="amber"
-          label="Guru Kurang"
-          value={loadingGurus ? '—' : stats.kurang}
-        />
-        <SmallCard
           icon={<AlertCircle className="w-5 h-5" />}
-          color="rose"
-          label="Guru Belum"
-          value={loadingGurus ? '—' : stats.belum}
+          color={perluPerhatian > 0 ? 'rose' : 'slate'}
+          label="Guru Perlu Perhatian"
+          value={loadingGurus ? '—' : perluPerhatian}
         />
       </div>
     </div>
