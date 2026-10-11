@@ -288,6 +288,9 @@ export function DaftarGuruBinaan({
                   <th className="text-left px-4 py-3 font-bold text-slate-700 text-xs uppercase tracking-wider">
                     Jabatan
                   </th>
+                  <th className="text-left px-4 py-3 font-bold text-slate-700 text-xs uppercase tracking-wider">
+                    Sekolah
+                  </th>
                   <th className="text-center px-4 py-3 font-bold text-slate-700 text-xs uppercase tracking-wider">
                     Jurnal {months[filterMonth].slice(0, 3)}
                   </th>
@@ -333,6 +336,9 @@ export function DaftarGuruBinaan({
                       </td>
                       <td className="px-4 py-3 text-slate-600 text-xs">
                         {g.position || '-'}
+                      </td>
+                      <td className="px-4 py-3 text-slate-600 text-xs">
+                        {g.workUnit || '-'}
                       </td>
                       <td className="px-4 py-3">
                         <div className="flex flex-col items-center gap-1 min-w-[90px]">

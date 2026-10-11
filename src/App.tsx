@@ -688,97 +688,108 @@ function ProfileForm({
     setForm(data);
   }, [data]);
 
+  const isPengawas = role === 'pengawas';
+  const isKepsek = role === 'kepala_sekolah';
+  const isGuru = role === 'guru';
+
   return (
     <Card className="p-5 sm:p-6 lg:p-8">
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-        {/* Left column (7 cols): Identitas Guru & Satuan Pendidikan */}
+        {/* Kolom KIRI: Identitas */}
         <div className="lg:col-span-7 space-y-4">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
             <Input label="Nama Lengkap" value={form.name} onChange={(v) => setForm({ ...form, name: v })} placeholder="Nama Lengkap & Gelar" required />
             <Input label="NIP" value={form.nip} onChange={(v) => setForm({ ...form, nip: v })} placeholder="19xxxxxxxxxxxxxx" required />
             <Input label="Jabatan" value={form.position} onChange={(v) => setForm({ ...form, position: v })} placeholder="Guru Madya / Muda" required />
-            {role !== 'kepala_sekolah' && (
-  <Input label="Mata Pelajaran" value={form.subject} onChange={(v) => setForm({ ...form, subject: v })} placeholder="Matematika" required />
-)}
+            {isGuru && (
+              <Input label="Mata Pelajaran" value={form.subject} onChange={(v) => setForm({ ...form, subject: v })} placeholder="Matematika" required />
+            )}
             <Input label="Pangkat / Golongan" value={form.grade} onChange={(v) => setForm({ ...form, grade: v })} placeholder="Pembina, IV/a" />
             <Input label="Instansi" value={form.institution || ''} onChange={(v) => setForm({ ...form, institution: v })} placeholder="Dinas Pendidikan dan Kebudayaan" />
             <Input
-              label={role === 'pengawas' ? 'Unit Kerja Pengawas' : 'Unit Kerja'}
+              label={isPengawas ? 'Unit Kerja Pengawas' : 'Unit Kerja'}
               value={form.workUnit}
               onChange={(v) => setForm({ ...form, workUnit: v })}
-              placeholder={role === 'pengawas' ? 'Dinas Pendidikan / Pengawas' : 'SMPN 1 Randangan'}
+              placeholder={isPengawas ? 'Dinas Pendidikan / Pengawas' : 'SMPN 1 Randangan'}
               required
             />
-            <Input label="Kecamatan" value={form.kecamatan} onChange={(v) => setForm({ ...form, kecamatan: v })} placeholder="Kecamatan Marisa" required />
+            {!isPengawas && (
+              <Input label="Kecamatan" value={form.kecamatan} onChange={(v) => setForm({ ...form, kecamatan: v })} placeholder="Kecamatan Marisa" required />
+            )}
             <Input label="NPSN" value={form.npsn} onChange={(v) => setForm({ ...form, npsn: v })} placeholder="10xxxxxx" />
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
             <Input label="Alamat Instansi" value={form.institutionAddress || ''} onChange={(v) => setForm({ ...form, institutionAddress: v })} placeholder="Jalan Ki Hajar Dewantara No. 8 Palopo" />
-            <Input label="Alamat Unit Kerja" value={form.schoolAddress} onChange={(v) => setForm({ ...form, schoolAddress: v })} placeholder="Jl. xxxx No. xx" />
+            {!isPengawas && (
+              <Input label="Alamat Unit Kerja" value={form.schoolAddress} onChange={(v) => setForm({ ...form, schoolAddress: v })} placeholder="Jl. xxxx No. xx" />
+            )}
           </div>
         </div>
 
-        {/* Right column (5 cols): Logo & Pejabat & Settings */}
+        {/* Kolom KANAN: Foto, Logo, Pejabat, TTD */}
         <div className="lg:col-span-5 space-y-4">
-          {/* Foto Profil Guru Section */}
+          {/* Foto Profil — semua role */}
           <div className="p-3.5 sm:p-4 bg-slate-50/80 rounded-xl border border-slate-200/80 space-y-2.5">
             <h4 className="text-xs sm:text-sm font-bold text-slate-800 flex items-center gap-1.5 uppercase tracking-wide">
-              <User className="w-4 h-4 text-indigo-600" /> FOTO PROFIL GURU
+              <User className="w-4 h-4 text-indigo-600" /> FOTO PROFIL
             </h4>
             <LogoUploader
-              label="Foto Profil Guru"
+              label="Foto Profil"
               value={form.profilePhoto}
               onChange={(val) => setForm({ ...form, profilePhoto: val })}
               hint="Foto profil sudut kanan atas header"
             />
           </div>
 
-          {/* Logo Kop Surat Section */}
-          <div className="p-3.5 sm:p-4 bg-slate-50/80 rounded-xl border border-slate-200/80 space-y-2.5">
-            <h4 className="text-xs sm:text-sm font-bold text-slate-800 flex items-center gap-1.5 uppercase tracking-wide">
-              <Upload className="w-4 h-4 text-indigo-600" /> LOGO KOP SURAT (KIRI & KANAN)
-            </h4>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <LogoUploader
-                label="Logo Kabupaten"
-                value={form.districtLogo}
-                onChange={(val) => setForm({ ...form, districtLogo: val })}
-              />
-              <LogoUploader
-                label="Logo Satuan Pendidikan"
-                value={form.schoolLogo}
-                onChange={(val) => setForm({ ...form, schoolLogo: val })}
-              />
+          {/* Logo Kop — guru & kepsek */}
+          {!isPengawas && (
+            <div className="p-3.5 sm:p-4 bg-slate-50/80 rounded-xl border border-slate-200/80 space-y-2.5">
+              <h4 className="text-xs sm:text-sm font-bold text-slate-800 flex items-center gap-1.5 uppercase tracking-wide">
+                <Upload className="w-4 h-4 text-indigo-600" /> LOGO KOP SURAT (KIRI & KANAN)
+              </h4>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <LogoUploader
+                  label="Logo Kabupaten"
+                  value={form.districtLogo}
+                  onChange={(val) => setForm({ ...form, districtLogo: val })}
+                />
+                <LogoUploader
+                  label="Logo Satuan Pendidikan"
+                  value={form.schoolLogo}
+                  onChange={(val) => setForm({ ...form, schoolLogo: val })}
+                />
+              </div>
             </div>
-          </div>
+          )}
 
-          {/* Pejabat Terkait */}
-          <div className="p-3.5 sm:p-4 bg-indigo-50/60 rounded-xl border border-indigo-100 space-y-2.5">
-            <h4 className="text-xs sm:text-sm font-bold text-indigo-900 flex items-center gap-1.5 uppercase tracking-wide">
-              <ShieldCheck className="w-4 h-4 text-indigo-600" /> PEJABAT TERKAIT
-            </h4>
-            <div className="grid grid-cols-2 gap-3">
-              {role !== 'kepala_sekolah' && (
-                <>
-                  <Input label="Kepala Satuan Pendidikan" value={form.principalName} onChange={(v) => setForm({ ...form, principalName: v })} placeholder="Nama Kepala Satuan Pendidikan" />
-                  <Input label="NIP Kepala Satuan Pendidikan" value={form.principalNip} onChange={(v) => setForm({ ...form, principalNip: v })} placeholder="NIP Kepala Satuan Pendidikan" />
-                </>
-              )}
-              <Input label="Pengawas Bina" value={form.supervisorName} onChange={(v) => setForm({ ...form, supervisorName: v })} placeholder="Nama Pengawas" />
-              <Input label="NIP Pengawas" value={form.supervisorNip} onChange={(v) => setForm({ ...form, supervisorNip: v })} placeholder="NIP Pengawas" />
-              {role === 'kepala_sekolah' && (
-                <>
-                  <Input label="Kepala Dinas Pendidikan" value={form.headOfDeptName || ''} onChange={(v) => setForm({ ...form, headOfDeptName: v })} placeholder="Nama Kepala Dinas Pendidikan" />
-                  <Input label="NIP Kepala Dinas" value={form.headOfDeptNip || ''} onChange={(v) => setForm({ ...form, headOfDeptNip: v })} placeholder="NIP Kepala Dinas" />
-                </>
-              )}
+          {/* Pejabat Terkait — guru & kepsek */}
+          {!isPengawas && (
+            <div className="p-3.5 sm:p-4 bg-indigo-50/60 rounded-xl border border-indigo-100 space-y-2.5">
+              <h4 className="text-xs sm:text-sm font-bold text-indigo-900 flex items-center gap-1.5 uppercase tracking-wide">
+                <ShieldCheck className="w-4 h-4 text-indigo-600" /> PEJABAT TERKAIT
+              </h4>
+              <div className="grid grid-cols-2 gap-3">
+                {!isKepsek && (
+                  <>
+                    <Input label="Kepala Satuan Pendidikan" value={form.principalName} onChange={(v) => setForm({ ...form, principalName: v })} placeholder="Nama Kepala Satuan Pendidikan" />
+                    <Input label="NIP Kepala Satuan Pendidikan" value={form.principalNip} onChange={(v) => setForm({ ...form, principalNip: v })} placeholder="NIP Kepala Satuan Pendidikan" />
+                  </>
+                )}
+                <Input label="Pengawas Bina" value={form.supervisorName} onChange={(v) => setForm({ ...form, supervisorName: v })} placeholder="Nama Pengawas" />
+                <Input label="NIP Pengawas" value={form.supervisorNip} onChange={(v) => setForm({ ...form, supervisorNip: v })} placeholder="NIP Pengawas" />
+                {isKepsek && (
+                  <>
+                    <Input label="Kepala Dinas Pendidikan" value={form.headOfDeptName || ''} onChange={(v) => setForm({ ...form, headOfDeptName: v })} placeholder="Nama Kepala Dinas Pendidikan" />
+                    <Input label="NIP Kepala Dinas" value={form.headOfDeptNip || ''} onChange={(v) => setForm({ ...form, headOfDeptNip: v })} placeholder="NIP Kepala Dinas" />
+                  </>
+                )}
+              </div>
             </div>
-          </div>
-      </div>
-    
-          {/* TTD & Cap Digital — hanya kepsek/pengawas */}
-          {(role === 'kepala_sekolah' || role === 'pengawas') && (
-            <div className="p-3.5 sm:p-4 bg-amber-50/60 rounded-xl border border-amber-100 space-y-2.5 lg:col-span-12">
+          )}
+
+          {/* TTD & Cap — kepsek & pengawas, di kolom kanan (bukan full width lagi) */}
+          {(isKepsek || isPengawas) && (
+            <div className="p-3.5 sm:p-4 bg-amber-50/60 rounded-xl border border-amber-100 space-y-2.5">
               <h4 className="text-xs sm:text-sm font-bold text-amber-900 flex items-center gap-1.5 uppercase tracking-wide">
                 <ShieldCheck className="w-4 h-4 text-amber-600" /> TANDA TANGAN & CAP DIGITAL
               </h4>
@@ -791,11 +802,12 @@ function ProfileForm({
                 onChange={(val) => setForm({ ...form, signatureStampImage: val })}
                 hint="Gabung TTD & cap dalam 1 gambar"
               />
-            
             </div>
           )}
-    </div>
-          <div className="flex justify-end pt-5 mt-5 border-t border-slate-200">
+        </div>
+      </div>
+
+      <div className="flex justify-end pt-5 mt-5 border-t border-slate-200">
         <Button
           onClick={() => onSave(form)}
           className="px-6 py-2.5 text-xs sm:text-sm font-semibold uppercase tracking-wide"
