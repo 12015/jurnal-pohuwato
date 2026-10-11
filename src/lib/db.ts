@@ -1035,3 +1035,51 @@ export async function getBatchBinaanStats(
 
   return result;
 }
+
+
+// ============ PENGAWAS: tolak rekomendasi ============
+
+export async function rejectPengawasApproval(
+  guruId: string,
+  periodKey: string,
+  pengawasUserId: string,
+  note: string
+): Promise<void> {
+  if (!note.trim()) throw new Error('Catatan wajib diisi');
+
+  const { data: existing } = await supabase
+    .from('verifications')
+    .select('id')
+    .eq('guru_id', guruId)
+    .eq('period_key', periodKey)
+    .maybeSingle();
+
+  if (existing) {
+    const { error } = await supabase
+      .from('verifications')
+      .update({
+        pengawas_status: 'rejected',
+        pengawas_verified_by: pengawasUserId,
+        pengawas_verified_at: new Date().toISOString(),
+        pengawas_note: note.trim(),
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', existing.id);
+    if (error) throw error;
+  } else {
+    const { error } = await supabase.from('verifications').insert({
+      guru_id: guruId,
+      period_key: periodKey,
+      pengawas_status: 'rejected',
+      pengawas_verified_by: pengawasUserId,
+      pengawas_verified_at: new Date().toISOString(),
+      pengawas_note: note.trim(),
+      kepsek_status: 'approved',
+      revision_count: 0,
+    });
+    if (error) throw error;
+  }
+
+  // Hapus dari approval list
+  await setApprovalForUser(guruId, periodKey, false);
+}

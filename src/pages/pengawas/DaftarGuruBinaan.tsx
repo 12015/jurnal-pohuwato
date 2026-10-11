@@ -54,7 +54,6 @@ export function DaftarGuruBinaan({
   profile,
   onNavigate,
   addNotification,
-  title = 'Daftar Guru',
 }: DaftarGuruBinaanProps) {
   const [rows, setRows] = useState<BinaanSummary[]>([]);
   const [loading, setLoading] = useState(true);
@@ -234,138 +233,124 @@ export function DaftarGuruBinaan({
         </div>
       </div>
 
-      {/* Tabel */}
-      <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
-        {loading ? (
-          <div className="p-12 text-center">
-            <Loader2 className="w-6 h-6 animate-spin text-indigo-600 mx-auto mb-2" />
-            <p className="text-sm text-slate-500">Memuat data...</p>
-          </div>
-        ) : rows.length === 0 ? (
-          <div className="p-12 text-center">
-            <Users className="w-12 h-12 text-slate-300 mx-auto mb-3" />
-            <p className="font-semibold text-slate-700">Belum ada binaan</p>
-            <p className="text-xs text-slate-500 mt-2 max-w-md mx-auto">
-              Pastikan user sudah mendaftar dengan NPSN sekolah yang menjadi binaan Anda.
-            </p>
-          </div>
-        ) : filtered.length === 0 ? (
-          <div className="p-12 text-center">
-            <Search className="w-12 h-12 text-slate-300 mx-auto mb-3" />
-            <p className="font-semibold text-slate-700">Tidak ada yang cocok</p>
-            <p className="text-xs text-slate-500 mt-1">Coba ubah filter atau kata kunci</p>
-          </div>
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead className="bg-slate-50 border-b border-slate-200">
-                <tr>
-                  <th className="text-left px-3 py-3 font-bold text-slate-700 text-xs uppercase tracking-wider">No</th>
-                  <th className="text-left px-3 py-3 font-bold text-slate-700 text-xs uppercase tracking-wider">Nama</th>
-                  <th className="text-left px-3 py-3 font-bold text-slate-700 text-xs uppercase tracking-wider">NIP</th>
-                  <th className="text-left px-3 py-3 font-bold text-slate-700 text-xs uppercase tracking-wider">Jabatan</th>
-                  <th className="text-left px-3 py-3 font-bold text-slate-700 text-xs uppercase tracking-wider">Sekolah</th>
-                  <th className="text-center px-3 py-3 font-bold text-slate-700 text-xs uppercase tracking-wider">
-                    Jurnal {months[filterMonth].slice(0, 3)}
-                  </th>
-                  <th className="text-center px-3 py-3 font-bold text-slate-700 text-xs uppercase tracking-wider">Status</th>
-                  <th className="text-center px-3 py-3 font-bold text-slate-700 text-xs uppercase tracking-wider">Aksi</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100">
-                {filtered.map((r, idx) => {
-                  const status = getStatus(r.journalCount, required);
-                  const cfg = statusConfig[status];
-                  const Icon = cfg.icon;
-                  const percent = required > 0 ? Math.round((r.journalCount / required) * 100) : 0;
+      {/* Grid cards 2 kolom */}
+      {loading ? (
+        <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-12 text-center">
+          <Loader2 className="w-6 h-6 animate-spin text-indigo-600 mx-auto mb-2" />
+          <p className="text-sm text-slate-500">Memuat data...</p>
+        </div>
+      ) : rows.length === 0 ? (
+        <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-12 text-center">
+          <Users className="w-12 h-12 text-slate-300 mx-auto mb-3" />
+          <p className="font-semibold text-slate-700">Belum ada binaan</p>
+          <p className="text-xs text-slate-500 mt-2 max-w-md mx-auto">
+            Pastikan user sudah mendaftar dengan NPSN sekolah yang menjadi binaan Anda.
+          </p>
+        </div>
+      ) : filtered.length === 0 ? (
+        <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-12 text-center">
+          <Search className="w-12 h-12 text-slate-300 mx-auto mb-3" />
+          <p className="font-semibold text-slate-700">Tidak ada yang cocok</p>
+          <p className="text-xs text-slate-500 mt-1">Coba ubah filter atau kata kunci</p>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+          {filtered.map((r) => {
+            const status = getStatus(r.journalCount, required);
+            const cfg = statusConfig[status];
+            const Icon = cfg.icon;
+            const percent = required > 0 ? Math.round((r.journalCount / required) * 100) : 0;
 
-                  return (
-                    <tr key={r.userId} className="hover:bg-slate-50 transition-colors">
-                      <td className="px-3 py-3 text-center text-slate-500 font-medium">{idx + 1}</td>
-                      <td className="px-3 py-3">
-                        <div className="flex items-center gap-2.5">
-                          <div className="w-9 h-9 rounded-full bg-slate-100 flex items-center justify-center overflow-hidden shrink-0 border border-slate-200">
-                            {r.profilePhoto ? (
-                              <img src={r.profilePhoto} alt="" className="w-full h-full object-cover" />
-                            ) : (
-                              <span className="text-slate-400 font-bold text-xs">
-                                {r.name.charAt(0).toUpperCase()}
-                              </span>
-                            )}
-                          </div>
-                          <div className="min-w-0">
-                            <p className="font-semibold text-slate-800 truncate">{r.name}</p>
-                            <p className="text-[10px] text-slate-500 truncate">{r.subject || '-'}</p>
-                          </div>
-                        </div>
-                      </td>
-                      <td className="px-3 py-3 text-slate-600 font-mono text-xs">{r.nip || '-'}</td>
-                      <td className="px-3 py-3">
-                        {r.role === 'kepala_sekolah' ? (
-                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-purple-50 text-purple-700 border border-purple-200">
-                            <UserCheck className="w-3 h-3" /> Kepsek
-                          </span>
-                        ) : (
-                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-blue-50 text-blue-700 border border-blue-200">
-                            Guru
-                          </span>
-                        )}
-                      </td>
-                      <td className="px-3 py-3 text-slate-700 text-xs">
-                        <p className="font-medium truncate max-w-[200px]">
-                          {r.namaSekolah || r.workUnit || '-'}
-                        </p>
-                        {r.npsn && (
-                          <p className="text-[10px] text-slate-400 font-mono">NPSN {r.npsn}</p>
-                        )}
-                      </td>
-                      <td className="px-3 py-3">
-                        <div className="flex flex-col items-center gap-1 min-w-[80px]">
-                          <div className="flex items-baseline gap-1">
-                            <span className="text-sm font-bold text-slate-800">{r.journalCount}</span>
-                            <span className="text-[10px] text-slate-400">/ {required}</span>
-                          </div>
-                          <div className="w-full h-1.5 bg-slate-100 rounded-full overflow-hidden">
-                            <div
-                              className={cn('h-full transition-all', cfg.barColor)}
-                              style={{ width: `${percent}%` }}
-                            />
-                          </div>
-                          <span className="text-[10px] font-semibold text-slate-500">{percent}%</span>
-                        </div>
-                      </td>
-                      <td className="px-3 py-3 text-center">
-                        <span
-                          className={cn(
-                            'inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-bold border',
-                            cfg.color
-                          )}
-                        >
-                          <Icon className="w-3 h-3" />
-                          {cfg.label}
+            return (
+              <div
+                key={r.userId}
+                className="bg-white rounded-xl border border-slate-200 shadow-sm p-3 flex flex-col gap-2.5 hover:border-indigo-300 transition-colors"
+              >
+                {/* Header: avatar + nama + jabatan */}
+                <div className="flex items-start gap-3">
+                  <div className="w-11 h-11 rounded-full bg-slate-100 flex items-center justify-center overflow-hidden shrink-0 border border-slate-200">
+                    {r.profilePhoto ? (
+                      <img src={r.profilePhoto} alt="" className="w-full h-full object-cover" />
+                    ) : (
+                      <span className="text-slate-400 font-bold text-sm">
+                        {r.name.charAt(0).toUpperCase()}
+                      </span>
+                    )}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <p className="font-semibold text-sm text-slate-800 truncate">{r.name}</p>
+                      {r.role === 'kepala_sekolah' ? (
+                        <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[9px] font-bold bg-purple-50 text-purple-700 border border-purple-200 shrink-0">
+                          <UserCheck className="w-2.5 h-2.5" /> Kepsek
                         </span>
-                      </td>
-                      <td className="px-3 py-3 text-center">
-                        <button
-                          onClick={() => {
-                            addNotification(`Membuka verifikasi ${r.name}...`, 'success');
-                            onNavigate('pw_approve');
-                          }}
-                          className="inline-flex items-center gap-1 px-3 py-1.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 text-xs font-semibold rounded-lg transition-colors"
-                          title="Verifikasi Rekomendasi"
-                        >
-                          <Eye className="w-3.5 h-3.5" />
-                          Verifikasi
-                        </button>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </div>
+                      ) : (
+                        <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-[9px] font-bold bg-blue-50 text-blue-700 border border-blue-200 shrink-0">
+                          Guru
+                        </span>
+                      )}
+                    </div>
+                    <p className="text-[11px] text-slate-500 font-mono truncate mt-0.5">
+                      NIP {r.nip || '-'}
+                    </p>
+                  </div>
+                </div>
+
+                {/* Sekolah */}
+                <div className="px-2.5 py-1.5 bg-slate-50 rounded-lg border border-slate-100">
+                  <p className="text-[11px] font-semibold text-slate-700 truncate">
+                    {r.namaSekolah || r.workUnit || '-'}
+                  </p>
+                  {r.npsn && (
+                    <p className="text-[10px] text-slate-400 font-mono">NPSN {r.npsn}</p>
+                  )}
+                </div>
+
+                {/* Progress + Status */}
+                <div className="flex items-center gap-2">
+                  <div className="flex-1">
+                    <div className="flex items-baseline justify-between gap-2 mb-1">
+                      <span className="text-[10px] text-slate-500">
+                        {r.journalCount}/{required} hari
+                      </span>
+                      <span className={cn('text-xs font-bold', cfg.barColor.replace('bg-', 'text-'))}>
+                        {percent}%
+                      </span>
+                    </div>
+                    <div className="w-full h-1.5 bg-slate-100 rounded-full overflow-hidden">
+                      <div
+                        className={cn('h-full transition-all', cfg.barColor)}
+                        style={{ width: `${percent}%` }}
+                      />
+                    </div>
+                  </div>
+                  <span
+                    className={cn(
+                      'inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold border shrink-0',
+                      cfg.color
+                    )}
+                  >
+                    <Icon className="w-2.5 h-2.5" />
+                    {cfg.label}
+                  </span>
+                </div>
+
+                {/* Aksi */}
+                <button
+                  onClick={() => {
+                    addNotification(`Membuka verifikasi ${r.name}...`, 'success');
+                    onNavigate('pw_approve');
+                  }}
+                  className="w-full inline-flex items-center justify-center gap-1 px-3 py-1.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 text-xs font-semibold rounded-lg transition-colors"
+                >
+                  <Eye className="w-3.5 h-3.5" />
+                  Verifikasi Rekomendasi
+                </button>
+              </div>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 }
