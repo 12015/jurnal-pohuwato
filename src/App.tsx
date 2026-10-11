@@ -1220,8 +1220,6 @@ async function downloadJurnalPDF(
   journals: JournalEntry[],
   monthIdx: number,
   filterYear: number,
-  useTriwulan: boolean,
-  filterTriwulan: number,
   addNotification: (message: string, type: 'success' | 'error') => void,
   paperSize: 'A4' | 'F4' = 'F4'
 ) {
@@ -1361,9 +1359,7 @@ async function downloadJurnalPDF(
     };
 
     // ====== Tentukan bulan-bulan yang dirender ======
-    const bulanIndices: number[] = useTriwulan
-      ? [(filterTriwulan - 1) * 3, (filterTriwulan - 1) * 3 + 1, (filterTriwulan - 1) * 3 + 2]
-      : [monthIdx];
+    const bulanIndices: number[] = [monthIdx];
 
     // ====== Loop per bulan ======
     for (let b = 0; b < bulanIndices.length; b++) {
@@ -1523,7 +1519,7 @@ async function downloadJurnalPDF(
       doc.text(`NIP. ${teacher.nip || '................'}`, sigRightX, nameY + 5.5, { align: 'center' });
     }
 
-    const monthStr = useTriwulan ? `Triwulan_${filterTriwulan}` : monthsList[monthIdx];
+    const monthStr = monthsList[monthIdx];
     const filename = `Dokumen_JURNAL_${monthStr}_${filterYear}.pdf`;
     doc.save(filename);
     addNotification('PDF Jurnal berhasil diunduh!', 'success');
@@ -1555,12 +1551,7 @@ function PreviewSection({
   const [type, setType] = useState<PreviewType>('jurnal');
   const [filterMonth, setFilterMonth] = useState<number>(getMonth(new Date()));
   const [filterYear, setFilterYear] = useState<number>(getYear(new Date()));
-  const [filterTriwulan, setFilterTriwulan] = useState<number>(Math.floor(getMonth(new Date()) / 3) + 1);
-  const [useTriwulan, setUseTriwulan] = useState(false);
   const [letterPaperSize, setLetterPaperSize] = useState<'A4' | 'F4'>('F4');
-  const [secretMonth, setSecretMonth] = useState<number>(getMonth(new Date()));
-  const [secretTriwulan, setSecretTriwulan] = useState<number>(Math.floor(getMonth(new Date()) / 3) + 1);
-  const [secretType, setSecretType] = useState<'m' | 'q'>('m');
   const [jurnalVerifStatus, setJurnalVerifStatus] = useState<'pending' | 'approved' | 'rejected'>('pending');
 
   const months = [
@@ -1571,10 +1562,6 @@ function PreviewSection({
   const filteredJournals = journals
     .filter(j => {
       const d = parseISO(j.date);
-      if (useTriwulan) {
-        const q = Math.floor(getMonth(d) / 3) + 1;
-        return q === filterTriwulan && getYear(d) === filterYear;
-      }
       return getMonth(d) === filterMonth && getYear(d) === filterYear;
     })
     .sort((a, b) => parseISO(a.date).getTime() - parseISO(b.date).getTime());
@@ -1598,13 +1585,7 @@ function PreviewSection({
 
   const isMonthApproved = (m: number) => {
     const monthKey = `m-${m}-${filterYear}`;
-    const q = Math.floor(m / 3) + 1;
-    const triwulanKey = `q-${q}-${filterYear}`;
-    return approvals.includes(monthKey) || approvals.includes(triwulanKey);
-  };
-
-  const isTriwulanApproved = (q: number) => {
-    return approvals.includes(`q-${q}-${filterYear}`);
+    return approvals.includes(monthKey);
   };
 
   // Cek status verifikasi periode aktif (untuk blokir cetak)
@@ -1891,7 +1872,7 @@ function PreviewSection({
       }
 
       if (pdf) {
-        const monthStr = useTriwulan ? `Triwulan_${filterTriwulan}` : months[filterMonth];
+        const monthStr = months[filterMonth];
         const finalFilename = `Dokumen_${type.toUpperCase()}_${monthStr}_${filterYear}.pdf`;
         pdf.save(finalFilename);
         addNotification('Dokumen PDF berhasil diunduh (Ukuran F4)!', 'success');
@@ -2062,7 +2043,7 @@ function PreviewSection({
         type: 'application/msword;charset=utf-8'
       });
 
-      const monthStr = useTriwulan ? `Triwulan_${filterTriwulan}` : months[filterMonth];
+      const monthStr = months[filterMonth];
       const fileName = `Dokumen_${type.toUpperCase()}_${monthStr}_${filterYear}.doc`;
 
       saveAs(blob, fileName);
@@ -2088,33 +2069,11 @@ function PreviewSection({
               <label className="text-xs font-bold text-slate-500 uppercase">FILTER:</label>
               <select
                 className="text-xs border border-slate-300 rounded p-1 font-semibold uppercase text-slate-800"
-                value={useTriwulan ? 'q' : 'm'}
-                onChange={(e) => setUseTriwulan(e.target.value === 'q')}
+                value={filterMonth}
+                onChange={(e) => setFilterMonth(parseInt(e.target.value))}
               >
-                <option value="m">BULANAN</option>
-                <option value="q">TRIWULAN</option>
+                {months.map((m, i) => <option key={i} value={i}>{m.toUpperCase()}</option>)}
               </select>
-
-              {useTriwulan ? (
-                <select
-                  className="text-xs border border-slate-300 rounded p-1 font-semibold uppercase text-slate-800"
-                  value={filterTriwulan}
-                  onChange={(e) => setFilterTriwulan(parseInt(e.target.value))}
-                >
-                  <option value={1}>TRIWULAN I (JAN-MAR)</option>
-                  <option value={2}>TRIWULAN II (APR-JUN)</option>
-                  <option value={3}>TRIWULAN III (JUL-SEP)</option>
-                  <option value={4}>TRIWULAN IV (OKT-DES)</option>
-                </select>
-              ) : (
-                <select
-                  className="text-xs border border-slate-300 rounded p-1 font-semibold uppercase text-slate-800"
-                  value={filterMonth}
-                  onChange={(e) => setFilterMonth(parseInt(e.target.value))}
-                >
-                  {months.map((m, i) => <option key={i} value={i}>{m.toUpperCase()}</option>)}
-                </select>
-              )}
             </div>
 
             <div className="flex items-center gap-2">
@@ -2136,15 +2095,11 @@ function PreviewSection({
                       journals,
                       filterMonth,
                       filterYear,
-                      useTriwulan,
-                      filterTriwulan,
                       addNotification,
                       letterPaperSize
                     );
                   } else if (type === 'rekomendasi') {
-                    const approved = useTriwulan
-                      ? isTriwulanApproved(filterTriwulan)
-                      : isMonthApproved(filterMonth);
+                    const approved = isMonthApproved(filterMonth);
                     if (!approved) {
                       addNotification(
                         'Rekomendasi hanya bisa dicetak setelah disetujui Pengawas.',
@@ -2207,7 +2162,7 @@ function PreviewSection({
             </div>
           </div>
         )}
-        {type === 'rekomendasi' && !(useTriwulan ? isTriwulanApproved(filterTriwulan) : isMonthApproved(filterMonth)) && (
+        {type === 'rekomendasi' && !isMonthApproved(filterMonth) && (
           <div className="w-full max-w-3xl p-3 bg-amber-50 border border-amber-200 rounded-lg text-xs text-amber-800 flex items-start gap-2">
             <span className="text-base leading-none">⚠️</span>
             <div>
@@ -2215,54 +2170,28 @@ function PreviewSection({
               <p className="mt-0.5">
                 Menunggu persetujuan Pengawas untuk periode{' '}
                 <strong>
-                  {useTriwulan ? `Triwulan ${filterTriwulan}` : months[filterMonth]} {filterYear}
+                  {months[filterMonth]} {filterYear}
                 </strong>.
               </p>
             </div>
           </div>
         )}
         {type === 'jurnal' && (
-          <>
-            {useTriwulan ? (
-              [0, 1, 2].map(offset => {
-                const mIdx = (filterTriwulan - 1) * 3 + offset;
-                const monthJournals = journals.filter(j => {
-                  const d = parseISO(j.date);
-                  return getMonth(d) === mIdx && getYear(d) === filterYear;
-                });
-                return (
-                  <div key={mIdx}>
-                    <JurnalTable
-                      teacher={teacher}
-                      journals={monthJournals}
-                      month={months[mIdx]}
-                      year={filterYear}
-                      monthIndex={mIdx}
-                      role={role}
-                    />
-                  </div>
-                );
-              })
-            ) : (
-              <JurnalTable
-                teacher={teacher}
-                journals={filteredJournals}
-                month={months[filterMonth]}
-                year={filterYear}
-                monthIndex={filterMonth}
-                role={role}
-              />
-            )}
-          </>
+          <JurnalTable
+            teacher={teacher}
+            journals={filteredJournals}
+            month={months[filterMonth]}
+            year={filterYear}
+            monthIndex={filterMonth}
+            role={role}
+          />
         )}
         {type === 'rekomendasi' && (
           <RekomendasiLetter
             teacher={teacher}
-            triwulan={filterTriwulan}
             year={filterYear}
             getEligibility={getEligibility}
             checkApproval={isMonthApproved}
-            useTriwulan={useTriwulan}
             filterMonth={filterMonth}
           />
         )}
@@ -2270,9 +2199,7 @@ function PreviewSection({
           <PernyataanLetter
             teacher={teacher}
             year={filterYear}
-            useTriwulan={useTriwulan}
             filterMonth={filterMonth}
-            filterTriwulan={filterTriwulan}
           />
         )}
       </div>
@@ -2771,32 +2698,24 @@ function JurnalTable({ teacher, journals, month, year, monthIndex, role = 'guru'
 
 function RekomendasiLetter({
   teacher,
-  triwulan,
   year,
   getEligibility,
   checkApproval,
-  useTriwulan,
   filterMonth
 }: {
   teacher: TeacherData;
-  triwulan: number;
   year: number;
   getEligibility: (m: number) => { isEligible: boolean; filled: number; required: number; monthName: string };
   checkApproval: (m: number) => boolean;
-  useTriwulan: boolean;
   filterMonth: number;
 }) {
-  const startMonth = (triwulan - 1) * 3;
-  const monthIndices = useTriwulan ? [startMonth, startMonth + 1, startMonth + 2] : [filterMonth];
-  const statuses = monthIndices.map(i => ({
-    ...getEligibility(i),
-    manualApproved: checkApproval(i),
-    index: i
-  }));
+  const statuses = [{
+    ...getEligibility(filterMonth),
+    manualApproved: checkApproval(filterMonth),
+    index: filterMonth
+  }];
 
-  const displayDate = useTriwulan
-    ? endOfMonth(new Date(year, startMonth + 2))
-    : endOfMonth(new Date(year, filterMonth));
+  const displayDate = endOfMonth(new Date(year, filterMonth));
 
   const isAllEligible = statuses.every(s => s.isEligible || s.manualApproved);
   return (
@@ -2867,136 +2786,23 @@ function RekomendasiLetter({
   );
 }
 
-function SPTJMLetter({
-  teacher,
-  triwulan,
-  year,
-  useTriwulan,
-  filterMonth
-}: {
-  teacher: TeacherData;
-  triwulan: number;
-  year: number;
-  useTriwulan: boolean;
-  filterMonth: number;
-}) {
-  const months = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
-  const startMonth = (triwulan - 1) * 3;
-
-  const displayMonths = useTriwulan
-    ? [months[startMonth], months[startMonth + 1], months[startMonth + 2]].join(', ')
-    : months[filterMonth];
-
-  const displayDate = useTriwulan
-    ? endOfMonth(new Date(year, startMonth + 2))
-    : endOfMonth(new Date(year, filterMonth));
-
-  return (
-    <div
-      className="paper-a4 paper-a4-bordered font-tnr text-[12pt] leading-[1.5] text-black"
-      style={{ padding: '20mm 20mm 10mm 20mm' }}
-    >
-      <KopSurat teacher={teacher} />
-      <div className="text-center mb-2.5">
-        <h1 className="text-[13pt] font-bold uppercase tracking-wide text-black">SURAT PERNYATAAN TANGGUNG JAWAB MUTLAK</h1>
-        <h2 className="text-[12pt] font-bold uppercase tracking-wide text-black">KEBENARAN DATA GURU PADA DAPODIK</h2>
-      </div>
-
-      <div className="text-[12pt] space-y-1.5 font-tnr leading-[1.5] text-black">
-        <p>Yang bertanda tangan di bawah ini :</p>
-        <div className="ml-5 space-y-0.5">
-          <DataRow label="Nama" value={teacher.principalName || '......................................................'} colonPos="190px" />
-          <DataRow label="NIP" value={teacher.principalNip || '......................................................'} colonPos="190px" />
-          <DataRow label="Jabatan" value="Kepala Satuan Pendidikan" colonPos="190px" />
-          <DataRow label="Nama Satuan Pendidikan" value={teacher.workUnit || 'SMP Negeri 1 Randangan'} colonPos="190px" />
-          <DataRow label="NPSN" value={teacher.npsn || '......................................................'} colonPos="190px" />
-          <DataRow label="Alamat Unit Kerja" value={teacher.schoolAddress || '......................................................'} colonPos="190px" />
-        </div>
-
-        <p className="pt-0.5">Dengan ini menyatakan dengan sesungguhnya bahwa:</p>
-        <ol className="list-decimal ml-5 space-y-1 text-justify leading-[1.5]">
-          <li>
-            Data guru yang diusulkan dan dikirimkan melalui aplikasi Data Pokok Pendidikan (Dapodik) pada bulan {displayMonths} tahun {year} telah mencerminkan kondisi keaktifan guru yang sebenarnya di satuan pendidikan, meliputi:
-            <ol className="list-[lower-alpha] ml-5 mt-0.5 space-y-0.5">
-              <li>kehadiran,</li>
-              <li>penugasan,</li>
-              <li>pemenuhan jam mengajar sesuai ketentuan, dan</li>
-              <li>status aktif melaksanakan tugas.</li>
-            </ol>
-          </li>
-          <li>
-            Data pangkat/golongan dan masa kerja guru yang tercantum dalam Dapodik telah disesuaikan dan disinkronkan dengan data pada aplikasi MyASN, berdasarkan dokumen dan informasi kepegawaian yang sah.
-          </li>
-          <li>
-            Kelengkapan dan kebenaran data kepegawaian guru, khususnya yang berkaitan dengan riwayat pangkat/golongan dan riwayat masa kerja berkala, telah diverifikasi oleh satuan pendidikan dan bersumber dari data yang disampaikan oleh guru yang bersangkutan sebagai pemilik data.
-          </li>
-          <li>
-            Saya bertanggung jawab penuh atas kebenaran seluruh data guru yang diusulkan dalam Dapodik sebagaimana dimaksud dalam pernyataan ini.
-          </li>
-          <li>
-            Apabila di kemudian hari ditemukan ketidaksesuaian data keaktifan guru pada Dapodik dengan kondisi nyata dilapangan (guru tidak aktif, tidak melaksanakan tugas, atau tidak memenuhi kewajiban mengajar) yang mengakibatkan pembayaran Tunjangan Profesi Guru, Tambahan Penghasilan, dan/atau Tunjangan Khusus Guru yang tidak semestinya, maka saya bersedia bertanggung jawab sepenuhnya atas kerugian yang ditimbulkan, sesuai dengan ketentuan peraturan perundang-undangan yang berlaku.
-          </li>
-        </ol>
-
-        <p className="text-justify leading-[1.5] pt-0.5">
-          Demikian Surat Pernyataan Tanggung Jawab Mutlak ini saya buat dengan sebenarnya untuk dipergunakan sebagaimana mestinya.
-        </p>
-      </div>
-
-      <table className="w-full border-none mt-4 text-[12pt] font-tnr leading-[1.5] text-black" style={{ width: '100%', borderCollapse: 'collapse', border: 'none' }}>
-        <tbody>
-          <tr style={{ border: 'none' }}>
-            <td style={{ width: '50%', border: 'none' }}></td>
-            <td style={{ width: '50%', border: 'none', textAlign: 'center', verticalAlign: 'top', color: '#000000' }}>
-              <p style={{ margin: 0 }}>Pohuwato, {format(displayDate, 'd MMMM yyyy', { locale: id })}</p>
-              <p style={{ margin: 0 }}>Yang Membuat Pernyataan,</p>
-              <div style={{ border: '1px solid #999', width: '90px', height: '36px', margin: '4px auto', textAlign: 'center', lineHeight: '36px', fontSize: '8pt', color: '#333', borderRadius: '3px' }}>
-                Meterai 10.000
-              </div>
-              <p style={{ margin: 0, fontWeight: 'bold', textDecoration: 'underline' }}>{teacher.principalName || '......................................................'}</p>
-              <p style={{ margin: 0 }}>NIP. {teacher.principalNip || '......................................................'}</p>
-            </td>
-          </tr>
-        </tbody>
-      </table>
-    </div>
-  );
-}
 
 function PernyataanLetter({
   teacher,
   year,
-  useTriwulan,
   filterMonth,
-  filterTriwulan,
 }: {
   teacher: TeacherData;
   year: number;
-  useTriwulan: boolean;
   filterMonth: number;
-  filterTriwulan: number;
 }) {
-  const romanNumerals = ['I', 'II', 'III', 'IV'];
-  const terbilang = ['Satu', 'Dua', 'Tiga', 'Empat'];
   const monthsList = [
     'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni',
     'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'
   ];
 
-  // Text periode: kalau triwulan → "Triwulan III (Tiga) Tahun 2026"
-  //                kalau bulanan → "Agustus 2026"
-  const periodText = useTriwulan
-    ? `Triwulan ${romanNumerals[filterTriwulan - 1]} (${terbilang[filterTriwulan - 1]}) Tahun ${year}`
-    : `Bulan ${monthsList[filterMonth]} ${year}`;
-
-  // Untuk tanggal TTD: tetap hitung triwulan dari bulan kalau mode bulanan
-  const triwulanIdx = useTriwulan ? filterTriwulan : Math.floor(filterMonth / 3) + 1;
-
-  // Tanggal otomatis di akhir periode
-  const startMonth = (triwulanIdx - 1) * 3;
-  const displayDate = useTriwulan
-    ? endOfMonth(new Date(year, startMonth + 2))
-    : endOfMonth(new Date(year, filterMonth));
+  const periodText = `Bulan ${monthsList[filterMonth]} ${year}`;
+  const displayDate = endOfMonth(new Date(year, filterMonth));
 
   // Kota untuk tanggal surat (dari kecamatan, hilangkan prefix "Kecamatan ")
   const city = (teacher.kecamatan || 'Randangan').replace(/^Kecamatan\s+/i, '');
