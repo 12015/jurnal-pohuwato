@@ -705,7 +705,6 @@ function ProfileForm({
     setForm(data);
   }, [data]);
 
-  // Khusus pengawas: load daftar sekolah binaan
   useEffect(() => {
     if (role !== 'pengawas' || !profile?.id) return;
     getPengawasSekolah(profile.id)
@@ -720,39 +719,69 @@ function ProfileForm({
   return (
     <Card className="p-5 sm:p-6 lg:p-8">
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-stretch">
-        {/* Kolom KIRI: Identitas + TTD + Tombol Simpan */}
+        {/* Kolom KIRI */}
         <div className="lg:col-span-7 flex flex-col gap-4">
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
-            <Input label="Nama Lengkap" value={form.name} onChange={(v) => setForm({ ...form, name: v })} placeholder="Nama Lengkap & Gelar" required />
-            <Input label="NIP" value={form.nip} onChange={(v) => setForm({ ...form, nip: v })} placeholder="19xxxxxxxxxxxxxx" required />
-            <Input label="Jabatan" value={form.position} onChange={(v) => setForm({ ...form, position: v })} placeholder="Guru Madya / Muda" required />
-            {isGuru && (
-              <Input label="Mata Pelajaran" value={form.subject} onChange={(v) => setForm({ ...form, subject: v })} placeholder="Matematika" required />
-            )}
-            <Input label="Pangkat / Golongan" value={form.grade} onChange={(v) => setForm({ ...form, grade: v })} placeholder="Pembina, IV/a" />
-            <Input label="Instansi" value={form.institution || ''} onChange={(v) => setForm({ ...form, institution: v })} placeholder="Dinas Pendidikan dan Kebudayaan" />
-            <Input
-              label={isPengawas ? 'Unit Kerja Pengawas' : 'Unit Kerja'}
-              value={form.workUnit}
-              onChange={(v) => setForm({ ...form, workUnit: v })}
-              placeholder={isPengawas ? 'Dinas Pendidikan / Pengawas' : 'SMPN 1 Randangan'}
-              required
-            />
-            {!isPengawas && (
-              <Input label="Kecamatan" value={form.kecamatan} onChange={(v) => setForm({ ...form, kecamatan: v })} placeholder="Kecamatan Marisa" required />
-            )}
-            <Input label="NPSN" value={form.npsn} onChange={(v) => setForm({ ...form, npsn: v })} placeholder="10xxxxxx" />
-          </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
-            <Input label="Alamat Instansi" value={form.institutionAddress || ''} onChange={(v) => setForm({ ...form, institutionAddress: v })} placeholder="Jalan Ki Hajar Dewantara No. 8 Palopo" />
-            {!isPengawas && (
-              <Input label="Alamat Unit Kerja" value={form.schoolAddress} onChange={(v) => setForm({ ...form, schoolAddress: v })} placeholder="Jl. xxxx No. xx" />
-            )}
-          </div>
+          {isPengawas ? (
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+              <Input label="Nama Lengkap" value={form.name} onChange={(v) => setForm({ ...form, name: v })} placeholder="Nama Lengkap & Gelar" required />
+              <Input label="NIP" value={form.nip} onChange={(v) => setForm({ ...form, nip: v })} placeholder="19xxxxxxxxxxxxxx" required />
+              <Input label="Jabatan" value={form.position} onChange={(v) => setForm({ ...form, position: v })} placeholder="Pengawas Madya / Muda" required />
+              <Input label="Pangkat / Golongan" value={form.grade} onChange={(v) => setForm({ ...form, grade: v })} placeholder="Pembina, IV/a" />
+              <Input label="Instansi" value={form.institution || ''} onChange={(v) => setForm({ ...form, institution: v })} placeholder="Dinas Pendidikan dan Kebudayaan" />
+              <Input label="Alamat Instansi" value={form.institutionAddress || ''} onChange={(v) => setForm({ ...form, institutionAddress: v })} placeholder="Jalan Ki Hajar Dewantara No. 8 Palopo" />
+            </div>
+          ) : (
+            <>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+                <Input label="Nama Lengkap" value={form.name} onChange={(v) => setForm({ ...form, name: v })} placeholder="Nama Lengkap & Gelar" required />
+                <Input label="NIP" value={form.nip} onChange={(v) => setForm({ ...form, nip: v })} placeholder="19xxxxxxxxxxxxxx" required />
+                <Input label="Jabatan" value={form.position} onChange={(v) => setForm({ ...form, position: v })} placeholder="Guru Madya / Muda" required />
+                {isGuru && (
+                  <Input label="Mata Pelajaran" value={form.subject} onChange={(v) => setForm({ ...form, subject: v })} placeholder="Matematika" required />
+                )}
+                <Input label="Pangkat / Golongan" value={form.grade} onChange={(v) => setForm({ ...form, grade: v })} placeholder="Pembina, IV/a" />
+                <Input label="Instansi" value={form.institution || ''} onChange={(v) => setForm({ ...form, institution: v })} placeholder="Dinas Pendidikan dan Kebudayaan" />
+                <Input label="Unit Kerja" value={form.workUnit} onChange={(v) => setForm({ ...form, workUnit: v })} placeholder="SMPN 1 Randangan" required />
+                <Input label="Kecamatan" value={form.kecamatan} onChange={(v) => setForm({ ...form, kecamatan: v })} placeholder="Kecamatan Marisa" required />
+                <Input label="NPSN" value={form.npsn} onChange={(v) => setForm({ ...form, npsn: v })} placeholder="10xxxxxx" />
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+                <Input label="Alamat Instansi" value={form.institutionAddress || ''} onChange={(v) => setForm({ ...form, institutionAddress: v })} placeholder="Jalan Ki Hajar Dewantara No. 8 Palopo" />
+                <Input label="Alamat Unit Kerja" value={form.schoolAddress} onChange={(v) => setForm({ ...form, schoolAddress: v })} placeholder="Jl. xxxx No. xx" />
+              </div>
+            </>
+          )}
 
+          {/* Sekolah Binaan - khusus pengawas, mengisi ruang sisa */}
+          {isPengawas && (
+            <div className="flex-1 p-3.5 sm:p-4 bg-blue-50/60 rounded-xl border border-blue-100 flex flex-col">
+              <h4 className="text-xs sm:text-sm font-bold text-blue-900 flex items-center gap-1.5 uppercase tracking-wide mb-2">
+                <BookOpen className="w-4 h-4 text-blue-600" /> SEKOLAH BINAAN ({sekolahList.length})
+              </h4>
+              {sekolahList.length === 0 ? (
+                <p className="text-[11px] text-blue-800 italic">Belum ada sekolah binaan terdaftar.</p>
+              ) : (
+                <div className="space-y-1.5">
+                  {sekolahList.map((s) => (
+                    <div
+                      key={s.npsn}
+                      className="flex items-start gap-2 bg-white rounded-lg border border-blue-200 px-2.5 py-2"
+                    >
+                      <span className="font-mono text-[10px] text-slate-500 shrink-0 mt-0.5">
+                        {s.npsn}
+                      </span>
+                      <span className="text-xs font-semibold text-slate-800 truncate">
+                        {s.namaSekolah || `NPSN ${s.npsn}`}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
         </div>
 
-        {/* Kolom KANAN: Foto + Logo + Pejabat */}
+        {/* Kolom KANAN */}
         <div className="lg:col-span-5 flex flex-col gap-4">
           {/* Foto Profil */}
           <div className="p-3.5 sm:p-4 bg-slate-50/80 rounded-xl border border-slate-200/80 space-y-2.5">
@@ -767,22 +796,22 @@ function ProfileForm({
             />
           </div>
 
-          {/* TTD & Cap - khusus kepsek/pengawas, di kolom kanan */}
+          {/* TTD & Cap - khusus kepsek/pengawas */}
           {(isKepsek || isPengawas) && (
-            <div className="p-3.5 sm:p-4 bg-amber-50/60 rounded-xl border border-amber-100 space-y-2.5">
-              <h4 className="text-xs sm:text-sm font-bold text-amber-900 flex items-center gap-1.5 uppercase tracking-wide">
+            <div className={`${isPengawas ? 'flex-1 ' : ''}p-3.5 sm:p-4 bg-amber-50/60 rounded-xl border border-amber-100 flex flex-col`}>
+              <h4 className="text-xs sm:text-sm font-bold text-amber-900 flex items-center gap-1.5 uppercase tracking-wide mb-2">
                 <ShieldCheck className="w-4 h-4 text-amber-600" /> TANDA TANGAN &amp; CAP DIGITAL
               </h4>
               <LogoUploader
                 label="Scan TTD + Cap"
                 value={form.signatureStampImage}
                 onChange={(val) => setForm({ ...form, signatureStampImage: val })}
-                hint="Gabung TTD & cap dalam 1 gambar"
+                hint=""
               />
             </div>
           )}
 
-          {/* Logo Kop */}
+          {/* Logo Kop - guru & kepsek */}
           {!isPengawas && (
             <div className="p-3.5 sm:p-4 bg-slate-50/80 rounded-xl border border-slate-200/80 space-y-2.5">
               <h4 className="text-xs sm:text-sm font-bold text-slate-800 flex items-center gap-1.5 uppercase tracking-wide">
@@ -829,35 +858,8 @@ function ProfileForm({
           )}
         </div>
       </div>
-      {/* Sekolah Binaan - khusus pengawas */}
-      {isPengawas && (
-        <div className="mt-4 p-3.5 sm:p-4 bg-blue-50/60 rounded-xl border border-blue-100 space-y-2">
-          <h4 className="text-xs sm:text-sm font-bold text-blue-900 flex items-center gap-1.5 uppercase tracking-wide">
-            <BookOpen className="w-4 h-4 text-blue-600" /> SEKOLAH BINAAN ({sekolahList.length})
-          </h4>
-          {sekolahList.length === 0 ? (
-            <p className="text-[11px] text-blue-800 italic">Belum ada sekolah binaan terdaftar.</p>
-          ) : (
-            <div className="space-y-1.5">
-              {sekolahList.map((s) => (
-                <div
-                  key={s.npsn}
-                  className="flex items-start gap-2 bg-white rounded-lg border border-blue-200 px-2.5 py-2"
-                >
-                  <span className="font-mono text-[10px] text-slate-500 shrink-0 mt-0.5">
-                    {s.npsn}
-                  </span>
-                  <span className="text-xs font-semibold text-slate-800 truncate">
-                    {s.namaSekolah || `NPSN ${s.npsn}`}
-                  </span>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-      )}
 
-    {/* Footer tombol simpan */}
+      {/* Footer tombol simpan */}
       <div className="pt-5 mt-5 border-t border-slate-200 flex justify-center">
         <Button
           onClick={() => onSave(form)}
@@ -869,6 +871,7 @@ function ProfileForm({
     </Card>
   );
 }
+
 
 function JournalInput({
   onAdd,
