@@ -1584,6 +1584,7 @@ function PreviewSection({
   const [secretMonth, setSecretMonth] = useState<number>(getMonth(new Date()));
   const [secretTriwulan, setSecretTriwulan] = useState<number>(Math.floor(getMonth(new Date()) / 3) + 1);
   const [secretType, setSecretType] = useState<'m' | 'q'>('m');
+  const [jurnalVerifStatus, setJurnalVerifStatus] = useState<'pending' | 'approved' | 'rejected'>('pending');
 
   const months = [
     'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni',
@@ -1628,6 +1629,21 @@ function PreviewSection({
   const isTriwulanApproved = (q: number) => {
     return approvals.includes(`q-${q}-${filterYear}`);
   };
+
+  // Cek status verifikasi periode aktif (untuk blokir cetak)
+  useEffect(() => {
+    (async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+      const periodKey = `m-${filterMonth}-${filterYear}`;
+      const v = await getVerificationStatus(user.id, periodKey);
+      if (role === 'kepala_sekolah') {
+        setJurnalVerifStatus((v?.pengawasStatus as 'pending' | 'approved' | 'rejected') || 'pending');
+      } else {
+        setJurnalVerifStatus((v?.kepsekStatus as 'pending' | 'approved' | 'rejected') || 'pending');
+      }
+    })();
+  }, [filterMonth, filterYear, role]);
 
   const downloadPDF = async (id: string, _filename: string, isRekomendasi = false, paperSize: 'A4' | 'F4' = 'F4') => {
     try {
@@ -2125,10 +2141,19 @@ function PreviewSection({
             </div>
 
             <div className="flex items-center gap-2">
-                            <Button
+              <Button
                 variant="secondary"
                 onClick={() => {
                   if (type === 'jurnal') {
+                    if (jurnalVerifStatus !== 'approved') {
+                      addNotification(
+                        role === 'kepala_sekolah'
+                          ? 'Jurnal belum disetujui Pengawas. Tunggu persetujuan dulu.'
+                          : 'Jurnal belum diverifikasi Kepala Sekolah. Tunggu verifikasi dulu.',
+                        'error'
+                      );
+                      return;
+                    }
                     downloadJurnalPDF(
                       teacher,
                       journals,
@@ -2139,13 +2164,20 @@ function PreviewSection({
                       addNotification,
                       letterPaperSize
                     );
+                  } else if (type === 'rekomendasi') {
+                    const approved = useTriwulan
+                      ? isTriwulanApproved(filterTriwulan)
+                      : isMonthApproved(filterMonth);
+                    if (!approved) {
+                      addNotification(
+                        'Rekomendasi hanya bisa dicetak setelah disetujui Pengawas.',
+                        'error'
+                      );
+                      return;
+                    }
+                    downloadPDF('preview-content', `Dokumen_${type}.pdf`, true, letterPaperSize);
                   } else {
-                    downloadPDF(
-                      'preview-content',
-                      `Dokumen_${type}.pdf`,
-                      type === 'rekomendasi',
-                      letterPaperSize
-                    );
+                    downloadPDF('preview-content', `Dokumen_${type}.pdf`, false, letterPaperSize);
                   }
                 }}
                 className="uppercase text-xs"
@@ -2185,6 +2217,33 @@ function PreviewSection({
       </Card>
 
       <div id="preview-content" className="flex flex-col items-center gap-4 p-4 rounded-lg border border-slate-200 bg-white overflow-y-auto">
+        {type === 'jurnal' && jurnalVerifStatus !== 'approved' && (
+          <div className="w-full max-w-3xl p-3 bg-amber-50 border border-amber-200 rounded-lg text-xs text-amber-800 flex items-start gap-2">
+            <span className="text-base leading-none">⚠️</span>
+            <div>
+              <p className="font-semibold">Preview tersedia, tapi cetak belum aktif.</p>
+              <p className="mt-0.5">
+                {role === 'kepala_sekolah'
+                  ? 'Jurnal ini menunggu persetujuan Pengawas Bina. Cetak aktif setelah disetujui.'
+                  : 'Jurnal ini menunggu verifikasi Kepala Sekolah. Cetak aktif setelah diverifikasi.'}
+              </p>
+            </div>
+          </div>
+        )}
+        {type === 'rekomendasi' && !(useTriwulan ? isTriwulanApproved(filterTriwulan) : isMonthApproved(filterMonth)) && (
+          <div className="w-full max-w-3xl p-3 bg-amber-50 border border-amber-200 rounded-lg text-xs text-amber-800 flex items-start gap-2">
+            <span className="text-base leading-none">⚠️</span>
+            <div>
+              <p className="font-semibold">Rekomendasi belum bisa dicetak.</p>
+              <p className="mt-0.5">
+                Menunggu persetujuan Pengawas untuk periode{' '}
+                <strong>
+                  {useTriwulan ? `Triwulan ${filterTriwulan}` : months[filterMonth]} {filterYear}
+                </strong>.
+              </p>
+            </div>
+          </div>
+        )}
         {type === 'jurnal' && (
           <>
             {useTriwulan ? (
