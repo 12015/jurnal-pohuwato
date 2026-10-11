@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import {
-  ClipboardCheck, Loader2, CheckCircle2, XCircle, User, Calendar,
-  RefreshCw, Users, Clock, AlertCircle, FileText, X,
+  ClipboardCheck, Loader2, CheckCircle2, XCircle, User, RefreshCw,
+  X, Calendar, Eye,
 } from 'lucide-react';
 import { format, parseISO } from 'date-fns';
 import { id as localeId } from 'date-fns/locale';
@@ -21,14 +21,15 @@ interface AntrianVerifikasiProps {
   addNotification: (message: string, type: 'success' | 'error') => void;
 }
 
+const monthsFull = [
+  'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni',
+  'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember',
+];
+
 function parsePeriodKey(key: string): string {
   const parts = key.split('-');
   if (parts[0] === 'm') {
-    const months = [
-      'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni',
-      'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'
-    ];
-    return `${months[parseInt(parts[1])] || '-'} ${parts[2]}`;
+    return `${monthsFull[parseInt(parts[1])] || '-'} ${parts[2]}`;
   }
   return key;
 }
@@ -37,10 +38,16 @@ export function AntrianVerifikasi({ profile, addNotification }: AntrianVerifikas
   const [pending, setPending] = useState<PendingVerification[]>([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<'pending' | 'approved' | 'rejected' | 'all'>('pending');
-  const [selected, setSelected] = useState<PendingVerification | null>(null);
+
+  // Modal Lihat
+  const [viewTarget, setViewTarget] = useState<PendingVerification | null>(null);
   const [journals, setJournals] = useState<JournalEntry[]>([]);
   const [loadingDetail, setLoadingDetail] = useState(false);
+
+  // Modal Tolak
+  const [rejectTarget, setRejectTarget] = useState<PendingVerification | null>(null);
   const [rejectNote, setRejectNote] = useState('');
+
   const [processing, setProcessing] = useState<string | null>(null);
 
   const fetchData = async () => {
@@ -59,7 +66,7 @@ export function AntrianVerifikasi({ profile, addNotification }: AntrianVerifikas
   useEffect(() => {
     fetchData();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [profile.workUnitBina]);
+  }, [profile.npsnBina]);
 
   const filtered = pending.filter((v) => {
     if (filter === 'all') return true;
@@ -73,16 +80,16 @@ export function AntrianVerifikasi({ profile, addNotification }: AntrianVerifikas
     rejected: pending.filter((v) => v.kepsekStatus === 'rejected').length,
   };
 
-  const openDetail = async (item: PendingVerification) => {
-    setSelected(item);
-    setRejectNote('');
+  const handleOpenView = async (item: PendingVerification) => {
+    setViewTarget(item);
     setLoadingDetail(true);
     try {
-      // Parse periodKey: m-9-2026 → month=9, year=2026
       const parts = item.periodKey.split('-');
       const mIdx = parseInt(parts[1]);
       const year = parseInt(parts[2]);
       const js = await getJournalsByUser(item.guruId, mIdx, year);
+      // Sort desc: terbaru paling atas
+      js.sort((a, b) => parseISO(b.date).getTime() - parseISO(a.date).getTime());
       setJournals(js);
     } catch (e) {
       console.error(e);
@@ -99,11 +106,8 @@ export function AntrianVerifikasi({ profile, addNotification }: AntrianVerifikas
       await approveKepsek(item.id, user.id);
       addNotification(`${item.guruName} berhasil diverifikasi`, 'success');
       setPending((prev) =>
-        prev.map((p) =>
-          p.id === item.id ? { ...p, kepsekStatus: 'approved' as const } : p
-        )
+        prev.map((p) => (p.id === item.id ? { ...p, kepsekStatus: 'approved' as const } : p))
       );
-      setSelected(null);
     } catch (e) {
       console.error(e);
       addNotification('Gagal: ' + (e as Error).message, 'error');
@@ -112,23 +116,22 @@ export function AntrianVerifikasi({ profile, addNotification }: AntrianVerifikas
     }
   };
 
-  const handleReject = async (item: PendingVerification) => {
-    if (!rejectNote.trim()) {
-      addNotification('Catatan wajib diisi untuk menolak', 'error');
-      return;
-    }
-    setProcessing(item.id);
+  const handleRejectSubmit = async () => {
+    if (!rejectTarget || !rejectNote.trim()) return;
+    setProcessing(rejectTarget.id);
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('Tidak login');
-      await rejectKepsek(item.id, user.id, rejectNote);
-      addNotification(`${item.guruName} ditolak dengan catatan`, 'success');
+      await rejectKepsek(rejectTarget.id, user.id, rejectNote);
+      addNotification(`${rejectTarget.guruName} ditolak dengan catatan`, 'success');
       setPending((prev) =>
         prev.map((p) =>
-          p.id === item.id ? { ...p, kepsekStatus: 'rejected' as const, kepsekNote: rejectNote } : p
+          p.id === rejectTarget.id
+            ? { ...p, kepsekStatus: 'rejected' as const, kepsekNote: rejectNote }
+            : p
         )
       );
-      setSelected(null);
+      setRejectTarget(null);
       setRejectNote('');
     } catch (e) {
       console.error(e);
@@ -139,7 +142,7 @@ export function AntrianVerifikasi({ profile, addNotification }: AntrianVerifikas
   };
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-3">
       {/* Statistik */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
         <button
@@ -184,6 +187,18 @@ export function AntrianVerifikasi({ profile, addNotification }: AntrianVerifikas
         </button>
       </div>
 
+      {/* Toolbar tipis */}
+      <div className="flex justify-end px-1">
+        <button
+          onClick={fetchData}
+          disabled={loading}
+          className="flex items-center gap-2 bg-slate-100 hover:bg-slate-200 px-3 py-1.5 rounded-lg transition-colors text-xs font-semibold text-slate-700 disabled:opacity-50"
+        >
+          {loading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <RefreshCw className="w-3.5 h-3.5" />}
+          Segarkan
+        </button>
+      </div>
+
       {/* List */}
       <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
         {loading ? (
@@ -209,13 +224,30 @@ export function AntrianVerifikasi({ profile, addNotification }: AntrianVerifikas
               const isRejected = v.kepsekStatus === 'rejected';
 
               return (
-                <div key={v.id} className="p-4 flex flex-col sm:flex-row sm:items-center gap-3">
-                  <div className="w-11 h-11 rounded-full bg-slate-100 flex items-center justify-center overflow-hidden shrink-0 border border-slate-200">
+                <div key={v.id} className="p-3 flex flex-col sm:flex-row sm:items-center gap-3">
+                  <div className="w-10 h-10 rounded-full bg-slate-100 flex items-center justify-center overflow-hidden shrink-0 border border-slate-200">
                     <User className="w-5 h-5 text-slate-400" />
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className="font-semibold text-sm text-slate-800 truncate">{v.guruName}</p>
-                    <p className="text-[11px] text-slate-500 truncate">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <p className="font-semibold text-sm text-slate-800 truncate">{v.guruName}</p>
+                      {isApproved && (
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                          <CheckCircle2 className="w-3 h-3" /> Disetujui
+                        </span>
+                      )}
+                      {isRejected && (
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-rose-50 text-rose-700 border border-rose-200">
+                          <XCircle className="w-3 h-3" /> Ditolak
+                        </span>
+                      )}
+                      {isPending && (
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-50 text-amber-700 border border-amber-200">
+                          Menunggu
+                        </span>
+                      )}
+                    </div>
+                    <p className="text-[11px] text-slate-500 truncate mt-0.5">
                       NIP {v.guruNip || '-'} · {v.guruPosition || '-'}
                     </p>
                     <p className="text-[11px] text-slate-500 mt-0.5">
@@ -225,27 +257,40 @@ export function AntrianVerifikasi({ profile, addNotification }: AntrianVerifikas
                       )}
                     </p>
                   </div>
-                  <div className="flex items-center gap-2 shrink-0">
-                    {isApproved && (
-                      <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
-                        <CheckCircle2 className="w-3 h-3" /> Disetujui
-                      </span>
-                    )}
-                    {isRejected && (
-                      <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-bold bg-rose-50 text-rose-700 border border-rose-200">
-                        <XCircle className="w-3 h-3" /> Ditolak
-                      </span>
-                    )}
+                  <div className="flex items-center gap-1.5 shrink-0">
+                    {isPending ? (
+                      <>
+                        <button
+                          onClick={() => {
+                            setRejectTarget(v);
+                            setRejectNote('');
+                          }}
+                          disabled={processing === v.id}
+                          className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-[11px] font-semibold bg-rose-50 hover:bg-rose-100 text-rose-700 transition-colors disabled:opacity-40"
+                        >
+                          <XCircle className="w-3.5 h-3.5" />
+                          Tolak
+                        </button>
+                        <button
+                          onClick={() => handleApprove(v)}
+                          disabled={processing === v.id}
+                          className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-[11px] font-semibold bg-emerald-50 hover:bg-emerald-100 text-emerald-700 transition-colors disabled:opacity-40"
+                        >
+                          {processing === v.id ? (
+                            <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                          ) : (
+                            <CheckCircle2 className="w-3.5 h-3.5" />
+                          )}
+                          Approve
+                        </button>
+                      </>
+                    ) : null}
                     <button
-                      onClick={() => openDetail(v)}
-                      className={cn(
-                        'px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors',
-                        isPending
-                          ? 'bg-indigo-600 hover:bg-indigo-700 text-white'
-                          : 'bg-slate-100 hover:bg-slate-200 text-slate-700'
-                      )}
+                      onClick={() => handleOpenView(v)}
+                      className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-[11px] font-semibold bg-indigo-50 hover:bg-indigo-100 text-indigo-700 transition-colors"
                     >
-                      {isPending ? 'Verifikasi' : 'Lihat'}
+                      <Eye className="w-3.5 h-3.5" />
+                      Lihat
                     </button>
                   </div>
                 </div>
@@ -255,27 +300,25 @@ export function AntrianVerifikasi({ profile, addNotification }: AntrianVerifikas
         )}
       </div>
 
-      {/* Modal Detail */}
-      {selected && (
+      {/* Modal LIHAT — 2 grid */}
+      {viewTarget && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 backdrop-blur-sm p-4">
           <div className="bg-white rounded-2xl max-w-4xl w-full max-h-[90vh] shadow-2xl border border-slate-200 flex flex-col">
-            {/* Header */}
             <div className="p-4 border-b border-slate-200 flex items-center justify-between">
               <div>
-                <p className="font-bold text-slate-800">{selected.guruName}</p>
+                <p className="font-bold text-slate-800">{viewTarget.guruName}</p>
                 <p className="text-xs text-slate-500">
-                  NIP {selected.guruNip || '-'} · {parsePeriodKey(selected.periodKey)}
+                  NIP {viewTarget.guruNip || '-'} · {parsePeriodKey(viewTarget.periodKey)}
                 </p>
               </div>
               <button
-                onClick={() => setSelected(null)}
+                onClick={() => setViewTarget(null)}
                 className="p-2 hover:bg-slate-100 rounded-lg transition-colors"
               >
                 <X className="w-5 h-5 text-slate-500" />
               </button>
             </div>
 
-            {/* Body */}
             <div className="flex-1 overflow-y-auto p-4">
               {loadingDetail ? (
                 <div className="p-12 text-center">
@@ -284,28 +327,35 @@ export function AntrianVerifikasi({ profile, addNotification }: AntrianVerifikas
                 </div>
               ) : journals.length === 0 ? (
                 <div className="p-12 text-center">
-                  <FileText className="w-12 h-12 text-slate-300 mx-auto mb-3" />
+                  <Calendar className="w-12 h-12 text-slate-300 mx-auto mb-3" />
                   <p className="text-sm text-slate-500">Belum ada jurnal di periode ini</p>
                 </div>
               ) : (
-                <div className="space-y-3">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                   {journals.map((j) => (
-                    <div key={j.id} className="border border-slate-200 rounded-lg p-3">
+                    <div key={j.id} className="border border-slate-200 rounded-lg p-3 bg-slate-50/50">
                       <p className="font-semibold text-sm text-slate-800 mb-2">
                         {format(parseISO(j.date), 'EEEE, d MMMM yyyy', { locale: localeId })}
                       </p>
-                      <div className="space-y-2 ml-2">
+                      <div className="space-y-2">
                         {j.activities.map((act, i) => (
-                          <div key={i} className="flex gap-3 text-xs text-slate-600">
-                            <span className="font-mono text-slate-400 shrink-0 w-20">
+                          <div key={i} className="flex gap-2 text-xs text-slate-600 border-l-2 border-indigo-200 pl-2">
+                            <span className="font-mono text-slate-400 shrink-0 w-16">
                               {act.jam || '-'}
                             </span>
-                            <div className="flex-1">
-                              <span className="font-semibold">{act.jenisKegiatan || '-'}</span>
-                              {act.agendaMapel && <span> · {act.agendaMapel}</span>}
-                              {act.lokasiKelas && <span> · {act.lokasiKelas}</span>}
+                            <div className="flex-1 min-w-0">
+                              <p className="font-semibold text-slate-700 truncate">
+                                {act.jenisKegiatan || '-'}
+                              </p>
+                              {(act.agendaMapel || act.lokasiKelas) && (
+                                <p className="text-slate-500 text-[11px] truncate">
+                                  {act.agendaMapel || ''}{act.agendaMapel && act.lokasiKelas ? ' · ' : ''}{act.lokasiKelas || ''}
+                                </p>
+                              )}
                               {act.kegiatanTujuan && (
-                                <p className="text-slate-500 mt-0.5">{act.kegiatanTujuan}</p>
+                                <p className="text-slate-500 text-[11px] mt-0.5">
+                                  {act.kegiatanTujuan}
+                                </p>
                               )}
                             </div>
                           </div>
@@ -315,60 +365,67 @@ export function AntrianVerifikasi({ profile, addNotification }: AntrianVerifikas
                   ))}
                 </div>
               )}
+            </div>
+          </div>
+        </div>
+      )}
 
-              {/* Catatan reject (kalau status pending) */}
-              {selected.kepsekStatus === 'pending' && (
-                <div className="mt-4 pt-4 border-t border-slate-200">
-                  <label className="block text-xs font-semibold text-slate-700 mb-1.5">
-                    CATATAN (wajib diisi jika menolak)
-                  </label>
-                  <textarea
-                    value={rejectNote}
-                    onChange={(e) => setRejectNote(e.target.value)}
-                    rows={3}
-                    className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 outline-none resize-none"
-                    placeholder="Contoh: Jurnal tanggal 3 Okt materinya kurang lengkap"
-                  />
-                </div>
-              )}
-
-              {selected.kepsekNote && selected.kepsekStatus === 'rejected' && (
-                <div className="mt-4 p-3 bg-rose-50 border border-rose-200 rounded-lg">
-                  <p className="text-xs font-semibold text-rose-800 mb-1">Catatan Penolakan:</p>
-                  <p className="text-sm text-rose-700">{selected.kepsekNote}</p>
-                </div>
-              )}
+      {/* Modal TOLAK */}
+      {rejectTarget && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 backdrop-blur-sm p-4">
+          <div className="bg-white rounded-2xl p-5 max-w-md w-full shadow-2xl border border-slate-200 space-y-3">
+            <div className="flex items-start gap-3">
+              <div className="w-10 h-10 rounded-full bg-rose-100 text-rose-600 flex items-center justify-center shrink-0">
+                <XCircle className="w-5 h-5" />
+              </div>
+              <div className="flex-1">
+                <h4 className="font-bold text-slate-800 text-sm">Tolak Verifikasi?</h4>
+                <p className="text-xs text-slate-600 mt-0.5">
+                  {rejectTarget.guruName} — {parsePeriodKey(rejectTarget.periodKey)}
+                </p>
+              </div>
+              <button
+                onClick={() => setRejectTarget(null)}
+                className="p-1 hover:bg-slate-100 rounded-lg transition-colors"
+              >
+                <X className="w-4 h-4 text-slate-500" />
+              </button>
             </div>
 
-            {/* Footer */}
-            {selected.kepsekStatus === 'pending' && (
-              <div className="p-4 border-t border-slate-200 flex flex-col sm:flex-row gap-2 justify-end">
-                <button
-                  onClick={() => handleReject(selected)}
-                  disabled={processing === selected.id || !rejectNote.trim()}
-                  className="px-4 py-2 bg-rose-600 hover:bg-rose-700 disabled:opacity-50 text-white text-sm font-semibold rounded-lg transition-colors flex items-center justify-center gap-2"
-                >
-                  {processing === selected.id ? (
-                    <Loader2 className="w-4 h-4 animate-spin" />
-                  ) : (
-                    <XCircle className="w-4 h-4" />
-                  )}
-                  Tolak dengan Catatan
-                </button>
-                <button
-                  onClick={() => handleApprove(selected)}
-                  disabled={processing === selected.id}
-                  className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white text-sm font-semibold rounded-lg transition-colors flex items-center justify-center gap-2"
-                >
-                  {processing === selected.id ? (
-                    <Loader2 className="w-4 h-4 animate-spin" />
-                  ) : (
-                    <CheckCircle2 className="w-4 h-4" />
-                  )}
-                  Verifikasi & Teruskan ke Pengawas
-                </button>
-              </div>
-            )}
+            <div>
+              <label className="block text-xs font-semibold text-slate-700 mb-1.5">
+                CATATAN PENOLAKAN <span className="text-red-500">*</span>
+              </label>
+              <textarea
+                value={rejectNote}
+                onChange={(e) => setRejectNote(e.target.value)}
+                rows={4}
+                placeholder="Contoh: Jurnal tanggal 3 Okt materinya kurang lengkap"
+                className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-rose-500 focus:border-rose-500 outline-none resize-none"
+                autoFocus
+              />
+            </div>
+
+            <div className="flex justify-end gap-2 pt-2 border-t border-slate-100">
+              <button
+                onClick={() => setRejectTarget(null)}
+                className="px-3.5 py-1.5 rounded-lg text-xs font-semibold text-slate-600 hover:bg-slate-100 transition-colors"
+              >
+                Batal
+              </button>
+              <button
+                onClick={handleRejectSubmit}
+                disabled={!rejectNote.trim() || processing === rejectTarget.id}
+                className="px-3.5 py-1.5 rounded-lg text-xs font-semibold bg-rose-600 hover:bg-rose-700 disabled:opacity-50 text-white transition-colors flex items-center gap-1.5"
+              >
+                {processing === rejectTarget.id ? (
+                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                ) : (
+                  <XCircle className="w-3.5 h-3.5" />
+                )}
+                Tolak dengan Catatan
+              </button>
+            </div>
           </div>
         </div>
       )}

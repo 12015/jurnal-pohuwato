@@ -47,6 +47,12 @@ export function DaftarGuruBinaan({
 
   const filtered = useMemo(() => {
     let list = [...rows];
+
+    // Khusus kepsek: sembunyikan kepsek (diri sendiri) — hanya tampil guru
+    if (profile.role === 'kepala_sekolah') {
+      list = list.filter((r) => r.role !== 'kepala_sekolah');
+    }
+
     if (search.trim()) {
       const q = search.toLowerCase();
       list = list.filter(
@@ -58,7 +64,7 @@ export function DaftarGuruBinaan({
     }
     list.sort((a, b) => a.name.localeCompare(b.name));
     return list;
-  }, [rows, search]);
+  }, [rows, search, profile.role]);
 
   // Split ke 2 kolom
   const half = Math.ceil(filtered.length / 2);
