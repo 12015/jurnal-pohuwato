@@ -231,6 +231,8 @@ export interface GuruBinaanSummary {
   name: string;
   nip: string;
   workUnit: string;
+  namaSekolah?: string;
+  npsn?: string;
   position: string;
   subject: string;
   journalCount: number;
@@ -261,6 +263,15 @@ export async function getGuruBinaan(npsnBinaList: string[]): Promise<GuruBinaanS
   );
   if (matched.length === 0) return [];
 
+  // Lookup nama sekolah dari master_sekolah
+  const { data: masterData } = await supabase
+    .from('master_sekolah')
+    .select('npsn, nama_sekolah');
+  const namaMap = new Map<string, string>();
+  (masterData || []).forEach((m: any) => {
+    if (m.npsn) namaMap.set(m.npsn, m.nama_sekolah);
+  });
+
   const userIds = matched.map((t) => t.user_id);
   const now = new Date();
   const start = format(startOfMonth(now), 'yyyy-MM-dd');
@@ -289,6 +300,8 @@ export async function getGuruBinaan(npsnBinaList: string[]): Promise<GuruBinaanS
       name: t.name || '(Tanpa Nama)',
       nip: t.nip || '',
       workUnit: t.work_unit || '',
+      namaSekolah: namaMap.get(t.npsn) || t.work_unit || '',
+      npsn: t.npsn || '',
       position: t.position || '',
       subject: t.subject || '',
       journalCount: stats.count,
@@ -799,6 +812,15 @@ export async function getAllBinaan(npsnBinaList: string[]): Promise<BinaanSummar
   );
   if (matched.length === 0) return [];
 
+  // Lookup nama sekolah dari master_sekolah
+  const { data: masterData } = await supabase
+    .from('master_sekolah')
+    .select('npsn, nama_sekolah');
+  const namaMap = new Map<string, string>();
+  (masterData || []).forEach((m: any) => {
+    if (m.npsn) namaMap.set(m.npsn, m.nama_sekolah);
+  });
+
   const userIds = matched.map((t) => t.user_id);
   const now = new Date();
   const start = format(startOfMonth(now), 'yyyy-MM-dd');
@@ -827,6 +849,8 @@ export async function getAllBinaan(npsnBinaList: string[]): Promise<BinaanSummar
       name: t.name || '(Tanpa Nama)',
       nip: t.nip || '',
       workUnit: t.work_unit || '',
+      namaSekolah: namaMap.get(t.npsn) || t.work_unit || '',
+      npsn: t.npsn || '',
       position: t.position || '',
       subject: t.subject || '',
       journalCount: stats.count,

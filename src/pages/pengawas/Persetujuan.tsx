@@ -329,6 +329,7 @@ export function Persetujuan({ profile, addNotification }: PersetujuanProps) {
                   <th className="text-left px-4 py-3 font-bold text-slate-700 text-xs uppercase">No</th>
                   <th className="text-left px-4 py-3 font-bold text-slate-700 text-xs uppercase">Nama</th>
                   <th className="text-center px-4 py-3 font-bold text-slate-700 text-xs uppercase">Jabatan</th>
+                  <th className="text-left px-4 py-3 font-bold text-slate-700 text-xs uppercase">Sekolah</th>
                   <th className="text-center px-4 py-3 font-bold text-slate-700 text-xs uppercase">Jurnal</th>
                   <th className="text-center px-4 py-3 font-bold text-slate-700 text-xs uppercase">Kelengkapan</th>
                   <th className="text-center px-4 py-3 font-bold text-slate-700 text-xs uppercase">Status</th>
@@ -365,6 +366,14 @@ export function Persetujuan({ profile, addNotification }: PersetujuanProps) {
                         <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-bold bg-blue-50 text-blue-700 border border-blue-200">
                           Guru
                         </span>
+                      )}
+                    </td>
+                    <td className="px-4 py-3 text-slate-700 text-xs">
+                      <p className="font-medium truncate max-w-[200px]">
+                        {r.namaSekolah || r.workUnit || '-'}
+                      </p>
+                      {r.npsn && (
+                        <p className="text-[10px] text-slate-400 font-mono">NPSN {r.npsn}</p>
                       )}
                     </td>
                     <td className="px-4 py-3 text-center">
