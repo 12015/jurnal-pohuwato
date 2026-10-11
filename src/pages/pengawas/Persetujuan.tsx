@@ -1,13 +1,12 @@
 import { useEffect, useMemo, useState } from 'react';
 import {
   CheckSquare, Loader2, CheckCircle2, XCircle, AlertCircle, Users,
-  RefreshCw, Send, Clock,
+  RefreshCw, Send, Clock, Inbox,
 } from 'lucide-react';
 import {
   format, startOfMonth, endOfMonth, eachDayOfInterval, isWeekend,
   getMonth, getYear,
 } from 'date-fns';
-import { id as localeId } from 'date-fns/locale';
 import {
   getGuruBinaan, getJournalsByUser, getApprovalsByUser, setApprovalForUser,
   getVerificationStatus,
@@ -44,10 +43,6 @@ export function Persetujuan({ profile, addNotification }: PersetujuanProps) {
 
   const [filterMonth, setFilterMonth] = useState<number>(getMonth(now));
   const [filterYear, setFilterYear] = useState<number>(getYear(now));
-  const [useTriwulan, setUseTriwulan] = useState(false);
-  const [filterTriwulan, setFilterTriwulan] = useState<number>(
-    Math.floor(getMonth(now) / 3) + 1
-  );
 
   // Hari kerja bulan ini
   const required = useMemo(() => {
@@ -62,12 +57,10 @@ export function Persetujuan({ profile, addNotification }: PersetujuanProps) {
     setLoading(true);
     try {
       const gurus = await getGuruBinaan(profile.workUnitBina || '');
+      const monthKey = `m-${filterMonth}-${filterYear}`;
+
       const enriched: GuruApprovalRow[] = await Promise.all(
         gurus.map(async (g) => {
-          const monthKey = `m-${filterMonth}-${filterYear}`;
-          const q = Math.floor(filterMonth / 3) + 1;
-          const triwulanKey = `q-${q}-${filterYear}`;
-
           const [journals, approvals, verification] = await Promise.all([
             getJournalsByUser(g.userId, filterMonth, filterYear),
             getApprovalsByUser(g.userId),
@@ -77,10 +70,7 @@ export function Persetujuan({ profile, addNotification }: PersetujuanProps) {
           const filledCount = journals.length;
           const percent = required > 0 ? Math.round((filledCount / required) * 100) : 0;
           const eligible = percent >= 80;
-
-          const approved = useTriwulan
-            ? approvals.includes(triwulanKey)
-            : approvals.includes(monthKey);
+          const approved = approvals.includes(monthKey);
 
           const kepsekStatus: 'pending' | 'approved' | 'rejected' =
             (verification?.kepsekStatus as 'pending' | 'approved' | 'rejected') || 'pending';
@@ -108,25 +98,19 @@ export function Persetujuan({ profile, addNotification }: PersetujuanProps) {
   useEffect(() => {
     loadData();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [profile.workUnitBina, filterMonth, filterYear, useTriwulan, filterTriwulan]);
+  }, [profile.workUnitBina, filterMonth, filterYear]);
+
+  // HANYA tampilkan guru yang sudah diverifikasi kepsek
+  const visibleRows = useMemo(
+    () => rows.filter((r) => r.kepsekApproved),
+    [rows]
+  );
 
   const handleToggle = async (row: GuruApprovalRow) => {
-    // BLOKIR: belum diverifikasi kepsek
-    if (!row.kepsekApproved && !row.approved) {
-      addNotification(
-        `${row.name} belum diverifikasi oleh Kepala Sekolah. Minta kepsek verifikasi dulu.`,
-        'error'
-      );
-      return;
-    }
-
     setProcessingId(row.userId);
     try {
       const monthKey = `m-${filterMonth}-${filterYear}`;
-      const triwulanKey = `q-${filterTriwulan}-${filterYear}`;
-      const key = useTriwulan ? triwulanKey : monthKey;
-
-      await setApprovalForUser(row.userId, key, !row.approved);
+      await setApprovalForUser(row.userId, monthKey, !row.approved);
       setRows((prev) =>
         prev.map((r) => (r.userId === row.userId ? { ...r, approved: !r.approved } : r))
       );
@@ -145,27 +129,18 @@ export function Persetujuan({ profile, addNotification }: PersetujuanProps) {
   };
 
   const handleBulkApprove = async () => {
-    // Filter: eligible, belum approved, DAN sudah diverifikasi kepsek
-    const eligibleNotApproved = rows.filter(
-      (r) => r.eligible && !r.approved && r.kepsekApproved
-    );
+    const eligibleNotApproved = visibleRows.filter((r) => r.eligible && !r.approved);
 
     if (eligibleNotApproved.length === 0) {
-      addNotification(
-        'Tidak ada guru yang siap disetujui (harus sudah diverifikasi Kepala Sekolah)',
-        'error'
-      );
+      addNotification('Tidak ada guru yang siap disetujui', 'error');
       return;
     }
 
     setProcessingId('__bulk__');
     try {
       const monthKey = `m-${filterMonth}-${filterYear}`;
-      const triwulanKey = `q-${filterTriwulan}-${filterYear}`;
-      const key = useTriwulan ? triwulanKey : monthKey;
-
       for (const r of eligibleNotApproved) {
-        await setApprovalForUser(r.userId, key, true);
+        await setApprovalForUser(r.userId, monthKey, true);
       }
       setRows((prev) =>
         prev.map((r) =>
@@ -190,13 +165,11 @@ export function Persetujuan({ profile, addNotification }: PersetujuanProps) {
     return {
       total: rows.length,
       approved: rows.filter((r) => r.approved).length,
-      eligibleNotApproved: rows.filter(
-        (r) => r.eligible && !r.approved && r.kepsekApproved
-      ).length,
-      notEligible: rows.filter((r) => !r.eligible).length,
+      eligibleNotApproved: visibleRows.filter((r) => r.eligible && !r.approved).length,
+      notEligible: visibleRows.filter((r) => !r.eligible).length,
       waitingKepsek: rows.filter((r) => !r.kepsekApproved).length,
     };
-  }, [rows]);
+  }, [rows, visibleRows]);
 
   return (
     <div className="space-y-4">
@@ -206,43 +179,22 @@ export function Persetujuan({ profile, addNotification }: PersetujuanProps) {
           <div>
             <h2 className="font-bold text-slate-800 text-base flex items-center gap-2">
               <CheckSquare className="w-5 h-5 text-indigo-600" />
-              Persetujuan Bulanan
+              Verifikasi Rekomendasi
             </h2>
             <p className="text-xs text-slate-500 mt-0.5">
-              Setujui jurnal guru yang memenuhi syarat ≥ 80% dan sudah diverifikasi Kepala Sekolah
+              Setujui rekomendasi untuk guru yang sudah diverifikasi Kepala Sekolah (≥ 80%)
             </p>
           </div>
           <div className="flex flex-wrap items-center gap-2">
             <select
-              value={useTriwulan ? 'q' : 'm'}
-              onChange={(e) => setUseTriwulan(e.target.value === 'q')}
+              value={filterMonth}
+              onChange={(e) => setFilterMonth(parseInt(e.target.value))}
               className="text-xs border border-slate-300 rounded-lg px-2 py-2 font-semibold text-slate-700"
             >
-              <option value="m">Bulanan</option>
-              <option value="q">Triwulan</option>
+              {months.map((m, i) => (
+                <option key={i} value={i}>{m}</option>
+              ))}
             </select>
-            {useTriwulan ? (
-              <select
-                value={filterTriwulan}
-                onChange={(e) => setFilterTriwulan(parseInt(e.target.value))}
-                className="text-xs border border-slate-300 rounded-lg px-2 py-2 font-semibold text-slate-700"
-              >
-                <option value={1}>T-1 (Jan-Mar)</option>
-                <option value={2}>T-2 (Apr-Jun)</option>
-                <option value={3}>T-3 (Jul-Sep)</option>
-                <option value={4}>T-4 (Okt-Des)</option>
-              </select>
-            ) : (
-              <select
-                value={filterMonth}
-                onChange={(e) => setFilterMonth(parseInt(e.target.value))}
-                className="text-xs border border-slate-300 rounded-lg px-2 py-2 font-semibold text-slate-700"
-              >
-                {months.map((m, i) => (
-                  <option key={i} value={i}>{m}</option>
-                ))}
-              </select>
-            )}
             <select
               value={filterYear}
               onChange={(e) => setFilterYear(parseInt(e.target.value))}
@@ -332,11 +284,10 @@ export function Persetujuan({ profile, addNotification }: PersetujuanProps) {
       <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
         <div className="p-4 border-b border-slate-200">
           <p className="font-semibold text-slate-800 text-sm">
-            Daftar Persetujuan -{' '}
-            {useTriwulan ? `Triwulan ${filterTriwulan}` : months[filterMonth]} {filterYear}
+            Daftar Verifikasi Rekomendasi - {months[filterMonth]} {filterYear}
           </p>
           <p className="text-[11px] text-slate-500 mt-0.5">
-            {required} hari kerja · Target minimal 80% · Wajib sudah diverifikasi Kepala Sekolah
+            {required} hari kerja · Target minimal 80% · Hanya guru yang sudah diverifikasi Kepala Sekolah
           </p>
         </div>
 
@@ -350,36 +301,37 @@ export function Persetujuan({ profile, addNotification }: PersetujuanProps) {
             <Users className="w-12 h-12 text-slate-300 mx-auto mb-3" />
             <p className="font-semibold text-slate-700 text-sm">Belum ada guru binaan</p>
           </div>
+        ) : visibleRows.length === 0 ? (
+          <div className="p-12 text-center">
+            <Inbox className="w-12 h-12 text-slate-300 mx-auto mb-3" />
+            <p className="font-semibold text-slate-700 text-sm">
+              Belum ada jurnal yang diverifikasi Kepala Sekolah
+            </p>
+            <p className="text-xs text-slate-500 mt-1 max-w-md mx-auto">
+              Daftar ini akan otomatis terisi ketika Kepala Sekolah memverifikasi jurnal guru
+              untuk periode {months[filterMonth]} {filterYear}.
+            </p>
+            {stats.waitingKepsek > 0 && (
+              <p className="text-xs text-amber-600 mt-2">
+                {stats.waitingKepsek} guru menunggu verifikasi Kepala Sekolah.
+              </p>
+            )}
+          </div>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead className="bg-slate-50 border-b border-slate-200">
                 <tr>
-                  <th className="text-left px-4 py-3 font-bold text-slate-700 text-xs uppercase">
-                    No
-                  </th>
-                  <th className="text-left px-4 py-3 font-bold text-slate-700 text-xs uppercase">
-                    Nama Guru
-                  </th>
-                  <th className="text-center px-4 py-3 font-bold text-slate-700 text-xs uppercase">
-                    Jurnal
-                  </th>
-                  <th className="text-center px-4 py-3 font-bold text-slate-700 text-xs uppercase">
-                    Kelengkapan
-                  </th>
-                  <th className="text-center px-4 py-3 font-bold text-slate-700 text-xs uppercase">
-                    Verif. Kepsek
-                  </th>
-                  <th className="text-center px-4 py-3 font-bold text-slate-700 text-xs uppercase">
-                    Status
-                  </th>
-                  <th className="text-center px-4 py-3 font-bold text-slate-700 text-xs uppercase">
-                    Aksi
-                  </th>
+                  <th className="text-left px-4 py-3 font-bold text-slate-700 text-xs uppercase">No</th>
+                  <th className="text-left px-4 py-3 font-bold text-slate-700 text-xs uppercase">Nama Guru</th>
+                  <th className="text-center px-4 py-3 font-bold text-slate-700 text-xs uppercase">Jurnal</th>
+                  <th className="text-center px-4 py-3 font-bold text-slate-700 text-xs uppercase">Kelengkapan</th>
+                  <th className="text-center px-4 py-3 font-bold text-slate-700 text-xs uppercase">Status</th>
+                  <th className="text-center px-4 py-3 font-bold text-slate-700 text-xs uppercase">Aksi</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
-                {rows.map((r, idx) => (
+                {visibleRows.map((r, idx) => (
                   <tr key={r.userId} className="hover:bg-slate-50">
                     <td className="px-4 py-3 text-center text-slate-500 font-medium">{idx + 1}</td>
                     <td className="px-4 py-3">
@@ -432,30 +384,10 @@ export function Persetujuan({ profile, addNotification }: PersetujuanProps) {
                         </div>
                       </div>
                     </td>
-                    {/* Kolom Verifikasi Kepsek */}
-                    <td className="px-4 py-3 text-center">
-                      {r.kepsekApproved ? (
-                        <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
-                          <CheckCircle2 className="w-3 h-3" /> Sudah
-                        </span>
-                      ) : r.kepsekStatus === 'rejected' ? (
-                        <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-bold bg-rose-50 text-rose-700 border border-rose-200">
-                          <XCircle className="w-3 h-3" /> Ditolak
-                        </span>
-                      ) : (
-                        <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-bold bg-slate-100 text-slate-600 border border-slate-200">
-                          <Clock className="w-3 h-3" /> Menunggu
-                        </span>
-                      )}
-                    </td>
                     <td className="px-4 py-3 text-center">
                       {r.approved ? (
                         <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
                           <CheckCircle2 className="w-3 h-3" /> Disetujui
-                        </span>
-                      ) : !r.kepsekApproved ? (
-                        <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-bold bg-slate-100 text-slate-500 border border-slate-200">
-                          <Clock className="w-3 h-3" /> Tunggu Kepsek
                         </span>
                       ) : r.eligible ? (
                         <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-bold bg-amber-50 text-amber-700 border border-amber-200">
@@ -463,7 +395,7 @@ export function Persetujuan({ profile, addNotification }: PersetujuanProps) {
                         </span>
                       ) : (
                         <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-bold bg-rose-50 text-rose-700 border border-rose-200">
-                          <XCircle className="w-3 h-3" /> Belum
+                          <XCircle className="w-3 h-3" /> Belum Eligible
                         </span>
                       )}
                     </td>
@@ -472,7 +404,7 @@ export function Persetujuan({ profile, addNotification }: PersetujuanProps) {
                         onClick={() => handleToggle(r)}
                         disabled={
                           processingId === r.userId ||
-                          (!r.approved && (!r.eligible || !r.kepsekApproved))
+                          (!r.approved && !r.eligible)
                         }
                         className={cn(
                           'inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors disabled:opacity-40 disabled:cursor-not-allowed',
@@ -481,9 +413,7 @@ export function Persetujuan({ profile, addNotification }: PersetujuanProps) {
                             : 'bg-emerald-50 hover:bg-emerald-100 text-emerald-700'
                         )}
                         title={
-                          !r.approved && !r.kepsekApproved
-                            ? 'Menunggu verifikasi Kepala Sekolah'
-                            : !r.approved && !r.eligible
+                          !r.approved && !r.eligible
                             ? 'Belum memenuhi syarat kelengkapan'
                             : r.approved
                             ? 'Batalkan'

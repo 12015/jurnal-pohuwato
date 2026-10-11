@@ -58,7 +58,7 @@ const kepsekSections: MenuSection[] = [
   {
     title: 'VERIFIKASI',
     items: [
-      { key: 'ks_queue', label: 'Antrian Verifikasi', icon: <ClipboardCheck className="w-5 h-5" /> },
+      { key: 'ks_queue', label: 'Verifikasi Jurnal', icon: <ClipboardCheck className="w-5 h-5" /> },
       { key: 'ks_teachers', label: 'Semua Guru', icon: <Users className="w-5 h-5" /> },
       { key: 'ks_history', label: 'Riwayat Verifikasi', icon: <History className="w-5 h-5" /> },
     ],
@@ -82,10 +82,10 @@ const pengawasSections: MenuSection[] = [
     ],
   },
   {
-    title: 'PERSETUJUAN',
+    title: 'REKOMENDASI',
     items: [
       { key: 'pw_teachers', label: 'Daftar Guru Binaan', icon: <Users className="w-5 h-5" /> },
-      { key: 'pw_approve', label: 'Persetujuan Rekomendasi', icon: <CheckSquare className="w-5 h-5" /> },
+      { key: 'pw_approve', label: 'Verifikasi Rekomendasi', icon: <CheckSquare className="w-5 h-5" /> },
     ],
   },
   {
