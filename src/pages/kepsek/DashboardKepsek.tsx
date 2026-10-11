@@ -67,7 +67,7 @@ export function DashboardKepsek({
   const fetchGurus = async () => {
     setLoadingGurus(true);
     try {
-      const data = await getGuruBinaan(profile.workUnitBina || '');
+      const data = await getGuruBinaan(profile.npsnBina ? [profile.npsnBina] : []);
       setGurus(data);
     } catch (e) {
       console.error(e);

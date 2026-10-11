@@ -189,11 +189,24 @@ export async function getProfile(userId: string): Promise<UserProfile | null> {
     return null;
   }
   if (!data) return null;
+
+  // Khusus pengawas: load daftar NPSN binaan dari tabel pengawas_sekolah
+  let npsnBinaList: string[] | undefined;
+  if (data.role === 'pengawas') {
+    const { data: ps } = await supabase
+      .from('pengawas_sekolah')
+      .select('npsn')
+      .eq('pengawas_id', userId);
+    npsnBinaList = (ps || []).map((r: any) => r.npsn).filter(Boolean);
+  }
+
   return {
     id: data.id,
-    role: (data.role as 'guru' | 'pengawas') || 'guru',
+    role: (data.role as 'guru' | 'kepala_sekolah' | 'pengawas') || 'guru',
     email: data.email || '',
     workUnitBina: data.work_unit_bina || undefined,
+    npsnBina: data.npsn_bina || undefined,
+    npsnBinaList,
   };
 }
 
@@ -225,67 +238,52 @@ export interface GuruBinaanSummary {
   profilePhoto?: string;
 }
 
-export async function getGuruBinaan(workUnitBina: string): Promise<GuruBinaanSummary[]> {
-  // 0. Ambil dulu daftar user_id yang role-nya 'guru' saja
+export async function getGuruBinaan(npsnBinaList: string[]): Promise<GuruBinaanSummary[]> {
+  if (npsnBinaList.length === 0) return [];
+
   const { data: guruProfiles, error: pErr } = await supabase
     .from('profiles')
     .select('id')
     .eq('role', 'guru');
-
-  if (pErr) {
-    console.error('getGuruBinaan profiles:', pErr);
-    return [];
-  }
+  if (pErr) { console.error('getGuruBinaan profiles:', pErr); return []; }
 
   const guruIds = new Set((guruProfiles || []).map((p) => p.id));
   if (guruIds.size === 0) return [];
 
-  // 1. Ambil teachers yang work_unit sama & role-nya guru
   const { data: teachers, error } = await supabase
     .from('teachers')
-    .select('user_id, name, nip, work_unit, position, subject, profile_photo')
+    .select('user_id, name, nip, work_unit, position, subject, profile_photo, npsn')
     .in('user_id', Array.from(guruIds));
-
-  if (error) {
-    console.error('getGuruBinaan teachers:', error);
-    return [];
-  }
+  if (error) { console.error('getGuruBinaan teachers:', error); return []; }
 
   const matched = (teachers || []).filter(
-    (t) =>
-      (t.work_unit || '').toLowerCase().trim() === workUnitBina.toLowerCase().trim()
+    (t) => npsnBinaList.includes((t.npsn || '').trim())
   );
-
   if (matched.length === 0) return [];
 
   const userIds = matched.map((t) => t.user_id);
-
-  // 2. Ambil journals bulan ini untuk guru-guru binaan
   const now = new Date();
   const start = format(startOfMonth(now), 'yyyy-MM-dd');
   const end = format(endOfMonth(now), 'yyyy-MM-dd');
 
   const { data: journals, error: jErr } = await supabase
     .from('journals')
-    .select('user_id, date, activities')
+    .select('user_id, activities')
     .in('user_id', userIds)
     .gte('date', start)
     .lte('date', end);
+  if (jErr) console.error('getGuruBinaan journals:', jErr);
 
-  if (jErr) {
-    console.error('getGuruBinaan journals:', jErr);
-  }
-
-  const journalsByUser = new Map<string, { count: number; activities: number }>();
+  const statsMap = new Map<string, { count: number; activities: number }>();
   (journals || []).forEach((j: any) => {
-    const curr = journalsByUser.get(j.user_id) || { count: 0, activities: 0 };
+    const curr = statsMap.get(j.user_id) || { count: 0, activities: 0 };
     curr.count += 1;
     curr.activities += Array.isArray(j.activities) ? j.activities.length : 0;
-    journalsByUser.set(j.user_id, curr);
+    statsMap.set(j.user_id, curr);
   });
 
   return matched.map((t) => {
-    const stats = journalsByUser.get(t.user_id) || { count: 0, activities: 0 };
+    const stats = statsMap.get(t.user_id) || { count: 0, activities: 0 };
     return {
       userId: t.user_id,
       name: t.name || '(Tanpa Nama)',
@@ -568,56 +566,36 @@ export interface PendingVerification {
 }
 
 export async function getPendingVerificationsForKepsek(
-  workUnitBina: string
+  npsnBina: string
 ): Promise<PendingVerification[]> {
-  // 0. Ambil dulu daftar user_id yang role-nya 'guru' saja
-  //    (exclude kepsek, pengawas, dll)
   const { data: guruProfiles, error: pErr } = await supabase
     .from('profiles')
     .select('id')
     .eq('role', 'guru');
-
-  if (pErr) {
-    console.error('getPendingVerifications profiles:', pErr);
-    return [];
-  }
+  if (pErr) { console.error(pErr); return []; }
 
   const guruProfileIds = new Set((guruProfiles || []).map((p) => p.id));
   if (guruProfileIds.size === 0) return [];
 
-  // 1. Ambil teachers yang work_unit-nya sama
   const { data: teachers, error: tErr } = await supabase
     .from('teachers')
-    .select('user_id, name, nip, position, work_unit');
+    .select('user_id, name, nip, position, work_unit, npsn');
+  if (tErr) { console.error(tErr); return []; }
 
-  if (tErr) {
-    console.error('getPendingVerifications teachers:', tErr);
-    return [];
-  }
-
-  // 2. Filter: work_unit sama DAN role-nya 'guru'
   const matchedTeachers = (teachers || []).filter(
-    (t) =>
-      (t.work_unit || '').toLowerCase().trim() === workUnitBina.toLowerCase().trim() &&
-      guruProfileIds.has(t.user_id)
+    (t) => (t.npsn || '').trim() === npsnBina.trim() && guruProfileIds.has(t.user_id)
   );
-
   if (matchedTeachers.length === 0) return [];
 
   const guruIds = new Set(matchedTeachers.map((t) => t.user_id));
   const teacherMap = new Map(matchedTeachers.map((t) => [t.user_id, t]));
 
-  // 3. Ambil verifications
   const { data: verifs, error: vErr } = await supabase
     .from('verifications')
     .select('*')
     .in('guru_id', Array.from(guruIds))
     .order('guru_submitted_at', { ascending: false });
-
-  if (vErr) {
-    console.error('getPendingVerifications verifications:', vErr);
-    return [];
-  }
+  if (vErr) { console.error(vErr); return []; }
 
   return (verifs || []).map((v: any) => {
     const t = teacherMap.get(v.guru_id);
@@ -816,71 +794,53 @@ export interface BinaanSummary extends GuruBinaanSummary {
  * Dipakai oleh halaman "Verifikasi Rekomendasi" pengawas,
  * supaya kepsek juga bisa diawasi jurnalnya.
  */
-export async function getAllBinaan(workUnitBina: string): Promise<BinaanSummary[]> {
-  // 0. Ambil user_id dengan role 'guru' ATAU 'kepala_sekolah'
+export async function getAllBinaan(npsnBinaList: string[]): Promise<BinaanSummary[]> {
+  if (npsnBinaList.length === 0) return [];
+
   const { data: profiles, error: pErr } = await supabase
     .from('profiles')
     .select('id, role')
     .in('role', ['guru', 'kepala_sekolah']);
-
-  if (pErr) {
-    console.error('getAllBinaan profiles:', pErr);
-    return [];
-  }
+  if (pErr) { console.error('getAllBinaan profiles:', pErr); return []; }
 
   const roleMap = new Map<string, 'guru' | 'kepala_sekolah'>();
-  (profiles || []).forEach((p) => {
-    roleMap.set(p.id, p.role as 'guru' | 'kepala_sekolah');
-  });
-
+  (profiles || []).forEach((p) => roleMap.set(p.id, p.role as any));
   if (roleMap.size === 0) return [];
 
-  // 1. Ambil teachers dengan work_unit yang sama
   const { data: teachers, error } = await supabase
     .from('teachers')
-    .select('user_id, name, nip, work_unit, position, subject, profile_photo')
+    .select('user_id, name, nip, work_unit, position, subject, profile_photo, npsn')
     .in('user_id', Array.from(roleMap.keys()));
-
-  if (error) {
-    console.error('getAllBinaan teachers:', error);
-    return [];
-  }
+  if (error) { console.error('getAllBinaan teachers:', error); return []; }
 
   const matched = (teachers || []).filter(
-    (t) =>
-      (t.work_unit || '').toLowerCase().trim() === workUnitBina.toLowerCase().trim()
+    (t) => npsnBinaList.includes((t.npsn || '').trim())
   );
-
   if (matched.length === 0) return [];
 
   const userIds = matched.map((t) => t.user_id);
-
-  // 2. Hitung statistik jurnal bulan ini
   const now = new Date();
   const start = format(startOfMonth(now), 'yyyy-MM-dd');
   const end = format(endOfMonth(now), 'yyyy-MM-dd');
 
   const { data: journals, error: jErr } = await supabase
     .from('journals')
-    .select('user_id, date, activities')
+    .select('user_id, activities')
     .in('user_id', userIds)
     .gte('date', start)
     .lte('date', end);
+  if (jErr) console.error('getAllBinaan journals:', jErr);
 
-  if (jErr) {
-    console.error('getAllBinaan journals:', jErr);
-  }
-
-  const journalsByUser = new Map<string, { count: number; activities: number }>();
+  const statsMap = new Map<string, { count: number; activities: number }>();
   (journals || []).forEach((j: any) => {
-    const curr = journalsByUser.get(j.user_id) || { count: 0, activities: 0 };
+    const curr = statsMap.get(j.user_id) || { count: 0, activities: 0 };
     curr.count += 1;
     curr.activities += Array.isArray(j.activities) ? j.activities.length : 0;
-    journalsByUser.set(j.user_id, curr);
+    statsMap.set(j.user_id, curr);
   });
 
   return matched.map((t) => {
-    const stats = journalsByUser.get(t.user_id) || { count: 0, activities: 0 };
+    const stats = statsMap.get(t.user_id) || { count: 0, activities: 0 };
     return {
       userId: t.user_id,
       name: t.name || '(Tanpa Nama)',
@@ -894,4 +854,62 @@ export async function getAllBinaan(workUnitBina: string): Promise<BinaanSummary[
       role: roleMap.get(t.user_id) || 'guru',
     };
   });
+}
+
+// ============ PENGAWAS: kelola sekolah binaan (multi NPSN) ============
+
+export async function addPengawasSekolah(
+  pengawasId: string,
+  npsn: string
+): Promise<void> {
+  const { error } = await supabase.from('pengawas_sekolah').insert({
+    pengawas_id: pengawasId,
+    npsn: npsn.trim(),
+  });
+  if (error) throw error;
+}
+
+export async function removePengawasSekolah(
+  pengawasId: string,
+  npsn: string
+): Promise<void> {
+  const { error } = await supabase
+    .from('pengawas_sekolah')
+    .delete()
+    .eq('pengawas_id', pengawasId)
+    .eq('npsn', npsn);
+  if (error) throw error;
+}
+
+export async function getPengawasSekolah(
+  pengawasId: string
+): Promise<{ npsn: string; namaSekolah?: string }[]> {
+  const { data, error } = await supabase
+    .from('pengawas_sekolah')
+    .select('npsn')
+    .eq('pengawas_id', pengawasId);
+  if (error) {
+    console.error('getPengawasSekolah:', error);
+    return [];
+  }
+
+  const npsnList = (data || []).map((r: any) => r.npsn);
+  if (npsnList.length === 0) return [];
+
+  const { data: teachers } = await supabase
+    .from('teachers')
+    .select('npsn, work_unit')
+    .in('npsn', npsnList);
+
+  const nameMap = new Map<string, string>();
+  (teachers || []).forEach((t: any) => {
+    if (t.npsn && t.work_unit && !nameMap.has(t.npsn)) {
+      nameMap.set(t.npsn, t.work_unit);
+    }
+  });
+
+  return npsnList.map((npsn: string) => ({
+    npsn,
+    namaSekolah: nameMap.get(npsn) || `NPSN ${npsn}`,
+  }));
 }

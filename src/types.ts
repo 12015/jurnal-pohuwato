@@ -90,7 +90,9 @@ export interface UserProfile {
   id: string;
   role: UserRole;
   email: string;
-  workUnitBina?: string; // khusus pengawas & kepala sekolah
+  workUnitBina?: string;    // legacy, untuk display
+  npsnBina?: string;         // khusus kepsek (single sekolah)
+  npsnBinaList?: string[];   // khusus pengawas (multi sekolah)
 }
 
 export type TabKey =

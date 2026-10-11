@@ -57,7 +57,7 @@ export function DashboardPengawas({
   const fetchData = async () => {
     setLoading(true);
     try {
-      const data = await getGuruBinaan(profile.workUnitBina || '');
+      const data = await getGuruBinaan(profile.npsnBinaList || []);
       setGurus(data);
     } catch (e) {
       console.error(e);

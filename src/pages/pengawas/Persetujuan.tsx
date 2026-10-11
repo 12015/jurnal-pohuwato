@@ -57,7 +57,7 @@ export function Persetujuan({ profile, addNotification }: PersetujuanProps) {
   const loadData = async () => {
     setLoading(true);
     try {
-      const binaan = await getAllBinaan(profile.workUnitBina || '');
+      const binaan = await getAllBinaan(profile.npsnBinaList || []);
       const monthKey = `m-${filterMonth}-${filterYear}`;
 
       const enriched: BinaanApprovalRow[] = await Promise.all(

@@ -46,7 +46,7 @@ export function AntrianVerifikasi({ profile, addNotification }: AntrianVerifikas
   const fetchData = async () => {
     setLoading(true);
     try {
-      const data = await getPendingVerificationsForKepsek(profile.workUnitBina || '');
+      const data = await getPendingVerificationsForKepsek(profile.npsnBina || '');
       setPending(data);
     } catch (e) {
       console.error(e);
