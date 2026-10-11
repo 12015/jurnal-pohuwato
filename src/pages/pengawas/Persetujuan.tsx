@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import {
   CheckSquare, Loader2, CheckCircle2, XCircle, AlertCircle, Users,
-  RefreshCw, Send,
+  RefreshCw, Send, Clock,
 } from 'lucide-react';
 import {
   format, startOfMonth, endOfMonth, eachDayOfInterval, isWeekend,
@@ -10,6 +10,7 @@ import {
 import { id as localeId } from 'date-fns/locale';
 import {
   getGuruBinaan, getJournalsByUser, getApprovalsByUser, setApprovalForUser,
+  getVerificationStatus,
   type GuruBinaanSummary,
 } from '../../lib/db';
 import type { UserProfile } from '../../types';
@@ -26,6 +27,8 @@ interface GuruApprovalRow extends GuruBinaanSummary {
   percent: number;
   eligible: boolean;
   approved: boolean;
+  kepsekStatus: 'pending' | 'approved' | 'rejected';
+  kepsekApproved: boolean;
 }
 
 const months = [
@@ -61,22 +64,36 @@ export function Persetujuan({ profile, addNotification }: PersetujuanProps) {
       const gurus = await getGuruBinaan(profile.workUnitBina || '');
       const enriched: GuruApprovalRow[] = await Promise.all(
         gurus.map(async (g) => {
-          const [journals, approvals] = await Promise.all([
+          const monthKey = `m-${filterMonth}-${filterYear}`;
+          const q = Math.floor(filterMonth / 3) + 1;
+          const triwulanKey = `q-${q}-${filterYear}`;
+
+          const [journals, approvals, verification] = await Promise.all([
             getJournalsByUser(g.userId, filterMonth, filterYear),
             getApprovalsByUser(g.userId),
+            getVerificationStatus(g.userId, monthKey),
           ]);
+
           const filledCount = journals.length;
           const percent = required > 0 ? Math.round((filledCount / required) * 100) : 0;
           const eligible = percent >= 80;
 
-          const monthKey = `m-${filterMonth}-${filterYear}`;
-          const q = Math.floor(filterMonth / 3) + 1;
-          const triwulanKey = `q-${q}-${filterYear}`;
           const approved = useTriwulan
             ? approvals.includes(triwulanKey)
             : approvals.includes(monthKey);
 
-          return { ...g, filledCount, percent, eligible, approved };
+          const kepsekStatus: 'pending' | 'approved' | 'rejected' =
+            (verification?.kepsekStatus as 'pending' | 'approved' | 'rejected') || 'pending';
+
+          return {
+            ...g,
+            filledCount,
+            percent,
+            eligible,
+            approved,
+            kepsekStatus,
+            kepsekApproved: kepsekStatus === 'approved',
+          };
         })
       );
       setRows(enriched);
@@ -94,6 +111,15 @@ export function Persetujuan({ profile, addNotification }: PersetujuanProps) {
   }, [profile.workUnitBina, filterMonth, filterYear, useTriwulan, filterTriwulan]);
 
   const handleToggle = async (row: GuruApprovalRow) => {
+    // BLOKIR: belum diverifikasi kepsek
+    if (!row.kepsekApproved && !row.approved) {
+      addNotification(
+        `${row.name} belum diverifikasi oleh Kepala Sekolah. Minta kepsek verifikasi dulu.`,
+        'error'
+      );
+      return;
+    }
+
     setProcessingId(row.userId);
     try {
       const monthKey = `m-${filterMonth}-${filterYear}`;
@@ -119,9 +145,16 @@ export function Persetujuan({ profile, addNotification }: PersetujuanProps) {
   };
 
   const handleBulkApprove = async () => {
-    const eligibleNotApproved = rows.filter((r) => r.eligible && !r.approved);
+    // Filter: eligible, belum approved, DAN sudah diverifikasi kepsek
+    const eligibleNotApproved = rows.filter(
+      (r) => r.eligible && !r.approved && r.kepsekApproved
+    );
+
     if (eligibleNotApproved.length === 0) {
-      addNotification('Tidak ada guru yang siap disetujui', 'error');
+      addNotification(
+        'Tidak ada guru yang siap disetujui (harus sudah diverifikasi Kepala Sekolah)',
+        'error'
+      );
       return;
     }
 
@@ -157,8 +190,11 @@ export function Persetujuan({ profile, addNotification }: PersetujuanProps) {
     return {
       total: rows.length,
       approved: rows.filter((r) => r.approved).length,
-      eligibleNotApproved: rows.filter((r) => r.eligible && !r.approved).length,
+      eligibleNotApproved: rows.filter(
+        (r) => r.eligible && !r.approved && r.kepsekApproved
+      ).length,
       notEligible: rows.filter((r) => !r.eligible).length,
+      waitingKepsek: rows.filter((r) => !r.kepsekApproved).length,
     };
   }, [rows]);
 
@@ -173,7 +209,7 @@ export function Persetujuan({ profile, addNotification }: PersetujuanProps) {
               Persetujuan Bulanan
             </h2>
             <p className="text-xs text-slate-500 mt-0.5">
-              Setujui jurnal guru yang memenuhi syarat ≥ 80%
+              Setujui jurnal guru yang memenuhi syarat ≥ 80% dan sudah diverifikasi Kepala Sekolah
             </p>
           </div>
           <div className="flex flex-wrap items-center gap-2">
@@ -228,7 +264,7 @@ export function Persetujuan({ profile, addNotification }: PersetujuanProps) {
       </div>
 
       {/* Statistik */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+      <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
         <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-4">
           <p className="text-[11px] font-semibold text-slate-500 uppercase tracking-wide mb-1">
             Total Guru
@@ -246,6 +282,12 @@ export function Persetujuan({ profile, addNotification }: PersetujuanProps) {
             Siap Disetujui
           </p>
           <p className="text-2xl font-bold text-amber-600">{stats.eligibleNotApproved}</p>
+        </div>
+        <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-4">
+          <p className="text-[11px] font-semibold text-slate-600 uppercase tracking-wide mb-1">
+            Menunggu Kepsek
+          </p>
+          <p className="text-2xl font-bold text-slate-600">{stats.waitingKepsek}</p>
         </div>
         <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-4">
           <p className="text-[11px] font-semibold text-rose-600 uppercase tracking-wide mb-1">
@@ -267,7 +309,7 @@ export function Persetujuan({ profile, addNotification }: PersetujuanProps) {
                 {stats.eligibleNotApproved} guru siap disetujui
               </p>
               <p className="text-xs text-indigo-700 mt-0.5">
-                Mereka sudah memenuhi syarat ≥ 80%. Setujui sekaligus?
+                Sudah memenuhi syarat ≥ 80% dan sudah diverifikasi Kepala Sekolah.
               </p>
             </div>
           </div>
@@ -294,7 +336,7 @@ export function Persetujuan({ profile, addNotification }: PersetujuanProps) {
             {useTriwulan ? `Triwulan ${filterTriwulan}` : months[filterMonth]} {filterYear}
           </p>
           <p className="text-[11px] text-slate-500 mt-0.5">
-            {required} hari kerja · Target minimal 80%
+            {required} hari kerja · Target minimal 80% · Wajib sudah diverifikasi Kepala Sekolah
           </p>
         </div>
 
@@ -324,6 +366,9 @@ export function Persetujuan({ profile, addNotification }: PersetujuanProps) {
                   </th>
                   <th className="text-center px-4 py-3 font-bold text-slate-700 text-xs uppercase">
                     Kelengkapan
+                  </th>
+                  <th className="text-center px-4 py-3 font-bold text-slate-700 text-xs uppercase">
+                    Verif. Kepsek
                   </th>
                   <th className="text-center px-4 py-3 font-bold text-slate-700 text-xs uppercase">
                     Status
@@ -387,10 +432,30 @@ export function Persetujuan({ profile, addNotification }: PersetujuanProps) {
                         </div>
                       </div>
                     </td>
+                    {/* Kolom Verifikasi Kepsek */}
+                    <td className="px-4 py-3 text-center">
+                      {r.kepsekApproved ? (
+                        <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                          <CheckCircle2 className="w-3 h-3" /> Sudah
+                        </span>
+                      ) : r.kepsekStatus === 'rejected' ? (
+                        <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-bold bg-rose-50 text-rose-700 border border-rose-200">
+                          <XCircle className="w-3 h-3" /> Ditolak
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-bold bg-slate-100 text-slate-600 border border-slate-200">
+                          <Clock className="w-3 h-3" /> Menunggu
+                        </span>
+                      )}
+                    </td>
                     <td className="px-4 py-3 text-center">
                       {r.approved ? (
                         <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
                           <CheckCircle2 className="w-3 h-3" /> Disetujui
+                        </span>
+                      ) : !r.kepsekApproved ? (
+                        <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-bold bg-slate-100 text-slate-500 border border-slate-200">
+                          <Clock className="w-3 h-3" /> Tunggu Kepsek
                         </span>
                       ) : r.eligible ? (
                         <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-bold bg-amber-50 text-amber-700 border border-amber-200">
@@ -407,7 +472,7 @@ export function Persetujuan({ profile, addNotification }: PersetujuanProps) {
                         onClick={() => handleToggle(r)}
                         disabled={
                           processingId === r.userId ||
-                          (!r.approved && !r.eligible)
+                          (!r.approved && (!r.eligible || !r.kepsekApproved))
                         }
                         className={cn(
                           'inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors disabled:opacity-40 disabled:cursor-not-allowed',
@@ -416,8 +481,10 @@ export function Persetujuan({ profile, addNotification }: PersetujuanProps) {
                             : 'bg-emerald-50 hover:bg-emerald-100 text-emerald-700'
                         )}
                         title={
-                          !r.approved && !r.eligible
-                            ? 'Belum memenuhi syarat'
+                          !r.approved && !r.kepsekApproved
+                            ? 'Menunggu verifikasi Kepala Sekolah'
+                            : !r.approved && !r.eligible
+                            ? 'Belum memenuhi syarat kelengkapan'
                             : r.approved
                             ? 'Batalkan'
                             : 'Setujui'
