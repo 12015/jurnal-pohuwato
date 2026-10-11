@@ -372,7 +372,15 @@ const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
       {/* Main Content */}
       <main className="flex-1 flex flex-col min-w-0 bg-white lg:rounded-xl overflow-hidden">
         <TopBar
-          title={tabTitles[activeTab]}
+          title={
+            activeTab === 'profile'
+              ? (profile?.role === 'kepala_sekolah'
+                  ? 'PROFIL KEPALA SEKOLAH'
+                  : profile?.role === 'pengawas'
+                  ? 'PROFIL PENGAWAS'
+                  : 'PROFIL GURU & SATUAN PENDIDIKAN')
+              : tabTitles[activeTab]
+          }
           teacherName={teacher.name}
           teacherNip={teacher.nip}
           teacherPhoto={teacher.profilePhoto}
@@ -715,20 +723,6 @@ function ProfileForm({
 
   return (
     <Card className="p-5 sm:p-6 lg:p-8">
-      <div className="flex justify-between items-center pb-3 mb-5 border-b border-slate-200">
-        <h3 className="text-lg font-bold text-slate-800 flex items-center gap-2 uppercase tracking-wide">
-          <User className="w-5 h-5 text-indigo-600" />
-          {role === 'pengawas'
-  ? 'PROFIL PENGAWAS'
-  : role === 'kepala_sekolah'
-  ? 'PROFIL KEPALA SEKOLAH'
-  : 'PROFIL GURU & SATUAN PENDIDIKAN'}
-        </h3>
-        <Button onClick={() => onSave(form)} className="px-5 py-2 text-xs sm:text-sm font-semibold uppercase tracking-wide">
-          <Save className="w-4 h-4" /> SIMPAN PROFIL
-        </Button>
-      </div>
-
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
         {/* Left column (7 cols): Identitas Guru & Satuan Pendidikan */}
         <div className="lg:col-span-7 space-y-4">
@@ -736,7 +730,9 @@ function ProfileForm({
             <Input label="Nama Lengkap" value={form.name} onChange={(v) => setForm({ ...form, name: v })} placeholder="Nama Lengkap & Gelar" required />
             <Input label="NIP" value={form.nip} onChange={(v) => setForm({ ...form, nip: v })} placeholder="19xxxxxxxxxxxxxx" required />
             <Input label="Jabatan" value={form.position} onChange={(v) => setForm({ ...form, position: v })} placeholder="Guru Madya / Muda" required />
-            <Input label="Mata Pelajaran" value={form.subject} onChange={(v) => setForm({ ...form, subject: v })} placeholder="Matematika" required />
+            {role !== 'kepala_sekolah' && (
+  <Input label="Mata Pelajaran" value={form.subject} onChange={(v) => setForm({ ...form, subject: v })} placeholder="Matematika" required />
+)}
             <Input label="Pangkat / Golongan" value={form.grade} onChange={(v) => setForm({ ...form, grade: v })} placeholder="Pembina, IV/a" />
             <Input label="Instansi" value={form.institution || ''} onChange={(v) => setForm({ ...form, institution: v })} placeholder="Dinas Pendidikan dan Kebudayaan" />
             <Input
@@ -828,9 +824,18 @@ function ProfileForm({
                 onChange={(val) => setForm({ ...form, signatureStampImage: val })}
                 hint="Gabung TTD & cap dalam 1 gambar"
               />
+            
             </div>
           )}
     </div>
+          <div className="flex justify-end pt-5 mt-5 border-t border-slate-200">
+        <Button
+          onClick={() => onSave(form)}
+          className="px-6 py-2.5 text-xs sm:text-sm font-semibold uppercase tracking-wide"
+        >
+          <Save className="w-4 h-4" /> SIMPAN PROFIL
+        </Button>
+      </div>
     </Card>
   );
 }
@@ -1455,10 +1460,10 @@ async function downloadJurnalPDF(
         columnStyles: {
           0: { cellWidth: 10, halign: 'center' },
           1: { cellWidth: 32 },
-          2: { cellWidth: 22, halign: 'center' },
+          2: { cellWidth: 30, halign: 'center' },
           3: { cellWidth: 30 },
           4: { cellWidth: 30 },
-          5: { cellWidth: 24, halign: 'center' },
+          5: { cellWidth: 30, halign: 'center' },
           6: { cellWidth: 'auto' },
           7: { cellWidth: 32 },
         },
@@ -2546,13 +2551,13 @@ function JurnalTable({ teacher, journals, month, year, monthIndex, role = 'guru'
         <thead>
           <tr>
             <th style={{ ...thStyle, width: '28px' }}>NO</th>
-            <th style={{ ...thStyle, width: '90px' }}>HARI / TANGGAL</th>
-            <th style={{ ...thStyle, width: '70px' }}>JAM</th>
-            <th style={{ ...thStyle, width: '100px' }}>JENIS KEGIATAN</th>
-            <th style={{ ...thStyle, width: '100px' }}>AGENDA / MAPEL</th>
-            <th style={{ ...thStyle, width: '80px' }}>LOKASI / KELAS</th>
+            <th style={{ ...thStyle, width: '130px' }}>HARI / TANGGAL</th>
+            <th style={{ ...thStyle, width: '95px' }}>JAM</th>
+            <th style={{ ...thStyle, width: '150px' }}>JENIS KEGIATAN</th>
+            <th style={{ ...thStyle, width: '190px' }}>AGENDA / MAPEL</th>
+            <th style={{ ...thStyle, width: '200px' }}>LOKASI / KELAS</th>
             <th style={thStyle}>KEGIATAN / TUJUAN PEMBELAJARAN</th>
-            <th style={{ ...thStyle, width: '100px' }}>KETERANGAN / LAMPIRAN</th>
+            <th style={{ ...thStyle, width: '200px' }}>KETERANGAN / LAMPIRAN</th>
           </tr>
         </thead>
         <tbody>

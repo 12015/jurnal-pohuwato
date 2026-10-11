@@ -191,17 +191,17 @@ export function RiwayatJurnal({ journals, onNavigate, onDelete }: RiwayatJurnalP
           </p>
         </div>
       ) : (
-        <div className="space-y-2">
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-2">
           {filtered.map((j) => {
             const isExpanded = expandedId === j.id;
             const dateObj = parseISO(j.date);
             const totalAct = j.activities.length;
 
             return (
-              <div
-                key={j.id}
-                className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden"
-              >
+<div
+  key={j.id}
+  className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden h-full"
+>
                 {/* Header kartu */}
                 <div
                   className="p-4 flex items-center gap-3 cursor-pointer hover:bg-slate-50 transition-colors"
@@ -248,7 +248,7 @@ export function RiwayatJurnal({ journals, onNavigate, onDelete }: RiwayatJurnalP
                             {act.jam || '-'}
                           </span>
                         </div>
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2">
                           <div>
                             <p className="text-[10px] text-slate-400 uppercase font-semibold mb-0.5">
                               Jenis Kegiatan

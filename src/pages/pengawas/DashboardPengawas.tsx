@@ -90,33 +90,9 @@ export function DashboardPengawas({
 
   return (
     <div className="space-y-4">
-      {/* Header sambutan */}
-      <div className="bg-gradient-to-br from-indigo-600 to-indigo-700 text-white rounded-xl p-5 sm:p-6 shadow-sm">
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-          <div>
-            <p className="text-sm text-indigo-100 mb-1">
-              {format(now, 'EEEE, d MMMM yyyy', { locale: localeId })}
-            </p>
-            <h2 className="text-xl sm:text-2xl font-bold">
-              Selamat datang, {teacher.name || 'Bapak/Ibu Pengawas'}
-            </h2>
-            <p className="text-sm text-indigo-100 mt-1">
-              Unit Kerja Binaan: <span className="font-semibold">{profile.workUnitBina || '-'}</span>
-            </p>
-          </div>
-          <button
-            onClick={fetchData}
-            disabled={loading}
-            className="flex items-center gap-2 bg-white/15 hover:bg-white/25 px-3 py-2 rounded-lg transition-colors text-sm font-semibold disabled:opacity-50 shrink-0"
-          >
-            {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />}
-            Segarkan
-          </button>
-        </div>
-      </div>
 
       {/* 4 kartu statistik */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+      <div className="grid grid-cols-2 gap-3">
         <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-4">
           <div className="flex items-start justify-between mb-3">
             <div className="w-9 h-9 rounded-lg bg-blue-50 flex items-center justify-center">

@@ -141,30 +141,6 @@ export function DashboardKepsek({
 
   return (
     <div className="space-y-4">
-      {/* Header sambutan */}
-      <div className="bg-gradient-to-br from-emerald-600 to-emerald-700 text-white rounded-xl p-5 sm:p-6 shadow-sm">
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-          <div>
-            <p className="text-sm text-emerald-100 mb-1">
-              {format(today, 'EEEE, d MMMM yyyy', { locale: localeId })}
-            </p>
-            <h2 className="text-xl sm:text-2xl font-bold">
-              Selamat datang, {teacher.name || 'Bapak/Ibu Kepala Sekolah'}
-            </h2>
-            <p className="text-sm text-emerald-100 mt-1">
-              Unit Kerja: <span className="font-semibold">{profile.workUnitBina || '-'}</span>
-            </p>
-          </div>
-          <button
-            onClick={() => { fetchGurus(); fetchVerification(); }}
-            disabled={loadingGurus}
-            className="flex items-center gap-2 bg-white/15 hover:bg-white/25 px-3 py-2 rounded-lg transition-colors text-sm font-semibold disabled:opacity-50 shrink-0 self-start"
-          >
-            {loadingGurus ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />}
-            Segarkan
-          </button>
-        </div>
-      </div>
 
       {/* Kartu Status Jurnal Saya */}
       <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-5">
@@ -256,7 +232,7 @@ export function DashboardKepsek({
       </div>
 
       {/* Statistik Guru Binaan */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+      <div className="grid grid-cols-2 gap-3">
         <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-4">
           <div className="w-9 h-9 rounded-lg bg-blue-50 flex items-center justify-center mb-3">
             <Users className="w-5 h-5 text-blue-600" />
