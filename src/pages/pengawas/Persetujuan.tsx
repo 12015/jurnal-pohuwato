@@ -223,15 +223,6 @@ export function Persetujuan({ profile, addNotification }: PersetujuanProps) {
 
       {/* Tabel */}
       <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
-        <div className="p-3 border-b border-slate-200">
-          <p className="font-semibold text-slate-800 text-sm">
-            Daftar Verifikasi Rekomendasi - {months[filterMonth]} {filterYear}
-          </p>
-          <p className="text-[11px] text-slate-500 mt-0.5">
-            {required} hari kerja · Target minimal 80%
-          </p>
-        </div>
-
         {loading ? (
           <div className="p-12 text-center">
             <Loader2 className="w-6 h-6 animate-spin text-indigo-600 mx-auto mb-2" />
