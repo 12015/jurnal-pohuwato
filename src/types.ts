@@ -82,11 +82,7 @@ export const INITIAL_TEACHER_DATA: TeacherData = {
   letterNumber: '',
 };
 
-export const HOLIDAYS_2026 = [
-  '2026-01-01', // New Year
-  '2026-03-30', // Example holiday
-  // Add more as needed or use a library
-];
+export { getHolidaysForYear, isHoliday, isWorkday } from './lib/holidays';
 
 export type UserRole = 'guru' | 'kepala_sekolah' | 'pengawas';
 

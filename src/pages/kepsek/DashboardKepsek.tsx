@@ -16,7 +16,7 @@ import {
 } from '../../lib/db';
 import { supabase } from '../../lib/supabase';
 import type { TeacherData, UserProfile } from '../../types';
-import { HOLIDAYS_2026 } from '../../types';
+import { isHoliday } from '../../lib/holidays';
 import { cn } from '../../lib/utils';
 
 interface DashboardKepsekProps {
@@ -61,7 +61,7 @@ export function DashboardKepsek({
   const workDaysThisMonth = eachDayOfInterval({
     start: startOfMonth(today),
     end: endOfMonth(today),
-  }).filter((d) => !isWeekend(d) && !HOLIDAYS_2026.includes(format(d, 'yyyy-MM-dd')));
+  }).filter((d) => !isWeekend(d) && !isHoliday(format(d, 'yyyy-MM-dd')));
   const required = workDaysThisMonth.length;
 
   const fetchGurus = async () => {

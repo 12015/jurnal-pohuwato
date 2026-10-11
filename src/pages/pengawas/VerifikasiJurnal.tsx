@@ -13,7 +13,7 @@ import {
   type GuruBinaanSummary,
 } from '../../lib/db';
 import type { UserProfile, JournalEntry } from '../../types';
-import { HOLIDAYS_2026 } from '../../types';
+import { isHoliday } from '../../lib/holidays';
 import { cn } from '../../lib/utils';
 
 interface VerifikasiJurnalProps {
@@ -80,7 +80,7 @@ export function VerifikasiJurnal({ profile, addNotification }: VerifikasiJurnalP
     const start = startOfMonth(new Date(filterYear, filterMonth));
     const end = endOfMonth(new Date(filterYear, filterMonth));
     return eachDayOfInterval({ start, end }).filter(
-      (d) => !isWeekend(d) && !HOLIDAYS_2026.includes(format(d, 'yyyy-MM-dd'))
+      (d) => !isWeekend(d) && !isHoliday(format(d, 'yyyy-MM-dd'))
     );
   }, [filterMonth, filterYear]);
 

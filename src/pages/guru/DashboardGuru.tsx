@@ -9,7 +9,7 @@ import {
 } from 'date-fns';
 import { id as localeId } from 'date-fns/locale';
 import type { TeacherData, JournalEntry, TabKey } from '../../types';
-import { HOLIDAYS_2026 } from '../../types';
+import { isHoliday } from '../../lib/holidays';
 import { getVerificationStatus, submitJournalForVerification, type VerificationStatus } from '../../lib/db';
 import { cn } from '../../lib/utils';
 import { supabase } from '../../lib/supabase';
@@ -56,7 +56,7 @@ export function DashboardGuru({
   const workDaysThisMonth = useMemo(
     () =>
       eachDayOfInterval({ start: monthStart, end: monthEnd }).filter(
-        (d) => !isWeekend(d) && !HOLIDAYS_2026.includes(format(d, 'yyyy-MM-dd'))
+        (d) => !isWeekend(d) && !isHoliday(format(d, 'yyyy-MM-dd'))
       ),
     [monthStart, monthEnd]
   );
@@ -87,7 +87,7 @@ export function DashboardGuru({
 
   const hasFilledToday = journals.some((j) => isSameDay(parseISO(j.date), today));
   const isTodayWorkday =
-    !isWeekend(today) && !HOLIDAYS_2026.includes(todayStr);
+    !isWeekend(today) && !isHoliday(todayStr);
 
   // Statistik
   const stats = [

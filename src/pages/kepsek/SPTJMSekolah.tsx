@@ -5,7 +5,7 @@ import { id as localeId } from 'date-fns/locale';
 import html2canvas from 'html2canvas';
 import jsPDF from 'jspdf';
 import type { TeacherData } from '../../types';
-import { HOLIDAYS_2026 } from '../../types';
+import { isHoliday } from '../../lib/holidays';
 import { cn } from '../../lib/utils';
 
 interface SPTJMSekolahProps {
@@ -20,7 +20,7 @@ const monthsList = [
 
 function getSignDate(year: number, mIdx: number): Date {
   let d = endOfMonth(new Date(year, mIdx));
-  while (isWeekend(d) || HOLIDAYS_2026.includes(format(d, 'yyyy-MM-dd'))) {
+  while (isWeekend(d) || isHoliday(format(d, 'yyyy-MM-dd'))) {
     d = addDays(d, 1);
   }
   return d;

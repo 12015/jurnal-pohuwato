@@ -7,7 +7,7 @@ import { format, startOfMonth, endOfMonth, eachDayOfInterval, isWeekend, getMont
 import { id as localeId } from 'date-fns/locale';
 import { getGuruBinaan, type GuruBinaanSummary } from '../../lib/db';
 import type { UserProfile, TabKey, TeacherData } from '../../types';
-import { HOLIDAYS_2026 } from '../../types';
+import { isHoliday } from '../../lib/holidays';
 import { cn } from '../../lib/utils';
 
 interface DashboardPengawasProps {
@@ -50,7 +50,7 @@ export function DashboardPengawas({
   const workDaysThisMonth = eachDayOfInterval({
     start: startOfMonth(now),
     end: endOfMonth(now),
-  }).filter((d) => !isWeekend(d) && !HOLIDAYS_2026.includes(format(d, 'yyyy-MM-dd')));
+  }).filter((d) => !isWeekend(d) && !isHoliday(format(d, 'yyyy-MM-dd')));
 
   const required = workDaysThisMonth.length;
 

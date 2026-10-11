@@ -10,7 +10,7 @@ import {
 import { id as localeId } from 'date-fns/locale';
 import { getGuruBinaan, type GuruBinaanSummary } from '../../lib/db';
 import type { UserProfile, TabKey } from '../../types';
-import { HOLIDAYS_2026 } from '../../types';
+import { isHoliday } from '../../lib/holidays';
 import { cn } from '../../lib/utils';
 
 interface DaftarGuruBinaanProps {
@@ -76,7 +76,7 @@ export function DaftarGuruBinaan({
     const start = startOfMonth(new Date(filterYear, filterMonth));
     const end = endOfMonth(new Date(filterYear, filterMonth));
     return eachDayOfInterval({ start, end }).filter(
-      (d) => !isWeekend(d) && !HOLIDAYS_2026.includes(format(d, 'yyyy-MM-dd'))
+      (d) => !isWeekend(d) && !isHoliday(format(d, 'yyyy-MM-dd'))
     ).length;
   }, [filterMonth, filterYear]);
 

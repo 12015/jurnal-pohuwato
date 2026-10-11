@@ -27,7 +27,8 @@ import { format, isWeekend, isSameDay, parseISO, startOfMonth, endOfMonth, eachD
 import { id } from 'date-fns/locale';
 import { motion, AnimatePresence } from 'motion/react';
 import { cn } from './lib/utils';
-import { TeacherData, JournalEntry, JournalActivity, INITIAL_TEACHER_DATA, HOLIDAYS_2026 } from './types';
+import { TeacherData, JournalEntry, JournalActivity, INITIAL_TEACHER_DATA } from './types';
+import { isHoliday } from './lib/holidays';
 import { saveAs } from 'file-saver';
 import {
   Document,
@@ -266,7 +267,7 @@ const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
   const [rows, setRows] = useState<JournalActivity[]>([{ jam: '', jenisKegiatan: '', agendaMapel: '', lokasiKelas: '', kegiatanTujuan: '', keterangan: '' }]);
   const [selectedDateStr, setSelectedDateStr] = useState<string>(() => format(new Date(), 'yyyy-MM-dd'));
   const selectedDate = parseISO(selectedDateStr);
-  const isWorkDay = !isWeekend(selectedDate) && !HOLIDAYS_2026.includes(selectedDateStr);
+  const isWorkDay = !isWeekend(selectedDate) && !isHoliday(selectedDateStr);
   const [showDatePickerPopover, setShowDatePickerPopover] = useState(false);
   const [isLoadingData, setIsLoadingData] = useState(true);
 
@@ -868,7 +869,7 @@ function JournalInput({
   onOpenDatePicker: () => void;
 }) {
   const selectedDate = parseISO(selectedDateStr);
-  const isWorkDay = !isWeekend(selectedDate) && !HOLIDAYS_2026.includes(selectedDateStr);
+  const isWorkDay = !isWeekend(selectedDate) && !isHoliday(selectedDateStr);
 
   const [isSendingKirim, setIsSendingKirim] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -1306,7 +1307,7 @@ async function downloadJurnalPDF(
     // Helper: tanggal TTD (akhir bulan, geser ke hari kerja berikutnya jika weekend/libur)
     const getSignDate = (year: number, mIdx: number): Date => {
       let d = endOfMonth(new Date(year, mIdx));
-      while (isWeekend(d) || HOLIDAYS_2026.includes(format(d, 'yyyy-MM-dd'))) {
+      while (isWeekend(d) || isHoliday(format(d, 'yyyy-MM-dd'))) {
         d = addDays(d, 1);
       }
       return d;
@@ -1603,7 +1604,7 @@ function PreviewSection({
   const getEligibility = (monthIdx: number) => {
     const start = startOfMonth(new Date(filterYear, monthIdx));
     const end = endOfMonth(new Date(filterYear, monthIdx));
-    const workDays = eachDayOfInterval({ start, end }).filter(d => !isWeekend(d) && !HOLIDAYS_2026.includes(format(d, 'yyyy-MM-dd')));
+    const workDays = eachDayOfInterval({ start, end }).filter(d => !isWeekend(d) && !isHoliday(format(d, 'yyyy-MM-dd')));
     const filledDays = journals.filter(j => isWithinInterval(parseISO(j.date), { start, end }));
 
     const threshold = Math.max(0, workDays.length - 3);
