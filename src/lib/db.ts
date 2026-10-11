@@ -801,3 +801,97 @@ export async function submitKepsekJournal(
     if (error) throw error;
   }
 }
+
+// ============ PENGAWAS: data binaan lengkap (guru + kepsek) ============
+
+export interface BinaanSummary extends GuruBinaanSummary {
+  role: 'guru' | 'kepala_sekolah';
+}
+
+/**
+ * Ambil SEMUA user binaan pengawas di work_unit tertentu:
+ * - role 'guru'
+ * - role 'kepala_sekolah' (kepsek di sekolah binaan)
+ *
+ * Dipakai oleh halaman "Verifikasi Rekomendasi" pengawas,
+ * supaya kepsek juga bisa diawasi jurnalnya.
+ */
+export async function getAllBinaan(workUnitBina: string): Promise<BinaanSummary[]> {
+  // 0. Ambil user_id dengan role 'guru' ATAU 'kepala_sekolah'
+  const { data: profiles, error: pErr } = await supabase
+    .from('profiles')
+    .select('id, role')
+    .in('role', ['guru', 'kepala_sekolah']);
+
+  if (pErr) {
+    console.error('getAllBinaan profiles:', pErr);
+    return [];
+  }
+
+  const roleMap = new Map<string, 'guru' | 'kepala_sekolah'>();
+  (profiles || []).forEach((p) => {
+    roleMap.set(p.id, p.role as 'guru' | 'kepala_sekolah');
+  });
+
+  if (roleMap.size === 0) return [];
+
+  // 1. Ambil teachers dengan work_unit yang sama
+  const { data: teachers, error } = await supabase
+    .from('teachers')
+    .select('user_id, name, nip, work_unit, position, subject, profile_photo')
+    .in('user_id', Array.from(roleMap.keys()));
+
+  if (error) {
+    console.error('getAllBinaan teachers:', error);
+    return [];
+  }
+
+  const matched = (teachers || []).filter(
+    (t) =>
+      (t.work_unit || '').toLowerCase().trim() === workUnitBina.toLowerCase().trim()
+  );
+
+  if (matched.length === 0) return [];
+
+  const userIds = matched.map((t) => t.user_id);
+
+  // 2. Hitung statistik jurnal bulan ini
+  const now = new Date();
+  const start = format(startOfMonth(now), 'yyyy-MM-dd');
+  const end = format(endOfMonth(now), 'yyyy-MM-dd');
+
+  const { data: journals, error: jErr } = await supabase
+    .from('journals')
+    .select('user_id, date, activities')
+    .in('user_id', userIds)
+    .gte('date', start)
+    .lte('date', end);
+
+  if (jErr) {
+    console.error('getAllBinaan journals:', jErr);
+  }
+
+  const journalsByUser = new Map<string, { count: number; activities: number }>();
+  (journals || []).forEach((j: any) => {
+    const curr = journalsByUser.get(j.user_id) || { count: 0, activities: 0 };
+    curr.count += 1;
+    curr.activities += Array.isArray(j.activities) ? j.activities.length : 0;
+    journalsByUser.set(j.user_id, curr);
+  });
+
+  return matched.map((t) => {
+    const stats = journalsByUser.get(t.user_id) || { count: 0, activities: 0 };
+    return {
+      userId: t.user_id,
+      name: t.name || '(Tanpa Nama)',
+      nip: t.nip || '',
+      workUnit: t.work_unit || '',
+      position: t.position || '',
+      subject: t.subject || '',
+      journalCount: stats.count,
+      activityCount: stats.activities,
+      profilePhoto: t.profile_photo || undefined,
+      role: roleMap.get(t.user_id) || 'guru',
+    };
+  });
+}
