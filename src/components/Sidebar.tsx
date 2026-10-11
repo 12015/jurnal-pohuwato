@@ -82,11 +82,10 @@ const pengawasSections: MenuSection[] = [
     ],
   },
   {
-    title: 'VERIFIKASI',
+    title: 'PERSETUJUAN',
     items: [
       { key: 'pw_teachers', label: 'Daftar Guru Binaan', icon: <Users className="w-5 h-5" /> },
-      { key: 'pw_verify', label: 'Verifikasi Jurnal', icon: <ClipboardCheck className="w-5 h-5" /> },
-      { key: 'pw_approve', label: 'Persetujuan', icon: <CheckSquare className="w-5 h-5" /> },
+      { key: 'pw_approve', label: 'Persetujuan Rekomendasi', icon: <CheckSquare className="w-5 h-5" /> },
     ],
   },
   {
