@@ -56,7 +56,8 @@ export function useAuth() {
       email: string,
       password: string,
       role: UserRole,
-      workUnitBina?: string
+      workUnitBina?: string,
+      npsnBinaList?: string[]
     ) => {
       const { data, error } = await supabase.auth.signUp({ email, password });
       if (error) throw error;
@@ -66,7 +67,22 @@ export function useAuth() {
           role,
           email,
           workUnitBina: (role === 'pengawas' || role === 'kepala_sekolah') ? workUnitBina : undefined,
+          npsnBina: (role === 'kepala_sekolah' && npsnBinaList && npsnBinaList.length > 0)
+            ? npsnBinaList[0]
+            : undefined,
         });
+
+        // Khusus pengawas: simpan daftar NPSN ke tabel pengawas_sekolah
+        if (role === 'pengawas' && npsnBinaList && npsnBinaList.length > 0) {
+          const rows = npsnBinaList
+            .map((n) => n.trim())
+            .filter((n) => n.length > 0)
+            .map((npsn) => ({ pengawas_id: data.user!.id, npsn }));
+          if (rows.length > 0) {
+            const { error: errPS } = await supabase.from('pengawas_sekolah').insert(rows);
+            if (errPS) console.error('Insert pengawas_sekolah:', errPS);
+          }
+        }
       }
     },
     signOut: async () => {

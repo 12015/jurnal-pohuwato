@@ -15,10 +15,14 @@ export function LoginPage() {
   const [password, setPassword] = useState('');
   const [confirm, setConfirm] = useState('');
   const [workUnitBina, setWorkUnitBina] = useState('');
+  const [npsnBina, setNpsnBina] = useState('');
+  const [npsnBinaText, setNpsnBinaText] = useState('');
   const [inviteCode, setInviteCode] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [info, setInfo] = useState('');
+
+  const isKepsek = inviteCode.startsWith('KS-');
 
   const resetMessages = () => {
     setError('');
@@ -35,6 +39,8 @@ export function LoginPage() {
     setRegisterAs(as);
     setInviteCode('');
     setWorkUnitBina('');
+    setNpsnBina('');
+    setNpsnBinaText('');
     resetMessages();
   };
 
@@ -61,26 +67,32 @@ export function LoginPage() {
         return;
       }
 
-      // ==== REGISTER PEJABAT (pengawas / kepsek) ====
-      if (!workUnitBina.trim()) {
-        throw new Error('Unit Kerja wajib diisi');
-      }
+      // ==== REGISTER PEJABAT ====
+      if (!workUnitBina.trim()) throw new Error('Unit Kerja wajib diisi');
 
-      // Tentukan role yang dituju berdasarkan kode yang dipilih user
-      const targetRole = inviteCode.startsWith('KS-') ? 'kepala_sekolah' : 'pengawas';
-
-      // Pilih kode yang tepat untuk role target
+      const targetRole = isKepsek ? 'kepala_sekolah' : 'pengawas';
       const expectedCode = targetRole === 'kepala_sekolah' ? INVITE_KEPSEK : INVITE_PENGAWAS;
 
-      if (!expectedCode) {
-        throw new Error('Kode undangan belum dikonfigurasi. Hubungi admin.');
+      if (!expectedCode) throw new Error('Kode undangan belum dikonfigurasi. Hubungi admin.');
+      if (inviteCode.trim() !== expectedCode) throw new Error('Kode undangan salah');
+
+      // Validasi NPSN
+      let npsnList: string[] = [];
+      if (isKepsek) {
+        const npsn = npsnBina.trim();
+        if (!/^\d{8}$/.test(npsn)) throw new Error('NPSN harus 8 digit angka');
+        npsnList = [npsn];
+      } else {
+        npsnList = npsnBinaText
+          .split(/[\n,;]+/)
+          .map((s) => s.trim())
+          .filter((s) => s.length > 0);
+        if (npsnList.length === 0) throw new Error('Isi minimal 1 NPSN sekolah binaan');
+        const invalid = npsnList.find((n) => !/^\d{8}$/.test(n));
+        if (invalid) throw new Error(`NPSN "${invalid}" tidak valid (harus 8 digit angka)`);
       }
 
-      if (inviteCode.trim() !== expectedCode) {
-        throw new Error('Kode undangan salah');
-      }
-
-      await signUp(email.trim(), password, targetRole, workUnitBina.trim());
+      await signUp(email.trim(), password, targetRole, workUnitBina.trim(), npsnList);
 
       setInfo('Pendaftaran pejabat berhasil. Silakan login.');
       setMode('login');
@@ -88,6 +100,8 @@ export function LoginPage() {
       setConfirm('');
       setInviteCode('');
       setWorkUnitBina('');
+      setNpsnBina('');
+      setNpsnBinaText('');
     } catch (err) {
       setError((err as Error).message || 'Terjadi kesalahan');
     } finally {
@@ -203,9 +217,7 @@ export function LoginPage() {
 
               <div>
                 <label className="block text-xs font-semibold text-slate-700 mb-1.5">
-                  {inviteCode.startsWith('KS-')
-                    ? 'UNIT KERJA SEKOLAH'
-                    : 'UNIT KERJA YANG DIBINA'}
+                  {isKepsek ? 'UNIT KERJA SEKOLAH' : 'UNIT KERJA YANG DIBINA'}
                 </label>
                 <input
                   type="text"
@@ -216,10 +228,47 @@ export function LoginPage() {
                   className="w-full px-3 py-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none text-sm"
                 />
                 <p className="text-[11px] text-slate-500 mt-1">
-                  Tulis sama persis dengan Unit Kerja guru. Guru yang mendaftar dengan Unit Kerja
-                  ini otomatis masuk daftar {inviteCode.startsWith('KS-') ? 'verifikasi' : 'binaan'} Anda.
+                  Hanya untuk tampilan.
                 </p>
               </div>
+
+              {isKepsek ? (
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 mb-1.5">
+                    NPSN SEKOLAH
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    inputMode="numeric"
+                    maxLength={8}
+                    value={npsnBina}
+                    onChange={(e) => setNpsnBina(e.target.value.replace(/\D/g, ''))}
+                    placeholder="40500733"
+                    className="w-full px-3 py-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none text-sm font-mono"
+                  />
+                  <p className="text-[11px] text-slate-500 mt-1">
+                    NPSN sekolah (8 digit). Guru dengan NPSN ini akan masuk daftar verifikasi Anda.
+                  </p>
+                </div>
+              ) : (
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 mb-1.5">
+                    DAFTAR NPSN SEKOLAH BINAAN
+                  </label>
+                  <textarea
+                    required
+                    rows={4}
+                    value={npsnBinaText}
+                    onChange={(e) => setNpsnBinaText(e.target.value)}
+                    placeholder={'40500733\n40401234\n40405678'}
+                    className="w-full px-3 py-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none text-sm font-mono resize-none"
+                  />
+                  <p className="text-[11px] text-slate-500 mt-1">
+                    Satu NPSN per baris (8 digit). Maksimal 5 sekolah. Bisa pisah dengan koma atau titik-koma.
+                  </p>
+                </div>
+              )}
             </>
           )}
 
