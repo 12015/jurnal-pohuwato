@@ -711,8 +711,8 @@ function ProfileForm({
   const [newEmail, setNewEmail] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
-  const [accLoading, setAccLoading] = useState(false);
-  const [accMsg, setAccMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+  const [saving, setSaving] = useState(false);
+  const [saveMsg, setSaveMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
   useEffect(() => {
     setForm(data);
@@ -738,53 +738,60 @@ function ProfileForm({
   const isKepsek = role === 'kepala_sekolah';
   const isGuru = role === 'guru';
 
-  const handleUpdateAccount = async () => {
-    setAccMsg(null);
+  const handleSaveAll = async () => {
+    setSaveMsg(null);
+
+    // ==== Validasi akun ====
     const emailChanged = newEmail.trim().toLowerCase() !== currentEmail.toLowerCase();
     const passwordFilled = newPassword.length > 0;
 
-    if (!emailChanged && !passwordFilled) {
-      setAccMsg({ type: 'error', text: 'Tidak ada perubahan' });
-      return;
-    }
     if (emailChanged && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(newEmail.trim())) {
-      setAccMsg({ type: 'error', text: 'Format email tidak valid' });
+      setSaveMsg({ type: 'error', text: 'Format email tidak valid' });
       return;
     }
     if (passwordFilled) {
       if (newPassword.length < 6) {
-        setAccMsg({ type: 'error', text: 'Password minimal 6 karakter' });
+        setSaveMsg({ type: 'error', text: 'Password minimal 6 karakter' });
         return;
       }
       if (newPassword !== confirmPassword) {
-        setAccMsg({ type: 'error', text: 'Konfirmasi password tidak cocok' });
+        setSaveMsg({ type: 'error', text: 'Konfirmasi password tidak cocok' });
         return;
       }
     }
 
-    setAccLoading(true);
+    setSaving(true);
     try {
-      const payload: { email?: string; password?: string } = {};
-      if (emailChanged) payload.email = newEmail.trim();
-      if (passwordFilled) payload.password = newPassword;
+      // 1. Simpan perubahan akun (email & password) jika ada
+      if (emailChanged || passwordFilled) {
+        const payload: { email?: string; password?: string } = {};
+        if (emailChanged) payload.email = newEmail.trim();
+        if (passwordFilled) payload.password = newPassword;
 
-      const { error } = await supabase.auth.updateUser(payload);
-      if (error) throw error;
+        const { error } = await supabase.auth.updateUser(payload);
+        if (error) throw error;
 
-      const parts: string[] = [];
+        if (emailChanged) setCurrentEmail(newEmail.trim());
+        setNewPassword('');
+        setConfirmPassword('');
+      }
+
+      // 2. Simpan perubahan profil
+      onSave(form);
+
+      // 3. Pesan sukses
+      const parts: string[] = ['profil'];
       if (emailChanged) parts.push('email');
       if (passwordFilled) parts.push('password');
-      setAccMsg({
+
+      setSaveMsg({
         type: 'success',
-        text: `${parts.join(' & ')} berhasil diubah.${emailChanged ? ' Cek inbox email baru untuk konfirmasi.' : ''}`,
+        text: `${parts.join(' & ')} berhasil disimpan.${emailChanged ? ' Cek inbox email baru untuk konfirmasi.' : ''}`,
       });
-      if (emailChanged) setCurrentEmail(newEmail.trim());
-      setNewPassword('');
-      setConfirmPassword('');
     } catch (e) {
-      setAccMsg({ type: 'error', text: (e as Error).message });
+      setSaveMsg({ type: 'error', text: (e as Error).message });
     } finally {
-      setAccLoading(false);
+      setSaving(false);
     }
   };
 
@@ -809,7 +816,6 @@ function ProfileForm({
             ) : null}
             <Input label="Instansi" value={form.institution || ''} onChange={(v) => setForm({ ...form, institution: v })} placeholder="Dinas Pendidikan dan Kebudayaan" />
 
-            {/* Unit Kerja + Kecamatan (guru/kepsek) ATAU Unit Kerja Pengawas saja */}
             <Input
               label={isPengawas ? 'Unit Kerja Pengawas' : 'Unit Kerja'}
               value={form.workUnit}
@@ -821,7 +827,6 @@ function ProfileForm({
               <Input label="Kecamatan" value={form.kecamatan} onChange={(v) => setForm({ ...form, kecamatan: v })} placeholder="Kecamatan Marisa" required />
             )}
 
-            {/* NPSN + Alamat Instansi + Alamat Unit Kerja: hanya guru/kepsek */}
             {!isPengawas && (
               <>
                 <Input label="NPSN" value={form.npsn} onChange={(v) => setForm({ ...form, npsn: v })} placeholder="10xxxxxx" />
@@ -831,7 +836,7 @@ function ProfileForm({
               </>
             )}
 
-            {/* Akun: Email Sekarang, Email Baru, Password Baru, Konfirmasi */}
+            {/* Akun */}
             <div className="flex flex-col gap-1.5">
               <label className="text-xs sm:text-sm font-semibold text-slate-700">
                 Email / Username Sekarang
@@ -867,36 +872,19 @@ function ProfileForm({
             />
           </div>
 
-          {/* Tombol Simpan Akun - full width di bawah form akun */}
-          <div className="flex justify-end">
-            <button
-              onClick={handleUpdateAccount}
-              disabled={accLoading}
-              className="px-6 py-2 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white text-xs font-semibold rounded-lg transition-colors flex items-center gap-1.5"
-            >
-              {accLoading ? (
-                <Loader2 className="w-3.5 h-3.5 animate-spin" />
-              ) : (
-                <Save className="w-3.5 h-3.5" />
-              )}
-              SIMPAN AKUN
-            </button>
-          </div>
-
-          {accMsg && (
+          {saveMsg && (
             <div
               className={cn(
                 'p-2.5 rounded-lg text-xs',
-                accMsg.type === 'success'
+                saveMsg.type === 'success'
                   ? 'bg-emerald-50 border border-emerald-200 text-emerald-700'
                   : 'bg-red-50 border border-red-200 text-red-700'
               )}
             >
-              {accMsg.type === 'success' ? '✅' : '❌'} {accMsg.text}
+              {saveMsg.type === 'success' ? '✅' : '❌'} {saveMsg.text}
             </div>
           )}
 
-          {/* Sekolah Binaan - Khusus pengawas, layout horisontal 3 kolom */}
           {isPengawas && (
             <div className="p-3.5 sm:p-4 bg-blue-50/60 rounded-xl border border-blue-100 space-y-2.5">
               <h4 className="text-xs sm:text-sm font-bold text-blue-900 flex items-center gap-1.5 uppercase tracking-wide">
@@ -1001,10 +989,19 @@ function ProfileForm({
 
       <div className="pt-5 mt-5 border-t border-slate-200 flex justify-center">
         <Button
-          onClick={() => onSave(form)}
+          onClick={handleSaveAll}
+          disabled={saving}
           className="px-6 py-2.5 text-xs sm:text-sm font-semibold uppercase tracking-wide"
         >
-          <Save className="w-4 h-4" /> SIMPAN PROFIL
+          {saving ? (
+            <>
+              <Loader2 className="w-4 h-4 animate-spin" /> MENYIMPAN...
+            </>
+          ) : (
+            <>
+              <Save className="w-4 h-4" /> SIMPAN
+            </>
+          )}
         </Button>
       </div>
     </Card>
