@@ -302,7 +302,7 @@ export function DashboardPengawas({
             sub="Perlu ditindaklanjuti" />
           <StatCard icon={<Award className="w-5 h-5" />} color="emerald"
             label="Sekolah Terbaik"
-            value={loading ? '—' : sekolahTerbaik?.namaSekolah?.split(' ').slice(0, 2).join(' ') || '—'}
+            value={loading ? '—' : sekolahTerbaik?.namaSekolah || '—'}
             sub={sekolahTerbaik ? `${sekolahTerbaik.lengkap}/${sekolahTerbaik.total} lengkap` : ''} />
         </div>
       </div>
