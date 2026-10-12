@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import {
   Users, CheckCircle2, AlertCircle, XCircle,
-  Loader2, School, TrendingUp, Award,
+  Loader2, School,
 } from 'lucide-react';
 import {
   format, startOfMonth, endOfMonth, eachDayOfInterval, isWeekend,
@@ -69,10 +69,18 @@ function StatCard({
   );
 }
 
+interface SekolahGroup {
+  npsn: string;
+  namaSekolah: string;
+  total: number;
+  lengkap: number;
+  kurang: number;
+  belum: number;
+}
+
 export function DashboardPengawas({
   profile,
   teacher,
-  onNavigate,
   addNotification,
 }: DashboardPengawasProps) {
   void teacher;
@@ -106,7 +114,6 @@ export function DashboardPengawas({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [profile.npsnBinaList]);
 
-  // Stats total
   const stats = {
     total: gurus.length,
     lengkap: gurus.filter((g) => getStatus(g.journalCount, required) === 'lengkap').length,
@@ -114,11 +121,12 @@ export function DashboardPengawas({
     belum: gurus.filter((g) => getStatus(g.journalCount, required) === 'belum').length,
   };
 
-  // Group by sekolah (NPSN)
-  const sekolahGroups = gurus.reduce((acc, g) => {
+  // Group per sekolah
+  const sekolahGroups: Record<string, SekolahGroup> = {};
+  gurus.forEach((g) => {
     const key = g.npsn || 'unknown';
-    if (!acc[key]) {
-      acc[key] = {
+    if (!sekolahGroups[key]) {
+      sekolahGroups[key] = {
         npsn: key,
         namaSekolah: g.namaSekolah || g.workUnit || `NPSN ${key}`,
         total: 0,
@@ -127,27 +135,17 @@ export function DashboardPengawas({
         belum: 0,
       };
     }
-    acc[key].total += 1;
-    const status = getStatus(g.journalCount, required);
-    acc[key][status] += 1;
-    return acc;
-  }, {} as Record<string, { npsn: string; namaSekolah: string; total: number; lengkap: number; kurang: number; belum: number }>);
+    sekolahGroups[key].total += 1;
+    const s = getStatus(g.journalCount, required);
+    sekolahGroups[key][s] += 1;
+  });
 
   const sekolahList = Object.values(sekolahGroups);
-
-  // Top 5 perlu perhatian (belum/kurang, diurut persentase terkecil)
-  const perluPerhatian = [...gurus]
-    .filter((g) => getStatus(g.journalCount, required) !== 'lengkap')
-    .sort((a, b) => {
-      const pA = required > 0 ? (a.journalCount / required) * 100 : 0;
-      const pB = required > 0 ? (b.journalCount / required) * 100 : 0;
-      return pA - pB;
-    })
-    .slice(0, 5);
+  const maxCount = Math.max(1, ...sekolahList.map((s) => s.total));
 
   return (
     <div className="space-y-3">
-      {/* 4 kartu horizontal */}
+      {/* 4 kartu info */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
         <StatCard
           icon={<Users className="w-5 h-5" />}
@@ -179,9 +177,9 @@ export function DashboardPengawas({
         />
       </div>
 
-      {/* Grafik batang per sekolah */}
-      <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-4">
-        <div className="flex items-center gap-2 mb-3">
+      {/* Kelengkapan per Sekolah - grid 3 kolom */}
+      <div>
+        <div className="flex items-center gap-2 mb-2 px-1">
           <School className="w-4 h-4 text-indigo-600" />
           <p className="font-semibold text-slate-800 text-sm">Kelengkapan per Sekolah</p>
           <span className="ml-auto text-[10px] text-slate-500">
@@ -190,164 +188,106 @@ export function DashboardPengawas({
         </div>
 
         {loading ? (
-          <div className="py-8 text-center">
-            <Loader2 className="w-5 h-5 animate-spin text-indigo-600 mx-auto" />
+          <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-12 text-center">
+            <Loader2 className="w-5 h-5 animate-spin text-indigo-600 mx-auto mb-2" />
+            <p className="text-sm text-slate-500">Memuat data...</p>
           </div>
         ) : sekolahList.length === 0 ? (
-          <div className="py-8 text-center">
+          <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-12 text-center">
             <School className="w-10 h-10 text-slate-300 mx-auto mb-2" />
             <p className="text-sm text-slate-500">Belum ada sekolah binaan</p>
           </div>
         ) : (
-          <div className="space-y-3">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
             {sekolahList.map((s) => {
               const total = s.total || 1;
               const pctLengkap = (s.lengkap / total) * 100;
               const pctKurang = (s.kurang / total) * 100;
               const pctBelum = (s.belum / total) * 100;
 
-              return (
-                <div key={s.npsn}>
-                  <div className="flex items-center justify-between gap-2 mb-1.5">
-                    <p className="text-xs font-semibold text-slate-700 truncate">
-                      {s.namaSekolah}
-                    </p>
-                    <p className="text-[10px] text-slate-500 shrink-0">
-                      {s.total} binaan · NPSN {s.npsn}
-                    </p>
-                  </div>
-
-                  {/* Stacked bar */}
-                  <div className="w-full h-5 rounded-full overflow-hidden flex bg-slate-100">
-                    {s.lengkap > 0 && (
-                      <div
-                        className="h-full bg-emerald-500 flex items-center justify-center text-[9px] font-bold text-white transition-all"
-                        style={{ width: `${pctLengkap}%` }}
-                        title={`${s.lengkap} lengkap`}
-                      >
-                        {pctLengkap >= 15 ? s.lengkap : ''}
-                      </div>
-                    )}
-                    {s.kurang > 0 && (
-                      <div
-                        className="h-full bg-amber-500 flex items-center justify-center text-[9px] font-bold text-white transition-all"
-                        style={{ width: `${pctKurang}%` }}
-                        title={`${s.kurang} kurang`}
-                      >
-                        {pctKurang >= 15 ? s.kurang : ''}
-                      </div>
-                    )}
-                    {s.belum > 0 && (
-                      <div
-                        className="h-full bg-rose-500 flex items-center justify-center text-[9px] font-bold text-white transition-all"
-                        style={{ width: `${pctBelum}%` }}
-                        title={`${s.belum} belum`}
-                      >
-                        {pctBelum >= 15 ? s.belum : ''}
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Legend mini */}
-                  <div className="flex gap-3 mt-1 text-[10px] text-slate-500">
-                    {s.lengkap > 0 && (
-                      <span className="flex items-center gap-1">
-                        <span className="w-2 h-2 rounded-full bg-emerald-500" />
-                        {s.lengkap} Lengkap
-                      </span>
-                    )}
-                    {s.kurang > 0 && (
-                      <span className="flex items-center gap-1">
-                        <span className="w-2 h-2 rounded-full bg-amber-500" />
-                        {s.kurang} Kurang
-                      </span>
-                    )}
-                    {s.belum > 0 && (
-                      <span className="flex items-center gap-1">
-                        <span className="w-2 h-2 rounded-full bg-rose-500" />
-                        {s.belum} Belum
-                      </span>
-                    )}
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        )}
-      </div>
-
-      {/* Top 5 Perlu Perhatian */}
-      <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
-        <div className="p-3 border-b border-slate-200 flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <TrendingUp className="w-4 h-4 text-rose-600" />
-            <div>
-              <p className="font-semibold text-slate-800 text-sm">Perlu Perhatian</p>
-              <p className="text-[11px] text-slate-500">5 teratas yang belum lengkap</p>
-            </div>
-          </div>
-          <button
-            onClick={() => onNavigate('pw_teachers')}
-            className="text-xs font-semibold text-indigo-600 hover:text-indigo-800"
-          >
-            Lihat Semua →
-          </button>
-        </div>
-
-        {loading ? (
-          <div className="p-8 text-center">
-            <Loader2 className="w-5 h-5 animate-spin text-indigo-600 mx-auto" />
-          </div>
-        ) : perluPerhatian.length === 0 ? (
-          <div className="p-8 text-center">
-            <Award className="w-10 h-10 text-emerald-300 mx-auto mb-2" />
-            <p className="font-semibold text-slate-700 text-sm">
-              {gurus.length === 0 ? 'Belum ada binaan' : 'Semua binaan sudah lengkap! 🎉'}
-            </p>
-            <p className="text-xs text-slate-500 mt-1">
-              {gurus.length === 0
-                ? 'Pastikan user sudah mendaftar dengan NPSN sekolah binaan.'
-                : 'Tidak ada yang perlu perhatian bulan ini.'}
-            </p>
-          </div>
-        ) : (
-          <div className="divide-y divide-slate-100">
-            {perluPerhatian.map((g) => {
-              const status = getStatus(g.journalCount, required);
-              const percent = required > 0 ? Math.round((g.journalCount / required) * 100) : 0;
-              const statusColor = {
-                lengkap: 'bg-emerald-50 text-emerald-700 border-emerald-200',
-                kurang: 'bg-amber-50 text-amber-700 border-amber-200',
-                belum: 'bg-rose-50 text-rose-700 border-rose-200',
-              }[status];
+              // Tinggi bar: proporsional terhadap sekolah dengan guru terbanyak
+              const barScale = (count: number) => Math.max(8, (count / maxCount) * 100);
 
               return (
                 <div
-                  key={g.userId}
-                  className="p-3 flex items-center gap-3 hover:bg-slate-50 transition-colors"
+                  key={s.npsn}
+                  className="bg-white rounded-xl border border-slate-200 shadow-sm p-4 flex flex-col"
                 >
-                  <div className="w-9 h-9 rounded-full bg-slate-100 flex items-center justify-center overflow-hidden shrink-0 border border-slate-200">
-                    {g.profilePhoto ? (
-                      <img src={g.profilePhoto} alt="" className="w-full h-full object-cover" />
-                    ) : (
-                      <span className="text-slate-400 font-bold text-xs">
-                        {g.name.charAt(0).toUpperCase()}
-                      </span>
-                    )}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="font-semibold text-sm text-slate-800 truncate">{g.name}</p>
-                    <p className="text-[11px] text-slate-500 truncate">
-                      {g.namaSekolah || g.workUnit || '-'}
+                  {/* Header sekolah */}
+                  <div className="mb-3 pb-3 border-b border-slate-100">
+                    <p className="font-bold text-slate-800 text-sm truncate" title={s.namaSekolah}>
+                      {s.namaSekolah}
+                    </p>
+                    <p className="text-[10px] text-slate-500 font-mono mt-0.5">
+                      NPSN {s.npsn} · {s.total} binaan
                     </p>
                   </div>
-                  <div className="text-right shrink-0 mr-2">
-                    <p className="text-sm font-bold text-slate-800">{g.journalCount}/{required}</p>
-                    <p className="text-[10px] text-slate-500">{percent}%</p>
+
+                  {/* Bar chart vertikal */}
+                  <div className="flex items-end justify-around gap-2 h-32 mb-3 relative">
+                    {/* Gridlines background */}
+                    <div className="absolute inset-0 flex flex-col justify-between pointer-events-none">
+                      <div className="border-t border-dashed border-slate-100"></div>
+                      <div className="border-t border-dashed border-slate-100"></div>
+                      <div className="border-t border-dashed border-slate-100"></div>
+                      <div className="border-t border-slate-200"></div>
+                    </div>
+
+                    {/* Bar Lengkap */}
+                    <div className="flex-1 flex flex-col items-center justify-end relative z-10 h-full">
+                      <span className="text-xs font-bold text-emerald-700 mb-1">
+                        {s.lengkap}
+                      </span>
+                      <div
+                        className="w-full max-w-[40px] bg-gradient-to-t from-emerald-500 to-emerald-400 rounded-t-md shadow-sm transition-all"
+                        style={{ height: `${s.lengkap > 0 ? barScale(s.lengkap) : 4}%` }}
+                      ></div>
+                      <p className="text-[9px] font-semibold text-slate-500 mt-1.5 uppercase tracking-wide">
+                        Lengkap
+                      </p>
+                    </div>
+
+                    {/* Bar Kurang */}
+                    <div className="flex-1 flex flex-col items-center justify-end relative z-10 h-full">
+                      <span className="text-xs font-bold text-amber-700 mb-1">
+                        {s.kurang}
+                      </span>
+                      <div
+                        className="w-full max-w-[40px] bg-gradient-to-t from-amber-500 to-amber-400 rounded-t-md shadow-sm transition-all"
+                        style={{ height: `${s.kurang > 0 ? barScale(s.kurang) : 4}%` }}
+                      ></div>
+                      <p className="text-[9px] font-semibold text-slate-500 mt-1.5 uppercase tracking-wide">
+                        Kurang
+                      </p>
+                    </div>
+
+                    {/* Bar Belum */}
+                    <div className="flex-1 flex flex-col items-center justify-end relative z-10 h-full">
+                      <span className="text-xs font-bold text-rose-700 mb-1">
+                        {s.belum}
+                      </span>
+                      <div
+                        className="w-full max-w-[40px] bg-gradient-to-t from-rose-500 to-rose-400 rounded-t-md shadow-sm transition-all"
+                        style={{ height: `${s.belum > 0 ? barScale(s.belum) : 4}%` }}
+                      ></div>
+                      <p className="text-[9px] font-semibold text-slate-500 mt-1.5 uppercase tracking-wide">
+                        Belum
+                      </p>
+                    </div>
                   </div>
-                  <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold border shrink-0 ${statusColor}`}>
-                    {status === 'lengkap' ? 'Lengkap' : status === 'kurang' ? 'Kurang' : 'Belum'}
-                  </span>
+
+                  {/* Stacked bar mini */}
+                  <div className="w-full h-1.5 rounded-full overflow-hidden flex bg-slate-100">
+                    {s.lengkap > 0 && (
+                      <div className="h-full bg-emerald-500" style={{ width: `${pctLengkap}%` }} />
+                    )}
+                    {s.kurang > 0 && (
+                      <div className="h-full bg-amber-500" style={{ width: `${pctKurang}%` }} />
+                    )}
+                    {s.belum > 0 && (
+                      <div className="h-full bg-rose-500" style={{ width: `${pctBelum}%` }} />
+                    )}
+                  </div>
                 </div>
               );
             })}
