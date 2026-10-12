@@ -1,11 +1,11 @@
 import { useEffect, useMemo, useState } from 'react';
 import {
   FileText, Activity, TrendingUp, CheckCircle2, AlertCircle,
-  Plus, Eye, Award, Send, Loader2,
+  Plus, Award, Send, Loader2, Clock, Target, BarChart3, Calendar,
 } from 'lucide-react';
 import {
   format, parseISO, startOfMonth, endOfMonth, eachDayOfInterval,
-  isWeekend, isSameDay, getMonth, getYear,
+  isWeekend, isSameDay, getMonth, getYear, isBefore, isAfter,
 } from 'date-fns';
 import { id as localeId } from 'date-fns/locale';
 import type { TeacherData, JournalEntry, TabKey } from '../../types';
@@ -21,16 +21,66 @@ interface DashboardGuruProps {
   onNavigate: (tab: TabKey) => void;
 }
 
+type ColorKey = 'blue' | 'emerald' | 'amber' | 'rose' | 'purple' | 'indigo' | 'slate';
+
+const colorMap: Record<ColorKey, { bg: string; fg: string }> = {
+  blue: { bg: 'bg-blue-50', fg: 'text-blue-600' },
+  emerald: { bg: 'bg-emerald-50', fg: 'text-emerald-600' },
+  amber: { bg: 'bg-amber-50', fg: 'text-amber-600' },
+  rose: { bg: 'bg-rose-50', fg: 'text-rose-600' },
+  purple: { bg: 'bg-purple-50', fg: 'text-purple-600' },
+  indigo: { bg: 'bg-indigo-50', fg: 'text-indigo-600' },
+  slate: { bg: 'bg-slate-100', fg: 'text-slate-500' },
+};
+
+function StatCard({
+  icon, color, label, value, sub,
+}: {
+  icon: React.ReactNode;
+  color: ColorKey;
+  label: string;
+  value: string | number;
+  sub?: string;
+}) {
+  const c = colorMap[color];
+  return (
+    <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-2.5 lg:p-3 flex items-center gap-2.5 lg:gap-3">
+      <div className={`w-9 h-9 lg:w-10 lg:h-10 rounded-lg ${c.bg} flex items-center justify-center shrink-0`}>
+        <span className={c.fg}>{icon}</span>
+      </div>
+      <div className="min-w-0 flex-1">
+        <p className="text-[9px] lg:text-[10px] font-bold text-slate-500 uppercase tracking-wide leading-tight truncate">
+          {label}
+        </p>
+        <p className="text-sm lg:text-base font-bold text-slate-900 leading-tight truncate">{value}</p>
+        {sub && (
+          <p className="text-[9px] lg:text-[10px] text-slate-400 leading-tight truncate">{sub}</p>
+        )}
+      </div>
+    </div>
+  );
+}
+
+interface WeeklyGroup {
+  index: number;
+  label: string;
+  rangeLabel: string;
+  totalWorkDays: number;
+  filledDays: number;
+  percent: number;
+  isFuture: boolean;
+  status: 'lengkap' | 'kurang' | 'belum' | 'future';
+}
+
 export function DashboardGuru({
-  teacher,
   journals,
-  approvals,
   onNavigate,
 }: DashboardGuruProps) {
   const today = new Date();
   const todayStr = format(today, 'yyyy-MM-dd');
   const monthIdx = getMonth(today);
   const yearNow = getYear(today);
+
   const [verification, setVerification] = useState<VerificationStatus | null>(null);
   const [loadingVerif, setLoadingVerif] = useState(true);
   const [submitting, setSubmitting] = useState(false);
@@ -50,18 +100,19 @@ export function DashboardGuru({
     return () => { mounted = false; };
   }, [periodKey]);
 
-  // Hitung hari kerja bulan ini
   const monthStart = startOfMonth(today);
   const monthEnd = endOfMonth(today);
-  const workDaysThisMonth = useMemo(
-    () =>
-      eachDayOfInterval({ start: monthStart, end: monthEnd }).filter(
-        (d) => !isWeekend(d) && !isHoliday(format(d, 'yyyy-MM-dd'))
-      ),
+
+  const daysInMonth = useMemo(
+    () => eachDayOfInterval({ start: monthStart, end: monthEnd }),
     [monthStart, monthEnd]
   );
 
-  // Jurnal bulan ini
+  const workDaysThisMonth = useMemo(
+    () => daysInMonth.filter((d) => !isWeekend(d) && !isHoliday(format(d, 'yyyy-MM-dd'))),
+    [daysInMonth]
+  );
+
   const monthJournals = useMemo(
     () =>
       journals.filter((j) => {
@@ -79,207 +130,398 @@ export function DashboardGuru({
   const filledDays = monthJournals.length;
   const requiredDays = workDaysThisMonth.length;
   const percent = requiredDays > 0 ? Math.round((filledDays / requiredDays) * 100) : 0;
-
-  const monthKey = `m-${monthIdx}-${yearNow}`;
-  const triwulanKey = `q-${Math.floor(monthIdx / 3) + 1}-${yearNow}`;
-  const isApproved = approvals.includes(monthKey) || approvals.includes(triwulanKey);
   const tpgEligible = percent >= 80;
 
   const hasFilledToday = journals.some((j) => isSameDay(parseISO(j.date), today));
-  const isTodayWorkday =
-    !isWeekend(today) && !isHoliday(todayStr);
+  const isTodayWorkday = !isWeekend(today) && !isHoliday(todayStr);
 
-  // Statistik
-  const stats = [
-    {
-      label: 'Jurnal Bulan Ini',
-      value: `${filledDays}/${requiredDays}`,
-      sub: format(today, 'MMMM yyyy', { locale: localeId }),
-      icon: <FileText className="w-4 h-4" />,
-      color: 'text-blue-600 bg-blue-50',
-    },
-    {
-      label: 'Total Kegiatan',
-      value: String(totalActivities),
-      sub: 'Kegiatan tercatat',
-      icon: <Activity className="w-4 h-4" />,
-      color: 'text-purple-600 bg-purple-50',
-    },
-    {
-      label: 'Kelengkapan',
-      value: `${percent}%`,
-      sub: percent >= 80 ? 'Baik' : 'Perlu dilengkapi',
-      icon: <TrendingUp className="w-4 h-4" />,
-      color: percent >= 80 ? 'text-emerald-600 bg-emerald-50' : 'text-amber-600 bg-amber-50',
-    },
-    {
-      label: 'Status TPG',
-      value: tpgEligible ? 'Memenuhi' : 'Belum',
-      sub: isApproved ? 'Disetujui pengawas' : 'Menunggu pengawas',
-      icon: isApproved ? <CheckCircle2 className="w-4 h-4" /> : <AlertCircle className="w-4 h-4" />,
-      color: tpgEligible ? 'text-emerald-600 bg-emerald-50' : 'text-rose-600 bg-rose-50',
-    },
-  ];
+  const isSent = !!verification?.guruSubmittedAt;
+  const isKepsekApproved = verification?.kepsekStatus === 'approved';
+  const isKepsekRejected = verification?.kepsekStatus === 'rejected';
+  const isPengawasApproved = verification?.pengawasStatus === 'approved';
+  const isPengawasRejected = verification?.pengawasStatus === 'rejected';
+
+  // Kelompok minggu: 1-7, 8-14, 15-21, 22-28, 29-31
+  const weeklyGroups = useMemo<WeeklyGroup[]>(() => {
+    const weeks: WeeklyGroup[] = [];
+    const lastDay = monthEnd.getDate();
+    const boundaries = [
+      { start: 1, end: 7 },
+      { start: 8, end: 14 },
+      { start: 15, end: 21 },
+      { start: 22, end: 28 },
+      { start: 29, end: 31 },
+    ];
+
+    boundaries.forEach((b, idx) => {
+      if (b.start > lastDay) return;
+      const endDay = Math.min(b.end, lastDay);
+
+      const daysInWeek = daysInMonth.filter((d) => {
+        const dayNum = d.getDate();
+        return dayNum >= b.start && dayNum <= endDay;
+      });
+
+      const workDays = daysInWeek.filter(
+        (d) => !isWeekend(d) && !isHoliday(format(d, 'yyyy-MM-dd'))
+      );
+      const filledInWeek = workDays.filter((d) =>
+        monthJournals.some((j) => isSameDay(parseISO(j.date), d))
+      );
+
+      const totalWork = workDays.length;
+      const filled = filledInWeek.length;
+      const pct = totalWork > 0 ? Math.round((filled / totalWork) * 100) : 0;
+
+      const lastDayOfWeek = daysInWeek[daysInWeek.length - 1];
+      const isFuture = !!(lastDayOfWeek && isAfter(lastDayOfWeek, today));
+
+      let status: 'lengkap' | 'kurang' | 'belum' | 'future';
+      if (isFuture || totalWork === 0) status = 'future';
+      else if (pct >= 80) status = 'lengkap';
+      else if (pct >= 40) status = 'kurang';
+      else status = 'belum';
+
+      weeks.push({
+        index: idx + 1,
+        label: `Minggu ${idx + 1}`,
+        rangeLabel: `${b.start}-${endDay} ${format(today, 'MMM', { locale: localeId })}`,
+        totalWorkDays: totalWork,
+        filledDays: filled,
+        percent: pct,
+        isFuture,
+        status,
+      });
+    });
+
+    return weeks;
+  }, [daysInMonth, monthJournals, monthEnd, today]);
+
+  const maxWeekFilled = Math.max(1, ...weeklyGroups.map((w) => w.filledDays));
+  const barScale = (count: number) => Math.max(6, (count / maxWeekFilled) * 100);
+
+  const handleKirim = async () => {
+    if (filledDays === 0) {
+      alert('Belum ada jurnal bulan ini. Isi dulu minimal 1 jurnal.');
+      return;
+    }
+    setSubmitting(true);
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error('Tidak login');
+      await submitJournalForVerification(user.id, periodKey);
+      const v = await getVerificationStatus(user.id, periodKey);
+      setVerification(v);
+    } catch (e) {
+      alert('Gagal kirim: ' + (e as Error).message);
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  // Bar chart status color
+  const getWeekStatusStyle = (status: string) => {
+    switch (status) {
+      case 'lengkap':
+        return {
+          bar: 'bg-gradient-to-t from-emerald-500 to-emerald-400',
+          text: 'text-emerald-700',
+          chip: 'text-emerald-700 bg-emerald-50 border-emerald-200',
+          chipLabel: '✔ Lengkap',
+        };
+      case 'kurang':
+        return {
+          bar: 'bg-gradient-to-t from-amber-500 to-amber-400',
+          text: 'text-amber-700',
+          chip: 'text-amber-700 bg-amber-50 border-amber-200',
+          chipLabel: '⚠ Kurang',
+        };
+      case 'belum':
+        return {
+          bar: 'bg-gradient-to-t from-rose-500 to-rose-400',
+          text: 'text-rose-700',
+          chip: 'text-rose-700 bg-rose-50 border-rose-200',
+          chipLabel: '✕ Belum',
+        };
+      default:
+        return {
+          bar: 'bg-gradient-to-t from-slate-200 to-slate-100',
+          text: 'text-slate-400',
+          chip: 'text-slate-500 bg-slate-50 border-slate-200',
+          chipLabel: '⏳ Belum Lewat',
+        };
+    }
+  };
 
   return (
-    <div className="space-y-4">
-      {/* Card Besar: Status Verifikasi + Statistik */}
-      {!loadingVerif && (
-        <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
-          {/* Baris 1: Status Verifikasi (4 kolom dengan divider) */}
-          <div className="grid grid-cols-2 lg:grid-cols-4 divide-x divide-y lg:divide-y-0 divide-slate-100 border-b border-slate-100">
-            {/* Col 1: Diisi */}
-            <div className="px-4 py-3">
-              <div className="flex items-center gap-2 mb-1.5">
-                <div className={`w-6 h-6 rounded-full flex items-center justify-center text-[10px] shrink-0 ${
-                  filledDays > 0 ? 'bg-emerald-500 text-white' : 'bg-slate-200 text-slate-500'
-                }`}>
-                  {filledDays > 0 ? '✓' : '○'}
+    <div className="flex flex-col gap-2.5 lg:gap-3 lg:h-full lg:overflow-hidden">
+      {/* Toolbar */}
+      <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-3 flex flex-wrap items-center gap-2 shrink-0">
+        <div className="flex items-center gap-2 min-w-0">
+          <FileText className="w-4 h-4 text-indigo-600 shrink-0" />
+          <span className="text-xs text-slate-500">Jurnal Bulan Ini:</span>
+          <span className="text-xs font-bold text-slate-700">
+            {filledDays}/{requiredDays} ({percent}%)
+          </span>
+        </div>
+        <div className="flex-1" />
+        {!loadingVerif && isPengawasApproved && (
+          <span className="text-[11px] px-2.5 py-1 bg-emerald-50 text-emerald-700 border border-emerald-200 rounded-full font-semibold">
+            ✅ Disetujui Pengawas
+          </span>
+        )}
+        {!loadingVerif && isPengawasRejected && (
+          <span className="text-[11px] px-2.5 py-1 bg-rose-50 text-rose-700 border border-rose-200 rounded-full font-semibold">
+            ❌ Ditolak Pengawas
+          </span>
+        )}
+        {!loadingVerif && !isSent && filledDays > 0 && (
+          <button
+            onClick={handleKirim}
+            disabled={submitting}
+            className="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white text-xs font-semibold rounded-lg transition-colors flex items-center gap-1.5"
+          >
+            {submitting ? (
+              <Loader2 className="w-3.5 h-3.5 animate-spin" />
+            ) : (
+              <Send className="w-3.5 h-3.5" />
+            )}
+            Kirim ke Kepala Sekolah
+          </button>
+        )}
+        {!loadingVerif && isSent && !isPengawasApproved && !isPengawasRejected && (
+          <span className="text-[11px] px-2.5 py-1 bg-slate-100 text-slate-600 border border-slate-200 rounded-full font-semibold">
+            📤 Terkirim
+            {verification?.guruSubmittedAt
+              ? ` ${format(parseISO(verification.guruSubmittedAt), 'd MMM', { locale: localeId })}`
+              : ''}
+          </span>
+        )}
+      </div>
+
+      {/* 4 Kartu Status */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 lg:gap-3 shrink-0">
+        <StatCard
+          icon={<FileText className="w-5 h-5" />}
+          color="blue"
+          label="Jurnal Diisi"
+          value={`${filledDays}/${requiredDays}`}
+          sub={`${percent}% kelengkapan`}
+        />
+        <StatCard
+          icon={<Send className="w-5 h-5" />}
+          color={isSent ? 'emerald' : 'amber'}
+          label="Dikirim ke Kepsek"
+          value={
+            isSent && verification?.guruSubmittedAt
+              ? format(parseISO(verification.guruSubmittedAt), 'd MMM', { locale: localeId })
+              : 'Belum'
+          }
+          sub={isSent ? 'Sudah dikirim' : 'Belum dikirim'}
+        />
+        <StatCard
+          icon={
+            isKepsekApproved
+              ? <CheckCircle2 className="w-5 h-5" />
+              : isKepsekRejected
+              ? <AlertCircle className="w-5 h-5" />
+              : <Clock className="w-5 h-5" />
+          }
+          color={isKepsekApproved ? 'emerald' : isKepsekRejected ? 'rose' : 'amber'}
+          label="Verifikasi Kepsek"
+          value={
+            isKepsekApproved ? 'Disetujui' : isKepsekRejected ? 'Ditolak' : 'Menunggu'
+          }
+          sub={
+            isKepsekApproved
+              ? 'Siap cetak jurnal'
+              : isKepsekRejected
+              ? 'Perlu revisi'
+              : 'Menunggu verifikasi'
+          }
+        />
+        <StatCard
+          icon={
+            isPengawasApproved
+              ? <Award className="w-5 h-5" />
+              : isPengawasRejected
+              ? <AlertCircle className="w-5 h-5" />
+              : <Target className="w-5 h-5" />
+          }
+          color={isPengawasApproved ? 'emerald' : isPengawasRejected ? 'rose' : 'amber'}
+          label="Final Pengawas"
+          value={
+            isPengawasApproved ? 'Disetujui' : isPengawasRejected ? 'Ditolak' : 'Menunggu'
+          }
+          sub={
+            isPengawasApproved
+              ? 'Siap cetak rekomendasi'
+              : isPengawasRejected
+              ? 'Perlu revisi'
+              : 'Menunggu persetujuan'
+          }
+        />
+      </div>
+
+      {/* Chart Batang + Mini List */}
+      <div className="flex flex-col lg:flex-1 lg:min-h-0 gap-2 lg:gap-2.5">
+        <div className="flex items-center gap-2 px-1 shrink-0">
+          <BarChart3 className="w-4 h-4 text-indigo-600" />
+          <p className="font-semibold text-slate-800 text-xs lg:text-sm">Kelengkapan per Minggu</p>
+          <span className="ml-auto text-[10px] text-slate-500">
+            {format(today, 'MMMM yyyy', { locale: localeId })} · {requiredDays} hari kerja
+          </span>
+        </div>
+
+        <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-3 lg:p-4 flex flex-col lg:flex-1 lg:min-h-0 lg:overflow-hidden">
+          <div className="grid grid-cols-1 lg:grid-cols-5 gap-4 lg:flex-1 lg:min-h-0">
+            {/* Kiri: Chart batang */}
+            <div className="lg:col-span-2 flex flex-col border-b lg:border-b-0 lg:border-r border-slate-100 pb-3 lg:pb-0 lg:pr-4 lg:min-h-0">
+              <div className="flex items-end justify-around gap-2 h-28 lg:h-full relative">
+                <div className="absolute inset-0 flex flex-col justify-between pointer-events-none">
+                  <div className="border-t border-dashed border-slate-100"></div>
+                  <div className="border-t border-dashed border-slate-100"></div>
+                  <div className="border-t border-dashed border-slate-100"></div>
+                  <div className="border-t border-slate-200"></div>
                 </div>
-                <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wide">📋 Diisi</p>
+
+                {weeklyGroups.map((w) => {
+                  const cfg = getWeekStatusStyle(w.status);
+                  return (
+                    <div
+                      key={w.index}
+                      className="flex-1 flex flex-col items-center justify-end relative z-10 h-full"
+                      title={`${w.label} (${w.rangeLabel}): ${w.filledDays}/${w.totalWorkDays} hari`}
+                    >
+                      <span className={`text-[10px] lg:text-xs font-bold ${cfg.text} mb-1`}>
+                        {w.isFuture ? '-' : w.filledDays}
+                      </span>
+                      <div
+                        className={`w-full max-w-[40px] ${cfg.bar} rounded-t-md shadow-sm transition-all`}
+                        style={{ height: `${w.filledDays > 0 ? barScale(w.filledDays) : 3}%` }}
+                      ></div>
+                      <p className="text-[9px] lg:text-[10px] font-semibold text-slate-500 mt-1.5 uppercase tracking-wide">
+                        M{w.index}
+                      </p>
+                    </div>
+                  );
+                })}
               </div>
-              <p className="text-base font-bold text-slate-800 leading-tight">
-                {filledDays}<span className="text-xs text-slate-400">/{requiredDays}</span>
+              <p className="text-center text-[10px] text-slate-400 mt-2 lg:mt-3">
+                Tinggi batang = jumlah hari terisi
               </p>
-              <p className="text-[10px] text-slate-500 mt-0.5">hari terisi</p>
             </div>
 
-            {/* Col 2: Dikirim */}
-            <div className="px-4 py-3">
-              <div className="flex items-center gap-2 mb-1.5">
-                <div className={`w-6 h-6 rounded-full flex items-center justify-center text-[10px] shrink-0 ${
-                  verification?.guruSubmittedAt ? 'bg-emerald-500 text-white' : 'bg-slate-200 text-slate-500'
-                }`}>
-                  {verification?.guruSubmittedAt ? '✓' : '○'}
-                </div>
-                <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wide">📤 Dikirim</p>
+            {/* Kanan: Mini list per minggu */}
+            <div className="lg:col-span-3 flex flex-col lg:min-h-0">
+              <div className="flex-1 lg:overflow-y-auto lg:min-h-0 lg:pr-1 space-y-2">
+                {weeklyGroups.map((w) => {
+                  const cfg = getWeekStatusStyle(w.status);
+                  return (
+                    <div key={w.index} className="flex items-center gap-2.5">
+                      <div className="w-16 shrink-0">
+                        <p className="text-xs font-semibold text-slate-700">{w.label}</p>
+                        <p className="text-[9px] text-slate-400">{w.rangeLabel}</p>
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="w-full h-1.5 bg-slate-100 rounded-full overflow-hidden mb-1">
+                          <div
+                            className={`h-full transition-all ${
+                              w.status === 'lengkap'
+                                ? 'bg-emerald-500'
+                                : w.status === 'kurang'
+                                ? 'bg-amber-500'
+                                : w.status === 'belum'
+                                ? 'bg-rose-500'
+                                : 'bg-slate-200'
+                            }`}
+                            style={{ width: `${w.isFuture ? 0 : w.percent}%` }}
+                          ></div>
+                        </div>
+                        <p className={`text-[10px] font-medium ${cfg.text}`}>
+                          {w.isFuture
+                            ? 'Belum lewat'
+                            : `${w.filledDays}/${w.totalWorkDays} hari (${w.percent}%)`}
+                        </p>
+                      </div>
+                      <span
+                        className={`text-[9px] font-bold px-1.5 py-0.5 rounded-full border shrink-0 ${cfg.chip}`}
+                      >
+                        {cfg.chipLabel}
+                      </span>
+                    </div>
+                  );
+                })}
               </div>
-              <p className="text-base font-bold text-slate-800 leading-tight">
-                {verification?.guruSubmittedAt
-                  ? format(parseISO(verification.guruSubmittedAt), 'd MMM', { locale: localeId })
-                  : '—'}
-              </p>
-              <p className="text-[10px] text-slate-500 mt-0.5">
-                {verification?.guruSubmittedAt ? 'ke Kepala Sekolah' : 'belum dikirim'}
-              </p>
-            </div>
-
-            {/* Col 3: Verifikasi Kepsek */}
-            <div className="px-4 py-3">
-              <div className="flex items-center gap-2 mb-1.5">
-                <div className={`w-6 h-6 rounded-full flex items-center justify-center text-[10px] shrink-0 ${
-                  verification?.kepsekStatus === 'approved' ? 'bg-emerald-500 text-white'
-                    : verification?.kepsekStatus === 'rejected' ? 'bg-rose-500 text-white'
-                    : 'bg-slate-200 text-slate-500'
-                }`}>
-                  {verification?.kepsekStatus === 'approved' ? '✓' : verification?.kepsekStatus === 'rejected' ? '✕' : '○'}
-                </div>
-                <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wide">✅ Verifikasi</p>
-              </div>
-              <p className={`text-base font-bold leading-tight ${
-                verification?.kepsekStatus === 'approved' ? 'text-emerald-600'
-                  : verification?.kepsekStatus === 'rejected' ? 'text-rose-600'
-                  : 'text-slate-800'
-              }`}>
-                {verification?.kepsekStatus === 'approved' ? 'Disetujui'
-                  : verification?.kepsekStatus === 'rejected' ? 'Ditolak'
-                  : 'Menunggu'}
-              </p>
-              <p className="text-[10px] text-slate-500 mt-0.5">oleh Kepala Sekolah</p>
-            </div>
-
-            {/* Col 4: Final Pengawas */}
-            <div className="px-4 py-3">
-              <div className="flex items-center gap-2 mb-1.5">
-                <div className={`w-6 h-6 rounded-full flex items-center justify-center text-[10px] shrink-0 ${
-                  verification?.pengawasStatus === 'approved' ? 'bg-emerald-500 text-white'
-                    : verification?.pengawasStatus === 'rejected' ? 'bg-rose-500 text-white'
-                    : 'bg-slate-200 text-slate-500'
-                }`}>
-                  {verification?.pengawasStatus === 'approved' ? '✓' : verification?.pengawasStatus === 'rejected' ? '✕' : '○'}
-                </div>
-                <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wide">🎯 Final</p>
-              </div>
-              <p className={`text-base font-bold leading-tight ${
-                verification?.pengawasStatus === 'approved' ? 'text-emerald-600'
-                  : verification?.pengawasStatus === 'rejected' ? 'text-rose-600'
-                  : 'text-slate-800'
-              }`}>
-                {verification?.pengawasStatus === 'approved' ? 'Disetujui'
-                  : verification?.pengawasStatus === 'rejected' ? 'Ditolak'
-                  : 'Menunggu'}
-              </p>
-              <p className="text-[10px] text-slate-500 mt-0.5">oleh Pengawas</p>
             </div>
           </div>
 
-          {/* Baris 2: Statistik (4 kolom dengan divider) */}
-          <div className="grid grid-cols-2 lg:grid-cols-4 divide-x divide-y lg:divide-y-0 divide-slate-100">
-            {stats.map((s, i) => (
-              <div key={i} className="px-4 py-3 flex items-center gap-2.5">
-                <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${s.color}`}>
-                  {s.icon}
-                </div>
-                <div className="min-w-0 flex-1">
-                  <p className="text-[10px] font-semibold text-slate-500 uppercase tracking-wide truncate">
-                    {s.label}
-                  </p>
-                  <p className="text-lg font-bold text-slate-900 leading-tight">{s.value}</p>
-                  <p className="text-[10px] text-slate-400 truncate">{s.sub}</p>
-                </div>
-              </div>
-            ))}
+          {/* Legend */}
+          <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 mt-3 pt-3 border-t border-slate-100 text-[10px] text-slate-500 shrink-0">
+            <span className="flex items-center gap-1.5">
+              <span className="w-3 h-3 rounded bg-emerald-500"></span>
+              Lengkap (≥80%)
+            </span>
+            <span className="flex items-center gap-1.5">
+              <span className="w-3 h-3 rounded bg-amber-500"></span>
+              Kurang (40-79%)
+            </span>
+            <span className="flex items-center gap-1.5">
+              <span className="w-3 h-3 rounded bg-rose-500"></span>
+              Belum (&lt;40%)
+            </span>
+            <span className="flex items-center gap-1.5">
+              <span className="w-3 h-3 rounded bg-slate-200"></span>
+              Belum Lewat
+            </span>
           </div>
         </div>
-      )}
+      </div>
 
-      {/* Tombol Kirim ke Kepala Sekolah (muncul kalau belum dikirim) */}
-      {!loadingVerif && !verification?.guruSubmittedAt && filledDays > 0 && (
-        <button
-          onClick={async () => {
-            setSubmitting(true);
-            try {
-              const { data: { user } } = await supabase.auth.getUser();
-              if (!user) throw new Error('Tidak login');
-              await submitJournalForVerification(user.id, periodKey);
-              const v = await getVerificationStatus(user.id, periodKey);
-              setVerification(v);
-            } catch (e) {
-              alert('Gagal kirim: ' + (e as Error).message);
-            } finally {
-              setSubmitting(false);
-            }
-          }}
-          disabled={submitting}
-          className="w-full px-4 py-3 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white text-sm font-semibold rounded-lg transition-colors flex items-center justify-center gap-2"
-        >
-          {submitting ? (
-            <>
-              <Loader2 className="w-4 h-4 animate-spin" />
-              Mengirim...
-            </>
-          ) : (
-            <>
-              <Send className="w-4 h-4" />
-              Kirim Jurnal Bulan Ini ke Kepala Sekolah
-            </>
-          )}
-        </button>
-      )}
-
-      {/* Warning terkunci */}
-      {!loadingVerif && verification?.isLocked && (
-        <div className="p-3 bg-amber-50 border border-amber-200 rounded-lg text-xs text-amber-800">
-          🔒 Jurnal bulan ini terkunci. Hubungi Kepala Sekolah untuk revisi.
+      {/* Ringkasan Bulan Ini */}
+      <div className="shrink-0">
+        <div className="flex items-center gap-2 mb-2 px-1">
+          <TrendingUp className="w-4 h-4 text-indigo-600" />
+          <p className="font-semibold text-slate-800 text-xs lg:text-sm">Ringkasan Bulan Ini</p>
         </div>
-      )}
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 lg:gap-3">
+          <StatCard
+            icon={<Activity className="w-5 h-5" />}
+            color="purple"
+            label="Total Kegiatan"
+            value={totalActivities}
+            sub="Kegiatan tercatat"
+          />
+          <StatCard
+            icon={<TrendingUp className="w-5 h-5" />}
+            color={percent >= 80 ? 'emerald' : percent >= 40 ? 'amber' : 'rose'}
+            label="Kelengkapan"
+            value={`${percent}%`}
+            sub={percent >= 80 ? 'Baik' : 'Perlu dilengkapi'}
+          />
+          <StatCard
+            icon={<Target className="w-5 h-5" />}
+            color={tpgEligible ? 'emerald' : 'rose'}
+            label="Status TPG"
+            value={tpgEligible ? 'Memenuhi' : 'Belum'}
+            sub={tpgEligible ? '≥80% tercapai' : 'Minimal 80%'}
+          />
+          <StatCard
+            icon={<Calendar className="w-5 h-5" />}
+            color="indigo"
+            label="Hari Aktif"
+            value={`${filledDays} hari`}
+            sub={format(today, 'MMMM yyyy', { locale: localeId })}
+          />
+        </div>
+      </div>
 
-      {/* Pengingat: belum isi jurnal hari ini */}
+      {/* Reminder / Reward */}
       {isTodayWorkday && !hasFilledToday && (
-        <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 flex flex-col sm:flex-row sm:items-center gap-3">
-          <div className="flex items-start gap-3 flex-1">
-            <div className="w-10 h-10 bg-amber-100 rounded-full flex items-center justify-center shrink-0">
-              <AlertCircle className="w-5 h-5 text-amber-600" />
+        <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 flex flex-col sm:flex-row sm:items-center gap-3 shrink-0">
+          <div className="flex items-start gap-2.5 flex-1">
+            <div className="w-9 h-9 bg-amber-100 rounded-full flex items-center justify-center shrink-0">
+              <AlertCircle className="w-4 h-4 text-amber-600" />
             </div>
             <div>
               <p className="font-semibold text-amber-900 text-sm">
@@ -292,87 +534,18 @@ export function DashboardGuru({
           </div>
           <button
             onClick={() => onNavigate('journal')}
-            className="px-4 py-2 bg-amber-600 hover:bg-amber-700 text-white text-sm font-semibold rounded-lg transition-colors flex items-center justify-center gap-2 shrink-0"
+            className="px-3.5 py-1.5 bg-amber-600 hover:bg-amber-700 text-white text-xs font-semibold rounded-lg transition-colors flex items-center justify-center gap-1.5 shrink-0"
           >
-            <Plus className="w-4 h-4" />
+            <Plus className="w-3.5 h-3.5" />
             Isi Sekarang
           </button>
         </div>
       )}
 
-      {/* Progress kelengkapan */}
-      <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-5">
-        <div className="flex items-center justify-between mb-3">
-          <div>
-            <p className="font-semibold text-slate-800 text-sm">Kelengkapan Bulan Ini</p>
-            <p className="text-xs text-slate-500">
-              {filledDays} dari {requiredDays} hari kerja terisi
-            </p>
-          </div>
-          <span
-            className={cn(
-              'px-3 py-1 rounded-full text-xs font-bold',
-              percent >= 80
-                ? 'bg-emerald-100 text-emerald-700'
-                : percent >= 50
-                ? 'bg-amber-100 text-amber-700'
-                : 'bg-rose-100 text-rose-700'
-            )}
-          >
-            {percent}%
-          </span>
-        </div>
-        <div className="w-full h-3 bg-slate-100 rounded-full overflow-hidden">
-          <div
-            className={cn(
-              'h-full transition-all duration-500',
-              percent >= 80
-                ? 'bg-emerald-500'
-                : percent >= 50
-                ? 'bg-amber-500'
-                : 'bg-rose-500'
-            )}
-            style={{ width: `${percent}%` }}
-          />
-        </div>
-        <p className="text-[11px] text-slate-500 mt-2">
-          Target minimal: <span className="font-semibold">80%</span> untuk kelayakan TPG
-        </p>
-      </div>
-
-      {/* Aksi cepat */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-        <button
-          onClick={() => onNavigate('journal')}
-          className="bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl p-4 flex items-center gap-3 transition-colors text-left shadow-sm"
-        >
-          <div className="w-10 h-10 rounded-lg bg-white/15 flex items-center justify-center shrink-0">
-            <Plus className="w-5 h-5" />
-          </div>
-          <div className="flex-1">
-            <p className="font-bold text-sm">Input Jurnal Hari Ini</p>
-            <p className="text-xs text-indigo-100 mt-0.5">Catat kegiatan mengajar Anda</p>
-          </div>
-        </button>
-        <button
-          onClick={() => onNavigate('preview')}
-          className="bg-white hover:bg-slate-50 border border-slate-200 text-slate-800 rounded-xl p-4 flex items-center gap-3 transition-colors text-left shadow-sm"
-        >
-          <div className="w-10 h-10 rounded-lg bg-slate-100 flex items-center justify-center shrink-0">
-            <Eye className="w-5 h-5 text-slate-600" />
-          </div>
-          <div className="flex-1">
-            <p className="font-bold text-sm">Lihat Preview & Cetak</p>
-            <p className="text-xs text-slate-500 mt-0.5">Cetak PDF jurnal / rekomendasi</p>
-          </div>
-        </button>
-      </div>
-
-      {/* Reward card */}
-      {percent >= 80 && (
-        <div className="bg-gradient-to-r from-emerald-500 to-emerald-600 text-white rounded-xl p-4 flex items-center gap-3 shadow-sm">
-          <div className="w-12 h-12 bg-white/20 rounded-full flex items-center justify-center shrink-0">
-            <Award className="w-6 h-6" />
+      {percent >= 80 && isTodayWorkday && hasFilledToday && (
+        <div className="bg-gradient-to-r from-emerald-500 to-emerald-600 text-white rounded-xl p-3 flex items-center gap-3 shadow-sm shrink-0">
+          <div className="w-10 h-10 bg-white/20 rounded-full flex items-center justify-center shrink-0">
+            <Award className="w-5 h-5" />
           </div>
           <div>
             <p className="font-bold text-sm">Kerja bagus!</p>
