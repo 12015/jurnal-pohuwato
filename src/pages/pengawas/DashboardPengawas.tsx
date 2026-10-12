@@ -206,9 +206,6 @@ export function DashboardPengawas({
                     <p className="font-bold text-slate-800 text-xs lg:text-sm truncate" title={s.namaSekolah}>
                       {s.namaSekolah}
                     </p>
-                    <p className="text-[9px] lg:text-[10px] text-slate-500 font-mono mt-0.5">
-                      NPSN {s.npsn} · {s.total} binaan
-                    </p>
                   </div>
 
                   {/* Chart vertikal - shrink-0 */}
