@@ -155,7 +155,15 @@ export function LoginPage() {
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-50 to-slate-100 p-4">
       <div className="w-full max-w-md bg-white rounded-2xl shadow-xl border border-slate-200 p-8">
         <div className="text-center mb-6">
-          <h1 className="text-2xl font-bold text-slate-900">JURNAL GURU</h1>
+          <img
+            src="/logo-kabupaten.png"
+            alt="Logo Kabupaten Pohuwato"
+            className="w-20 h-20 mx-auto mb-3 object-contain"
+            onError={(e) => {
+              (e.target as HTMLImageElement).style.display = 'none';
+            }}
+          />
+          <h1 className="text-2xl font-bold text-slate-900">JURNAL KEGIATAN GURU</h1>
           <p className="text-sm text-slate-500 mt-1">Kabupaten Pohuwato</p>
         </div>
 
@@ -388,6 +396,12 @@ export function LoginPage() {
               </button>
             </>
           )}
+        </div>
+
+        <div className="mt-6 pt-4 border-t border-slate-100 text-center">
+          <p className="text-[10px] text-slate-400 font-mono">
+            By 1201512145
+          </p>
         </div>
       </div>
     </div>
