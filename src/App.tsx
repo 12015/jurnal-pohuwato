@@ -2758,31 +2758,12 @@ function RekomendasiLetter({
           <DataRow label="3. Jabatan" value={teacher.position} colonPos="110px" />
           <DataRow label="4. Unit Kerja" value={teacher.workUnit} colonPos="110px" />
         </div>
-        <p className="text-justify pt-1 leading-[1.5]">
-          {isAllEligible ? (
-            "Bahwa yang bersangkutan benar-benar melaksanakan tugas mengajar minimal 24 jam dan linieritas pada satuan pendidikan. Berdasarkan data pengisian jurnal kegiatan harian yang telah dilaksanakan guru serta bukti kehadiran daftar hadir yang telah dilaksanakan dengan baik maka"
-          ) : (
-            "Bahwa yang bersangkutan benar-benar guru dengan tugas mengajar minimal 24 jam dan linieritas pada satuan pendidikan. Berdasarkan data pengisian jurnal kegiatan harian yang belum dilaksanakan dengan baik serta bukti kehadiran berupa daftar hadir yang tidak dilaksanakan dengan baik maka"
-          )}
+        <p className="text-justify leading-[1.5]">
+          Bahwa yang bersangkutan merupakan guru dengan tugas mengajar minimal 24 jam pelajaran dan memiliki linearitas sesuai dengan kualifikasi pendidikan yang dimilikinya. Berdasarkan hasil evaluasi kinerja pada Laporan Jurnal Kegiatan Harian Guru serta bukti kehadiran pada Daftar Hadir, maka yang bersangkutan dinyatakan <strong className={isAllEligible ? "text-black" : "text-red-600"}>{isAllEligible ? 'berhak' : 'belum berhak'} menerima TPG/TPP Bulan {format(displayDate, 'MMMM yyyy', { locale: id })}</strong>.
         </p>
-        <div className="space-y-1 mt-1">
-          {statuses.map((s, i) => {
-            const approved = s.isEligible || s.manualApproved;
-            const statusText = approved
-              ? `yang bersangkutan berhak menerima TPG/TPP bulan ${s.monthName} tahun ${year}`
-              : `yang bersangkutan belum berhak menerima TPG/TPP bulan ${s.monthName} tahun ${year}`;
 
-            const subText = (!s.isEligible && s.manualApproved) ? " (disetujui oleh pengawas)" : "";
-
-            return (
-              <p key={i} className={cn("text-justify font-semibold leading-[1.5]", approved ? "text-black" : "text-red-600")}>
-                {statusText}{subText}.
-              </p>
-            );
-          })}
-        </div>
-        <p className="text-justify pt-1 leading-[1.5]">
-          Demikian rekomendasi ini dibuat untuk melengkapi berkas penerimaan TPG/TPP.
+        <p className="text-justify leading-[1.5]">
+          Demikian rekomendasi ini dibuat dengan sebenar-benarnya untuk dipergunakan sebagai kelengkapan berkas administrasi TPG/TPP.
         </p>
       </div>
 
