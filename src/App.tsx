@@ -535,10 +535,7 @@ const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, y: -20 }}
                 >
-                  <>
-                    <ProfileForm data={teacher} onSave={handleSaveTeacher} role={role} profile={profile} />
-                    <ChangePasswordCard addNotification={addNotification} />
-                  </>
+                  <ProfileForm data={teacher} onSave={handleSaveTeacher} role={role} profile={profile} />
                 </motion.div>
               )}
 
@@ -868,6 +865,8 @@ function ProfileForm({
         </div>
       </div>
 
+      <AccountSection />
+
       {/* Footer tombol simpan */}
       <div className="pt-5 mt-5 border-t border-slate-200 flex justify-center">
         <Button
@@ -882,18 +881,13 @@ function ProfileForm({
 }
 
 
-function ChangePasswordCard({
-  addNotification,
-}: {
-  addNotification: (message: string, type: 'success' | 'error') => void;
-}) {
-  const [currentEmail, setCurrentEmail] = useState<string>('');
+function AccountSection() {
+  const [currentEmail, setCurrentEmail] = useState('');
   const [newEmail, setNewEmail] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
-  const [success, setSuccess] = useState('');
+  const [msg, setMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
   useEffect(() => {
     supabase.auth.getUser().then(({ data }) => {
@@ -904,181 +898,127 @@ function ChangePasswordCard({
     });
   }, []);
 
-  const handleSubmit = async () => {
-    setError('');
-    setSuccess('');
-
-    const emailChanged = newEmail.trim() !== '' && newEmail.trim().toLowerCase() !== currentEmail.toLowerCase();
+  const handleUpdate = async () => {
+    setMsg(null);
+    const emailChanged = newEmail.trim().toLowerCase() !== currentEmail.toLowerCase();
     const passwordFilled = newPassword.length > 0;
 
-    // Validasi: minimal salah satu berubah
     if (!emailChanged && !passwordFilled) {
-      setError('Tidak ada perubahan. Ubah email atau password terlebih dahulu.');
+      setMsg({ type: 'error', text: 'Tidak ada perubahan' });
       return;
     }
-
-    // Validasi email (kalau diubah)
-    if (emailChanged) {
-      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-      if (!emailRegex.test(newEmail.trim())) {
-        setError('Format email tidak valid');
-        return;
-      }
+    if (emailChanged && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(newEmail.trim())) {
+      setMsg({ type: 'error', text: 'Format email tidak valid' });
+      return;
     }
-
-    // Validasi password (kalau diisi)
     if (passwordFilled) {
       if (newPassword.length < 6) {
-        setError('Password baru minimal 6 karakter');
+        setMsg({ type: 'error', text: 'Password minimal 6 karakter' });
         return;
       }
       if (newPassword !== confirmPassword) {
-        setError('Konfirmasi password tidak cocok');
+        setMsg({ type: 'error', text: 'Konfirmasi password tidak cocok' });
         return;
       }
     }
 
     setLoading(true);
     try {
-      const updatePayload: { email?: string; password?: string } = {};
-      if (emailChanged) updatePayload.email = newEmail.trim();
-      if (passwordFilled) updatePayload.password = newPassword;
+      const payload: { email?: string; password?: string } = {};
+      if (emailChanged) payload.email = newEmail.trim();
+      if (passwordFilled) payload.password = newPassword;
 
-      const { error: updateErr } = await supabase.auth.updateUser(updatePayload);
-      if (updateErr) throw updateErr;
+      const { error } = await supabase.auth.updateUser(payload);
+      if (error) throw error;
 
       const parts: string[] = [];
       if (emailChanged) parts.push('email');
       if (passwordFilled) parts.push('password');
-
-      setSuccess(`${parts.join(' & ')} berhasil diubah. ${
-        emailChanged ? 'Cek inbox email baru Anda untuk konfirmasi. ' : ''
-      }Gunakan data baru pada login berikutnya.`);
-
+      setMsg({
+        type: 'success',
+        text: `${parts.join(' & ')} berhasil diubah.${emailChanged ? ' Cek inbox email baru untuk konfirmasi.' : ''}`,
+      });
+      if (emailChanged) setCurrentEmail(newEmail.trim());
       setNewPassword('');
       setConfirmPassword('');
-      if (emailChanged) setCurrentEmail(newEmail.trim());
-
-      addNotification(`${parts.join(' & ')} berhasil diubah!`, 'success');
-    } catch (err) {
-      setError((err as Error).message);
+    } catch (e) {
+      setMsg({ type: 'error', text: (e as Error).message });
     } finally {
       setLoading(false);
     }
   };
 
-  const emailChanged = newEmail.trim() !== '' && newEmail.trim().toLowerCase() !== currentEmail.toLowerCase();
-  const passwordFilled = newPassword.length > 0;
-  const canSubmit = emailChanged || passwordFilled;
-
   return (
-    <Card className="mt-4">
-      <div className="p-4 border-b border-slate-200">
-        <h3 className="text-sm font-bold text-slate-800 flex items-center gap-2 uppercase tracking-wide">
-          <Lock className="w-4 h-4 text-indigo-600" />
-          UBAH EMAIL &amp; PASSWORD
-        </h3>
-        <p className="text-xs text-slate-500 mt-0.5">
-          Ubah email/username atau password akun Anda. Bisa salah satu atau keduanya.
-        </p>
+    <div className="p-3.5 sm:p-4 bg-blue-50/60 rounded-xl border border-blue-100 space-y-3">
+      <h4 className="text-xs sm:text-sm font-bold text-blue-900 flex items-center gap-1.5 uppercase tracking-wide">
+        <Lock className="w-4 h-4 text-blue-600" /> UBAH EMAIL &amp; PASSWORD
+      </h4>
+
+      <div className="flex flex-col gap-1.5">
+        <label className="text-xs sm:text-sm font-semibold text-slate-700">
+          Email / Username Sekarang
+        </label>
+        <input
+          type="text"
+          value={currentEmail}
+          disabled
+          className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-slate-500 text-xs sm:text-sm cursor-not-allowed"
+        />
       </div>
-      <div className="p-5 sm:p-6">
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-          <div className="lg:col-span-7 space-y-3.5">
-            <div className="flex flex-col gap-1.5">
-              <label className="text-xs sm:text-sm font-semibold text-slate-700">
-                Email / Username Sekarang
-              </label>
-              <input
-                type="text"
-                value={currentEmail}
-                readOnly
-                disabled
-                className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-slate-500 text-xs sm:text-sm cursor-not-allowed"
-              />
-            </div>
 
-            <Input
-              label="Email / Username Baru"
-              type="email"
-              value={newEmail}
-              onChange={setNewEmail}
-              placeholder="nama@example.com"
-              hint="Ubah jika perlu"
-            />
+      <Input
+        label="Email / Username Baru"
+        type="email"
+        value={newEmail}
+        onChange={setNewEmail}
+        placeholder="nama@example.com"
+      />
 
-            <div className="pt-2 mt-2 border-t border-dashed border-slate-200">
-              <p className="text-[11px] text-slate-500 mb-2">
-                Isi password baru jika ingin mengubah password:
-              </p>
-            </div>
+      <Input
+        label="Password Baru"
+        type="password"
+        value={newPassword}
+        onChange={setNewPassword}
+        placeholder="Kosongkan jika tidak diubah"
+        hint="Minimal 6 karakter"
+      />
 
-            <Input
-              label="Password Baru"
-              type="password"
-              value={newPassword}
-              onChange={setNewPassword}
-              placeholder="Kosongkan jika tidak diubah"
-              hint="Minimal 6 karakter"
-            />
-            <Input
-              label="Konfirmasi Password Baru"
-              type="password"
-              value={confirmPassword}
-              onChange={setConfirmPassword}
-              placeholder="Ulangi password baru"
-              required={passwordFilled}
-            />
-          </div>
+      <Input
+        label="Konfirmasi Password Baru"
+        type="password"
+        value={confirmPassword}
+        onChange={setConfirmPassword}
+        placeholder="Ulangi password baru"
+      />
 
-          <div className="lg:col-span-5 space-y-3">
-            <div className="p-3.5 bg-blue-50 border border-blue-100 rounded-lg">
-              <p className="text-xs font-semibold text-blue-900 mb-1.5">💡 Tips Keamanan</p>
-              <ul className="text-[11px] text-blue-800 space-y-1 list-disc list-inside">
-                <li>Gunakan email aktif &amp; aman</li>
-                <li>Password minimal 6 karakter</li>
-                <li>Campur huruf besar, kecil &amp; angka</li>
-                <li>Jangan bagikan ke orang lain</li>
-              </ul>
-            </div>
-
-            <div className="p-3.5 bg-amber-50 border border-amber-100 rounded-lg">
-              <p className="text-xs font-semibold text-amber-900 mb-1.5">⚠️ Perhatian</p>
-              <ul className="text-[11px] text-amber-800 space-y-1 list-disc list-inside">
-                <li>Ubah email butuh verifikasi</li>
-                <li>Cek inbox email baru untuk konfirmasi</li>
-                <li>Email lama akan dinonaktifkan</li>
-              </ul>
-            </div>
-          </div>
+      {msg && (
+        <div
+          className={cn(
+            'p-2.5 rounded-lg text-xs',
+            msg.type === 'success'
+              ? 'bg-emerald-50 border border-emerald-200 text-emerald-700'
+              : 'bg-red-50 border border-red-200 text-red-700'
+          )}
+        >
+          {msg.type === 'success' ? '✅' : '❌'} {msg.text}
         </div>
+      )}
 
-        {error && (
-          <div className="mt-4 p-3 bg-red-50 border border-red-200 rounded-lg text-xs text-red-700">
-            ❌ {error}
-          </div>
-        )}
-        {success && (
-          <div className="mt-4 p-3 bg-emerald-50 border border-emerald-200 rounded-lg text-xs text-emerald-700">
-            ✅ {success}
-          </div>
-        )}
-
-        <div className="flex justify-end pt-4 mt-4 border-t border-slate-200">
-          <Button onClick={handleSubmit} disabled={loading || !canSubmit}>
-            {loading ? (
-              <>
-                <Loader2 className="w-4 h-4 animate-spin" /> Memproses...
-              </>
-            ) : (
-              <>
-                <Save className="w-4 h-4" /> SIMPAN PERUBAHAN
-              </>
-            )}
-          </Button>
-        </div>
+      <div className="flex justify-end pt-1">
+        <button
+          onClick={handleUpdate}
+          disabled={loading}
+          className="px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white text-xs font-semibold rounded-lg transition-colors flex items-center gap-1.5"
+        >
+          {loading ? (
+            <Loader2 className="w-3.5 h-3.5 animate-spin" />
+          ) : (
+            <Save className="w-3.5 h-3.5" />
+          )}
+          SIMPAN AKUN
+        </button>
       </div>
-    </Card>
+    </div>
   );
 }
 
