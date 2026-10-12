@@ -395,7 +395,12 @@ const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
           }
         />
 
-        <div className="flex-1 overflow-y-auto px-4 sm:px-6 pb-4 sm:pb-6">
+        <div className={cn(
+            "flex-1 px-4 sm:px-6 pb-4 sm:pb-6",
+            (activeTab === 'pw_dashboard' || activeTab === 'ks_dashboard' || activeTab === 'dashboard')
+              ? "lg:overflow-hidden"
+              : "overflow-y-auto"
+          )}>
           {isLoadingData ? (
             <div className="flex items-center justify-center py-20">
               <div className="text-center">

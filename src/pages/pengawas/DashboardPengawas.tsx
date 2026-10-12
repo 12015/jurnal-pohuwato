@@ -149,7 +149,7 @@ export function DashboardPengawas({
   const belumIsi = gurus.filter((g) => g.journalCount === 0).length;
 
   return (
-    <div className="flex flex-col gap-2.5 lg:gap-3 lg:h-[calc(100vh-6.75rem)] lg:overflow-hidden">
+    <div className="flex flex-col gap-2.5 lg:gap-3 lg:h-full lg:overflow-hidden">
       {/* OPSI A: 4 kartu atas */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 lg:gap-3 shrink-0">
         <StatCard icon={<Users className="w-5 h-5" />} color="blue"
