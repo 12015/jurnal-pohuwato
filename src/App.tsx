@@ -889,33 +889,54 @@ function ProfileForm({
               </label>
               <input
                 type="text"
+                autoComplete="off"
                 value={currentEmail}
                 disabled
                 className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-slate-500 text-xs sm:text-sm cursor-not-allowed"
               />
             </div>
-            <Input
-              label="Email / Username Baru"
-              type="email"
-              value={newEmail}
-              onChange={setNewEmail}
-              placeholder="nama@example.com"
-            />
-            <Input
-              label="Password Baru"
-              type="password"
-              value={newPassword}
-              onChange={setNewPassword}
-              placeholder="Kosongkan jika tidak diubah"
-              hint="Min 6 karakter"
-            />
-            <Input
-              label="Konfirmasi Password Baru"
-              type="password"
-              value={confirmPassword}
-              onChange={setConfirmPassword}
-              placeholder="Ulangi password baru"
-            />
+            <div className="flex flex-col gap-1.5">
+              <label className="text-xs sm:text-sm font-semibold text-slate-700">
+                Email / Username Baru
+              </label>
+              <input
+                type="email"
+                autoComplete="email"
+                value={newEmail}
+                onChange={(e) => setNewEmail(e.target.value)}
+                placeholder="nama@example.com"
+                className="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-all text-slate-900 text-xs sm:text-sm"
+              />
+            </div>
+            <div className="flex flex-col gap-1.5">
+              <div className="flex justify-between items-center mb-1">
+                <label className="text-xs sm:text-sm font-semibold text-slate-700">
+                  Password Baru
+                </label>
+                <span className="text-[10px] sm:text-xs text-slate-400 leading-none">Min 6 karakter</span>
+              </div>
+              <input
+                type="password"
+                autoComplete="new-password"
+                value={newPassword}
+                onChange={(e) => setNewPassword(e.target.value)}
+                placeholder="Kosongkan jika tidak diubah"
+                className="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-all text-slate-900 text-xs sm:text-sm"
+              />
+            </div>
+            <div className="flex flex-col gap-1.5">
+              <label className="text-xs sm:text-sm font-semibold text-slate-700">
+                Konfirmasi Password Baru
+              </label>
+              <input
+                type="password"
+                autoComplete="new-password"
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+                placeholder="Ulangi password baru"
+                className="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-all text-slate-900 text-xs sm:text-sm"
+              />
+            </div>
           </div>
 
           {saveMsg && (

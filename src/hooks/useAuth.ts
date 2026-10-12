@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import type { User } from '@supabase/supabase-js';
 import { supabase } from '../lib/supabase';
 import { getProfile, upsertProfile } from '../lib/db';
@@ -9,13 +9,18 @@ export function useAuth() {
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
 
+  // Flag untuk skip loadProfile saat signUp sedang berjalan (fix race condition)
+  const signingUpRef = useRef(false);
+
   useEffect(() => {
     let mounted = true;
 
     const loadProfile = async (u: User) => {
       try {
+        // Skip kalau signUp sedang berjalan — biar tidak overwrite profile dengan null
+        if (signingUpRef.current) return;
         const p = await getProfile(u.id);
-        if (mounted) setProfile(p);
+        if (mounted && !signingUpRef.current) setProfile(p);
       } catch (e) {
         console.error('loadProfile:', e);
       }
@@ -59,38 +64,43 @@ export function useAuth() {
       workUnitBina?: string,
       npsnBinaList?: string[]
     ) => {
-      const { data, error } = await supabase.auth.signUp({ email, password });
-      if (error) throw error;
-      if (data.user) {
-        await upsertProfile({
-          id: data.user.id,
-          role,
-          email,
-          workUnitBina: (role === 'pengawas' || role === 'kepala_sekolah') ? workUnitBina : undefined,
-          npsnBina: (role === 'kepala_sekolah' && npsnBinaList && npsnBinaList.length > 0)
-            ? npsnBinaList[0]
-            : undefined,
-        });
+      // Set flag SEBELUM signUp → supaya listener onAuthStateChange skip loadProfile
+      signingUpRef.current = true;
 
-        // Khusus pengawas: simpan daftar NPSN ke tabel pengawas_sekolah
-        if (role === 'pengawas' && npsnBinaList && npsnBinaList.length > 0) {
-          const rows = npsnBinaList
-            .map((n) => n.trim())
-            .filter((n) => n.length > 0)
-            .map((npsn) => ({ pengawas_id: data.user!.id, npsn }));
-          if (rows.length > 0) {
-            const { error: errPS } = await supabase.from('pengawas_sekolah').insert(rows);
-            if (errPS) console.error('Insert pengawas_sekolah:', errPS);
+      try {
+        const { data, error } = await supabase.auth.signUp({ email, password });
+        if (error) throw error;
+
+        if (data.user) {
+          await upsertProfile({
+            id: data.user.id,
+            role,
+            email,
+            workUnitBina: (role === 'pengawas' || role === 'kepala_sekolah') ? workUnitBina : undefined,
+            npsnBina: (role === 'kepala_sekolah' && npsnBinaList && npsnBinaList.length > 0)
+              ? npsnBinaList[0]
+              : undefined,
+          });
+
+          // Khusus pengawas: simpan daftar NPSN ke pengawas_sekolah
+          if (role === 'pengawas' && npsnBinaList && npsnBinaList.length > 0) {
+            const rows = npsnBinaList
+              .map((n) => n.trim())
+              .filter((n) => n.length > 0)
+              .map((npsn) => ({ pengawas_id: data.user!.id, npsn }));
+            if (rows.length > 0) {
+              const { error: errPS } = await supabase.from('pengawas_sekolah').insert(rows);
+              if (errPS) console.error('Insert pengawas_sekolah:', errPS);
+            }
           }
-        }
 
-        // ⚡ FIX RACE CONDITION: Reload profile ke state supaya role langsung benar
-        try {
+          // ⚡ Reload profile SEGERA setelah upsert selesai
           const freshProfile = await getProfile(data.user.id);
           if (freshProfile) setProfile(freshProfile);
-        } catch (e) {
-          console.error('Reload profile after signup:', e);
         }
+      } finally {
+        // Lepas flag setelah semua selesai
+        signingUpRef.current = false;
       }
     },
     signOut: async () => {
