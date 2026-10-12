@@ -246,7 +246,7 @@ export function DashboardPengawas({
                     <p className="text-[9px] lg:text-[10px] font-bold text-slate-500 uppercase tracking-wide mb-1 lg:mb-1.5 shrink-0">
                       Daftar Guru ({guruList.length})
                     </p>
-                    <div className="space-y-1 lg:space-y-1.5 lg:flex-1 lg:overflow-y-auto lg:min-h-0 lg:pr-1">
+                    <div className="space-y-1 lg:space-y-1.5 lg:flex-1 lg:overflow-y-auto lg:min-h-0 lg:pr-1 max-h-40 lg:max-h-none">
                       {guruList.map((g) => {
                         const percent = required > 0 ? Math.round((g.journalCount / required) * 100) : 0;
                         const barColor = percent >= 80 ? 'bg-emerald-500' : percent >= 40 ? 'bg-amber-500' : 'bg-rose-500';
@@ -279,12 +279,6 @@ export function DashboardPengawas({
                     </div>
                   </div>
 
-                  {/* Stacked bar mini - shrink-0 */}
-                  <div className="w-full h-1.5 rounded-full overflow-hidden flex bg-slate-100 shrink-0">
-                    {s.lengkap > 0 && <div className="h-full bg-emerald-500" style={{ width: `${pctLengkap}%` }} />}
-                    {s.kurang > 0 && <div className="h-full bg-amber-500" style={{ width: `${pctKurang}%` }} />}
-                    {s.belum > 0 && <div className="h-full bg-rose-500" style={{ width: `${pctBelum}%` }} />}
-                  </div>
                 </div>
               );
             })}

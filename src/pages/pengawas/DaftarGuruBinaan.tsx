@@ -73,7 +73,8 @@ export function DaftarGuruBinaan({
 
   const renderCol = (list: BinaanSummary[], keyPrefix: string) => (
     <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
-      <table className="w-full text-sm">
+      <div className="overflow-x-auto">
+      <table className="w-full text-sm min-w-[600px]">
         <thead className="bg-slate-50 border-b border-slate-200">
           <tr>
             <th className="text-left px-3 py-2.5 font-bold text-slate-700 text-[10px] uppercase tracking-wider">Nama</th>
@@ -126,6 +127,7 @@ export function DaftarGuruBinaan({
           ))}
         </tbody>
       </table>
+      </div>
     </div>
   );
 
