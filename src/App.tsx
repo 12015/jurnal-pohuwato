@@ -707,7 +707,6 @@ function ProfileForm({
   const [form, setForm] = useState<TeacherData>(data);
   const [sekolahList, setSekolahList] = useState<{ npsn: string; namaSekolah?: string }[]>([]);
 
-  // Account state
   const [currentEmail, setCurrentEmail] = useState('');
   const [newEmail, setNewEmail] = useState('');
   const [newPassword, setNewPassword] = useState('');
@@ -792,14 +791,12 @@ function ProfileForm({
   return (
     <Card className="p-5 sm:p-6 lg:p-8">
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-stretch">
-        {/* Kolom KIRI: semua input dalam 1 grid 2 kolom */}
+        {/* Kolom KIRI */}
         <div className="lg:col-span-7 flex flex-col gap-3.5">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
-            {/* Baris 1: Nama, NIP */}
             <Input label="Nama Lengkap" value={form.name} onChange={(v) => setForm({ ...form, name: v })} placeholder="Nama Lengkap & Gelar" required />
             <Input label="NIP" value={form.nip} onChange={(v) => setForm({ ...form, nip: v })} placeholder="19xxxxxxxxxxxxxx" required />
 
-            {/* Baris 2: Jabatan, Mapel */}
             <Input label="Jabatan" value={form.position} onChange={(v) => setForm({ ...form, position: v })} placeholder="Guru Madya / Muda" required />
             {isGuru ? (
               <Input label="Mata Pelajaran" value={form.subject} onChange={(v) => setForm({ ...form, subject: v })} placeholder="Matematika" required />
@@ -807,13 +804,12 @@ function ProfileForm({
               <Input label="Pangkat / Golongan" value={form.grade} onChange={(v) => setForm({ ...form, grade: v })} placeholder="Pembina, IV/a" />
             )}
 
-            {/* Baris 3: Pangkat, Instansi */}
             {isGuru ? (
               <Input label="Pangkat / Golongan" value={form.grade} onChange={(v) => setForm({ ...form, grade: v })} placeholder="Pembina, IV/a" />
             ) : null}
             <Input label="Instansi" value={form.institution || ''} onChange={(v) => setForm({ ...form, institution: v })} placeholder="Dinas Pendidikan dan Kebudayaan" />
 
-            {/* Baris 4: Unit Kerja, Kecamatan */}
+            {/* Unit Kerja + Kecamatan (guru/kepsek) ATAU Unit Kerja Pengawas saja */}
             <Input
               label={isPengawas ? 'Unit Kerja Pengawas' : 'Unit Kerja'}
               value={form.workUnit}
@@ -821,22 +817,21 @@ function ProfileForm({
               placeholder={isPengawas ? 'Dinas Pendidikan / Pengawas' : 'SMPN 1 Randangan'}
               required
             />
-            {!isPengawas ? (
+            {!isPengawas && (
               <Input label="Kecamatan" value={form.kecamatan} onChange={(v) => setForm({ ...form, kecamatan: v })} placeholder="Kecamatan Marisa" required />
-            ) : (
-              <div />
             )}
 
-            {/* Baris 5: NPSN, Alamat Instansi */}
-            <Input label="NPSN" value={form.npsn} onChange={(v) => setForm({ ...form, npsn: v })} placeholder="10xxxxxx" />
-            <Input label="Alamat Instansi" value={form.institutionAddress || ''} onChange={(v) => setForm({ ...form, institutionAddress: v })} placeholder="Jalan Ki Hajar Dewantara No. 8 Palopo" />
-
-            {/* Baris 6: Alamat Unit Kerja, Email Sekarang */}
-            {!isPengawas ? (
-              <Input label="Alamat Unit Kerja" value={form.schoolAddress} onChange={(v) => setForm({ ...form, schoolAddress: v })} placeholder="Jl. xxxx No. xx" />
-            ) : (
-              <div />
+            {/* NPSN + Alamat Instansi + Alamat Unit Kerja: hanya guru/kepsek */}
+            {!isPengawas && (
+              <>
+                <Input label="NPSN" value={form.npsn} onChange={(v) => setForm({ ...form, npsn: v })} placeholder="10xxxxxx" />
+                <Input label="Alamat Instansi" value={form.institutionAddress || ''} onChange={(v) => setForm({ ...form, institutionAddress: v })} placeholder="Jalan Ki Hajar Dewantara No. 8 Palopo" />
+                <Input label="Alamat Unit Kerja" value={form.schoolAddress} onChange={(v) => setForm({ ...form, schoolAddress: v })} placeholder="Jl. xxxx No. xx" />
+                <div />
+              </>
             )}
+
+            {/* Akun: Email Sekarang, Email Baru, Password Baru, Konfirmasi */}
             <div className="flex flex-col gap-1.5">
               <label className="text-xs sm:text-sm font-semibold text-slate-700">
                 Email / Username Sekarang
@@ -848,8 +843,6 @@ function ProfileForm({
                 className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-slate-500 text-xs sm:text-sm cursor-not-allowed"
               />
             </div>
-
-            {/* Baris 7: Email Baru, Password Baru */}
             <Input
               label="Email / Username Baru"
               type="email"
@@ -865,8 +858,6 @@ function ProfileForm({
               placeholder="Kosongkan jika tidak diubah"
               hint="Min 6 karakter"
             />
-
-            {/* Baris 8: Konfirmasi Password, Tombol SIMPAN AKUN */}
             <Input
               label="Konfirmasi Password Baru"
               type="password"
@@ -874,20 +865,22 @@ function ProfileForm({
               onChange={setConfirmPassword}
               placeholder="Ulangi password baru"
             />
-            <div className="flex flex-col justify-end">
-              <button
-                onClick={handleUpdateAccount}
-                disabled={accLoading}
-                className="w-full px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white text-xs font-semibold rounded-lg transition-colors flex items-center justify-center gap-1.5"
-              >
-                {accLoading ? (
-                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                ) : (
-                  <Save className="w-3.5 h-3.5" />
-                )}
-                SIMPAN AKUN
-              </button>
-            </div>
+          </div>
+
+          {/* Tombol Simpan Akun - full width di bawah form akun */}
+          <div className="flex justify-end">
+            <button
+              onClick={handleUpdateAccount}
+              disabled={accLoading}
+              className="px-6 py-2 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white text-xs font-semibold rounded-lg transition-colors flex items-center gap-1.5"
+            >
+              {accLoading ? (
+                <Loader2 className="w-3.5 h-3.5 animate-spin" />
+              ) : (
+                <Save className="w-3.5 h-3.5" />
+              )}
+              SIMPAN AKUN
+            </button>
           </div>
 
           {accMsg && (
@@ -903,22 +896,25 @@ function ProfileForm({
             </div>
           )}
 
+          {/* Sekolah Binaan - Khusus pengawas, layout horisontal 3 kolom */}
           {isPengawas && (
-            <div className="p-3.5 sm:p-4 bg-blue-50/60 rounded-xl border border-blue-100 space-y-2">
+            <div className="p-3.5 sm:p-4 bg-blue-50/60 rounded-xl border border-blue-100 space-y-2.5">
               <h4 className="text-xs sm:text-sm font-bold text-blue-900 flex items-center gap-1.5 uppercase tracking-wide">
                 <BookOpen className="w-4 h-4 text-blue-600" /> SEKOLAH BINAAN ({sekolahList.length})
               </h4>
               {sekolahList.length === 0 ? (
                 <p className="text-[11px] text-blue-800 italic">Belum ada sekolah binaan terdaftar.</p>
               ) : (
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
                   {sekolahList.map((s) => (
                     <div
                       key={s.npsn}
-                      className="flex items-start gap-2 bg-white rounded-lg border border-blue-200 px-2.5 py-2"
+                      className="bg-white rounded-lg border border-blue-200 px-3 py-2.5 flex flex-col items-center text-center gap-0.5"
                     >
-                      <span className="font-mono text-[10px] text-slate-500 shrink-0 mt-0.5">{s.npsn}</span>
-                      <span className="text-xs font-semibold text-slate-800 truncate">
+                      <span className="font-mono text-[11px] font-bold text-blue-600">
+                        {s.npsn}
+                      </span>
+                      <span className="text-[11px] font-semibold text-slate-800 leading-tight">
                         {s.namaSekolah || `NPSN ${s.npsn}`}
                       </span>
                     </div>
