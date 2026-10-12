@@ -741,7 +741,6 @@ function ProfileForm({
   const handleSaveAll = async () => {
     setSaveMsg(null);
 
-    // ==== Validasi akun ====
     const emailChanged = newEmail.trim().toLowerCase() !== currentEmail.toLowerCase();
     const passwordFilled = newPassword.length > 0;
 
@@ -762,7 +761,6 @@ function ProfileForm({
 
     setSaving(true);
     try {
-      // 1. Simpan perubahan akun (email & password) jika ada
       if (emailChanged || passwordFilled) {
         const payload: { email?: string; password?: string } = {};
         if (emailChanged) payload.email = newEmail.trim();
@@ -776,10 +774,8 @@ function ProfileForm({
         setConfirmPassword('');
       }
 
-      // 2. Simpan perubahan profil
       onSave(form);
 
-      // 3. Pesan sukses
       const parts: string[] = ['profil'];
       if (emailChanged) parts.push('email');
       if (passwordFilled) parts.push('password');
@@ -794,6 +790,45 @@ function ProfileForm({
       setSaving(false);
     }
   };
+
+  // Block akun reusable (Email sekarang, email baru, password baru, konfirmasi)
+  const AccountFields = (
+    <>
+      <div className="flex flex-col gap-1.5">
+        <label className="text-xs sm:text-sm font-semibold text-slate-700">
+          Email / Username Sekarang
+        </label>
+        <input
+          type="text"
+          value={currentEmail}
+          disabled
+          className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-slate-500 text-xs sm:text-sm cursor-not-allowed"
+        />
+      </div>
+      <Input
+        label="Email / Username Baru"
+        type="email"
+        value={newEmail}
+        onChange={setNewEmail}
+        placeholder="nama@example.com"
+      />
+      <Input
+        label="Password Baru"
+        type="password"
+        value={newPassword}
+        onChange={setNewPassword}
+        placeholder="Kosongkan jika tidak diubah"
+        hint="Min 6 karakter"
+      />
+      <Input
+        label="Konfirmasi Password Baru"
+        type="password"
+        value={confirmPassword}
+        onChange={setConfirmPassword}
+        placeholder="Ulangi password baru"
+      />
+    </>
+  );
 
   return (
     <Card className="p-5 sm:p-6 lg:p-8">
@@ -836,40 +871,8 @@ function ProfileForm({
               </>
             )}
 
-            {/* Akun */}
-            <div className="flex flex-col gap-1.5">
-              <label className="text-xs sm:text-sm font-semibold text-slate-700">
-                Email / Username Sekarang
-              </label>
-              <input
-                type="text"
-                value={currentEmail}
-                disabled
-                className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-slate-500 text-xs sm:text-sm cursor-not-allowed"
-              />
-            </div>
-            <Input
-              label="Email / Username Baru"
-              type="email"
-              value={newEmail}
-              onChange={setNewEmail}
-              placeholder="nama@example.com"
-            />
-            <Input
-              label="Password Baru"
-              type="password"
-              value={newPassword}
-              onChange={setNewPassword}
-              placeholder="Kosongkan jika tidak diubah"
-              hint="Min 6 karakter"
-            />
-            <Input
-              label="Konfirmasi Password Baru"
-              type="password"
-              value={confirmPassword}
-              onChange={setConfirmPassword}
-              placeholder="Ulangi password baru"
-            />
+            {/* Akun fields: kepsek sesuai urutan khusus, role lain seperti biasa */}
+            {isKepsek ? AccountFields : AccountFields}
           </div>
 
           {saveMsg && (
@@ -961,37 +964,67 @@ function ProfileForm({
             </div>
           )}
 
-          {!isPengawas && (
+          {/* Pejabat Terkait: khusus kepsek dipindah ke bawah, guru di kolom kanan */}
+          {isGuru && (
             <div className="p-3.5 sm:p-4 bg-indigo-50/60 rounded-xl border border-indigo-100 space-y-2.5">
               <h4 className="text-xs sm:text-sm font-bold text-indigo-900 flex items-center gap-1.5 uppercase tracking-wide">
                 <ShieldCheck className="w-4 h-4 text-indigo-600" /> PEJABAT TERKAIT
               </h4>
               <div className="grid grid-cols-2 gap-3">
-                {!isKepsek && (
-                  <>
-                    <Input label="Kepala Satuan Pendidikan" value={form.principalName} onChange={(v) => setForm({ ...form, principalName: v })} placeholder="Nama Kepsek" />
-                    <Input label="NIP Kepala Satuan Pendidikan" value={form.principalNip} onChange={(v) => setForm({ ...form, principalNip: v })} placeholder="NIP Kepsek" />
-                  </>
-                )}
+                <Input label="Kepala Satuan Pendidikan" value={form.principalName} onChange={(v) => setForm({ ...form, principalName: v })} placeholder="Nama Kepsek" />
+                <Input label="NIP Kepala Satuan Pendidikan" value={form.principalNip} onChange={(v) => setForm({ ...form, principalNip: v })} placeholder="NIP Kepsek" />
                 <Input label="Pengawas Bina" value={form.supervisorName} onChange={(v) => setForm({ ...form, supervisorName: v })} placeholder="Nama Pengawas" />
                 <Input label="NIP Pengawas" value={form.supervisorNip} onChange={(v) => setForm({ ...form, supervisorNip: v })} placeholder="NIP Pengawas" />
-                {isKepsek && (
-                  <>
-                    <Input label="Kepala Dinas Pendidikan" value={form.headOfDeptName || ''} onChange={(v) => setForm({ ...form, headOfDeptName: v })} placeholder="Nama Kadis" />
-                    <Input label="NIP Kepala Dinas" value={form.headOfDeptNip || ''} onChange={(v) => setForm({ ...form, headOfDeptNip: v })} placeholder="NIP Kadis" />
-                  </>
-                )}
               </div>
             </div>
           )}
         </div>
       </div>
 
+      {/* Pejabat Terkait khusus KEPSEK - Full width di bawah grid */}
+      {isKepsek && (
+        <div className="mt-5 p-4 bg-indigo-50/60 rounded-xl border border-indigo-100 space-y-3">
+          <h4 className="text-xs sm:text-sm font-bold text-indigo-900 flex items-center gap-1.5 uppercase tracking-wide">
+            <ShieldCheck className="w-4 h-4 text-indigo-600" /> PEJABAT TERKAIT
+          </h4>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+            <div className="space-y-3">
+              <Input
+                label="Kepala Dinas Pendidikan"
+                value={form.headOfDeptName || ''}
+                onChange={(v) => setForm({ ...form, headOfDeptName: v })}
+                placeholder="Nama Kepala Dinas"
+              />
+              <Input
+                label="NIP Kepala Dinas"
+                value={form.headOfDeptNip || ''}
+                onChange={(v) => setForm({ ...form, headOfDeptNip: v })}
+                placeholder="NIP"
+              />
+            </div>
+            <div className="space-y-3">
+              <Input
+                label="Pengawas Bina"
+                value={form.supervisorName}
+                onChange={(v) => setForm({ ...form, supervisorName: v })}
+                placeholder="Nama Pengawas"
+              />
+              <Input
+                label="NIP Pengawas"
+                value={form.supervisorNip}
+                onChange={(v) => setForm({ ...form, supervisorNip: v })}
+                placeholder="NIP"
+              />
+            </div>
+          </div>
+        </div>
+      )}
+
       <div className="pt-5 mt-5 border-t border-slate-200 flex justify-center">
         <Button
           onClick={handleSaveAll}
           disabled={saving}
-          className="px-6 py-2.5 text-xs sm:text-sm font-semibold uppercase tracking-wide"
+          className="px-8 py-2.5 text-xs sm:text-sm font-semibold uppercase tracking-wide"
         >
           {saving ? (
             <>
