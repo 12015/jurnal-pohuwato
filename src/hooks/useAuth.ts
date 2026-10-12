@@ -83,6 +83,14 @@ export function useAuth() {
             if (errPS) console.error('Insert pengawas_sekolah:', errPS);
           }
         }
+
+        // ⚡ FIX RACE CONDITION: Reload profile ke state supaya role langsung benar
+        try {
+          const freshProfile = await getProfile(data.user.id);
+          if (freshProfile) setProfile(freshProfile);
+        } catch (e) {
+          console.error('Reload profile after signup:', e);
+        }
       }
     },
     signOut: async () => {
