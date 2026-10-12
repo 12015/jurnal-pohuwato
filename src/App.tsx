@@ -2760,23 +2760,23 @@ function RekomendasiLetter({
         </div>
         <p className="text-justify pt-1 leading-[1.5]">
           {isAllEligible ? (
-            "Bahwa yang bersangkutan benar-benar melaksanakan tugas mengajar minimal 24 jam dan linieritas pada satuan pendidikan. Berdasarkan data pengisian jurnal kegiatan harian yang telah dilaksanakan guru serta bukti kehadiran daftar hadir yang telah dilaksanakan dengan baik maka yang bersangkutan:"
+            "Bahwa yang bersangkutan benar-benar melaksanakan tugas mengajar minimal 24 jam dan linieritas pada satuan pendidikan. Berdasarkan data pengisian jurnal kegiatan harian yang telah dilaksanakan guru serta bukti kehadiran daftar hadir yang telah dilaksanakan dengan baik maka"
           ) : (
-            "Bahwa yang bersangkutan benar-benar guru dengan tugas mengajar minimal 24 jam dan linieritas pada satuan pendidikan. Berdasarkan data pengisian jurnal kegiatan harian yang belum dilaksanakan dengan baik serta bukti kehadiran berupa daftar hadir yang tidak dilaksanakan dengan baik maka yang bersangkutan:"
+            "Bahwa yang bersangkutan benar-benar guru dengan tugas mengajar minimal 24 jam dan linieritas pada satuan pendidikan. Berdasarkan data pengisian jurnal kegiatan harian yang belum dilaksanakan dengan baik serta bukti kehadiran berupa daftar hadir yang tidak dilaksanakan dengan baik maka"
           )}
         </p>
-        <div className="ml-5 space-y-1">
+        <div className="space-y-1 mt-1">
           {statuses.map((s, i) => {
             const approved = s.isEligible || s.manualApproved;
             const statusText = approved
-              ? `BERHAK MENERIMA TPG/TPP BULAN ${s.monthName.toUpperCase()} TAHUN ${year}`
-              : `BELUM BERHAK MENERIMA TPG/TPP BULAN ${s.monthName.toUpperCase()} TAHUN ${year}`;
+              ? `yang bersangkutan berhak menerima TPG/TPP bulan ${s.monthName} tahun ${year}`
+              : `yang bersangkutan belum berhak menerima TPG/TPP bulan ${s.monthName} tahun ${year}`;
 
-            const subText = (!s.isEligible && s.manualApproved) ? " (DISETUJUI OLEH PENGAWAS)" : "";
+            const subText = (!s.isEligible && s.manualApproved) ? " (disetujui oleh pengawas)" : "";
 
             return (
-              <p key={i} className={cn("font-bold leading-[1.5]", approved ? "text-black" : "text-red-600")}>
-                {i + 1}. {statusText}{subText}
+              <p key={i} className={cn("text-justify font-semibold leading-[1.5]", approved ? "text-black" : "text-red-600")}>
+                {statusText}{subText}.
               </p>
             );
           })}
