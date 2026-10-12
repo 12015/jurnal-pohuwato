@@ -707,6 +707,14 @@ function ProfileForm({
   const [form, setForm] = useState<TeacherData>(data);
   const [sekolahList, setSekolahList] = useState<{ npsn: string; namaSekolah?: string }[]>([]);
 
+  // Account state
+  const [currentEmail, setCurrentEmail] = useState('');
+  const [newEmail, setNewEmail] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [accLoading, setAccLoading] = useState(false);
+  const [accMsg, setAccMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+
   useEffect(() => {
     setForm(data);
   }, [data]);
@@ -718,64 +726,198 @@ function ProfileForm({
       .catch((e) => console.error('getPengawasSekolah:', e));
   }, [role, profile?.id]);
 
+  useEffect(() => {
+    supabase.auth.getUser().then(({ data }) => {
+      if (data.user?.email) {
+        setCurrentEmail(data.user.email);
+        setNewEmail(data.user.email);
+      }
+    });
+  }, []);
+
   const isPengawas = role === 'pengawas';
   const isKepsek = role === 'kepala_sekolah';
   const isGuru = role === 'guru';
 
+  const handleUpdateAccount = async () => {
+    setAccMsg(null);
+    const emailChanged = newEmail.trim().toLowerCase() !== currentEmail.toLowerCase();
+    const passwordFilled = newPassword.length > 0;
+
+    if (!emailChanged && !passwordFilled) {
+      setAccMsg({ type: 'error', text: 'Tidak ada perubahan' });
+      return;
+    }
+    if (emailChanged && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(newEmail.trim())) {
+      setAccMsg({ type: 'error', text: 'Format email tidak valid' });
+      return;
+    }
+    if (passwordFilled) {
+      if (newPassword.length < 6) {
+        setAccMsg({ type: 'error', text: 'Password minimal 6 karakter' });
+        return;
+      }
+      if (newPassword !== confirmPassword) {
+        setAccMsg({ type: 'error', text: 'Konfirmasi password tidak cocok' });
+        return;
+      }
+    }
+
+    setAccLoading(true);
+    try {
+      const payload: { email?: string; password?: string } = {};
+      if (emailChanged) payload.email = newEmail.trim();
+      if (passwordFilled) payload.password = newPassword;
+
+      const { error } = await supabase.auth.updateUser(payload);
+      if (error) throw error;
+
+      const parts: string[] = [];
+      if (emailChanged) parts.push('email');
+      if (passwordFilled) parts.push('password');
+      setAccMsg({
+        type: 'success',
+        text: `${parts.join(' & ')} berhasil diubah.${emailChanged ? ' Cek inbox email baru untuk konfirmasi.' : ''}`,
+      });
+      if (emailChanged) setCurrentEmail(newEmail.trim());
+      setNewPassword('');
+      setConfirmPassword('');
+    } catch (e) {
+      setAccMsg({ type: 'error', text: (e as Error).message });
+    } finally {
+      setAccLoading(false);
+    }
+  };
+
   return (
     <Card className="p-5 sm:p-6 lg:p-8">
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-stretch">
-        {/* Kolom KIRI */}
-        <div className="lg:col-span-7 flex flex-col gap-4">
-          {isPengawas ? (
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
-              <Input label="Nama Lengkap" value={form.name} onChange={(v) => setForm({ ...form, name: v })} placeholder="Nama Lengkap & Gelar" required />
-              <Input label="NIP" value={form.nip} onChange={(v) => setForm({ ...form, nip: v })} placeholder="19xxxxxxxxxxxxxx" required />
-              <Input label="Jabatan" value={form.position} onChange={(v) => setForm({ ...form, position: v })} placeholder="Pengawas Madya / Muda" required />
+        {/* Kolom KIRI: semua input dalam 1 grid 2 kolom */}
+        <div className="lg:col-span-7 flex flex-col gap-3.5">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+            {/* Baris 1: Nama, NIP */}
+            <Input label="Nama Lengkap" value={form.name} onChange={(v) => setForm({ ...form, name: v })} placeholder="Nama Lengkap & Gelar" required />
+            <Input label="NIP" value={form.nip} onChange={(v) => setForm({ ...form, nip: v })} placeholder="19xxxxxxxxxxxxxx" required />
+
+            {/* Baris 2: Jabatan, Mapel */}
+            <Input label="Jabatan" value={form.position} onChange={(v) => setForm({ ...form, position: v })} placeholder="Guru Madya / Muda" required />
+            {isGuru ? (
+              <Input label="Mata Pelajaran" value={form.subject} onChange={(v) => setForm({ ...form, subject: v })} placeholder="Matematika" required />
+            ) : (
               <Input label="Pangkat / Golongan" value={form.grade} onChange={(v) => setForm({ ...form, grade: v })} placeholder="Pembina, IV/a" />
-              <Input label="Instansi" value={form.institution || ''} onChange={(v) => setForm({ ...form, institution: v })} placeholder="Dinas Pendidikan dan Kebudayaan" />
-              <Input label="Alamat Instansi" value={form.institutionAddress || ''} onChange={(v) => setForm({ ...form, institutionAddress: v })} placeholder="Jalan Ki Hajar Dewantara No. 8 Palopo" />
+            )}
+
+            {/* Baris 3: Pangkat, Instansi */}
+            {isGuru ? (
+              <Input label="Pangkat / Golongan" value={form.grade} onChange={(v) => setForm({ ...form, grade: v })} placeholder="Pembina, IV/a" />
+            ) : null}
+            <Input label="Instansi" value={form.institution || ''} onChange={(v) => setForm({ ...form, institution: v })} placeholder="Dinas Pendidikan dan Kebudayaan" />
+
+            {/* Baris 4: Unit Kerja, Kecamatan */}
+            <Input
+              label={isPengawas ? 'Unit Kerja Pengawas' : 'Unit Kerja'}
+              value={form.workUnit}
+              onChange={(v) => setForm({ ...form, workUnit: v })}
+              placeholder={isPengawas ? 'Dinas Pendidikan / Pengawas' : 'SMPN 1 Randangan'}
+              required
+            />
+            {!isPengawas ? (
+              <Input label="Kecamatan" value={form.kecamatan} onChange={(v) => setForm({ ...form, kecamatan: v })} placeholder="Kecamatan Marisa" required />
+            ) : (
+              <div />
+            )}
+
+            {/* Baris 5: NPSN, Alamat Instansi */}
+            <Input label="NPSN" value={form.npsn} onChange={(v) => setForm({ ...form, npsn: v })} placeholder="10xxxxxx" />
+            <Input label="Alamat Instansi" value={form.institutionAddress || ''} onChange={(v) => setForm({ ...form, institutionAddress: v })} placeholder="Jalan Ki Hajar Dewantara No. 8 Palopo" />
+
+            {/* Baris 6: Alamat Unit Kerja, Email Sekarang */}
+            {!isPengawas ? (
+              <Input label="Alamat Unit Kerja" value={form.schoolAddress} onChange={(v) => setForm({ ...form, schoolAddress: v })} placeholder="Jl. xxxx No. xx" />
+            ) : (
+              <div />
+            )}
+            <div className="flex flex-col gap-1.5">
+              <label className="text-xs sm:text-sm font-semibold text-slate-700">
+                Email / Username Sekarang
+              </label>
+              <input
+                type="text"
+                value={currentEmail}
+                disabled
+                className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-slate-500 text-xs sm:text-sm cursor-not-allowed"
+              />
             </div>
-          ) : (
-            <>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
-                <Input label="Nama Lengkap" value={form.name} onChange={(v) => setForm({ ...form, name: v })} placeholder="Nama Lengkap & Gelar" required />
-                <Input label="NIP" value={form.nip} onChange={(v) => setForm({ ...form, nip: v })} placeholder="19xxxxxxxxxxxxxx" required />
-                <Input label="Jabatan" value={form.position} onChange={(v) => setForm({ ...form, position: v })} placeholder="Guru Madya / Muda" required />
-                {isGuru && (
-                  <Input label="Mata Pelajaran" value={form.subject} onChange={(v) => setForm({ ...form, subject: v })} placeholder="Matematika" required />
+
+            {/* Baris 7: Email Baru, Password Baru */}
+            <Input
+              label="Email / Username Baru"
+              type="email"
+              value={newEmail}
+              onChange={setNewEmail}
+              placeholder="nama@example.com"
+            />
+            <Input
+              label="Password Baru"
+              type="password"
+              value={newPassword}
+              onChange={setNewPassword}
+              placeholder="Kosongkan jika tidak diubah"
+              hint="Min 6 karakter"
+            />
+
+            {/* Baris 8: Konfirmasi Password, Tombol SIMPAN AKUN */}
+            <Input
+              label="Konfirmasi Password Baru"
+              type="password"
+              value={confirmPassword}
+              onChange={setConfirmPassword}
+              placeholder="Ulangi password baru"
+            />
+            <div className="flex flex-col justify-end">
+              <button
+                onClick={handleUpdateAccount}
+                disabled={accLoading}
+                className="w-full px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white text-xs font-semibold rounded-lg transition-colors flex items-center justify-center gap-1.5"
+              >
+                {accLoading ? (
+                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                ) : (
+                  <Save className="w-3.5 h-3.5" />
                 )}
-                <Input label="Pangkat / Golongan" value={form.grade} onChange={(v) => setForm({ ...form, grade: v })} placeholder="Pembina, IV/a" />
-                <Input label="Instansi" value={form.institution || ''} onChange={(v) => setForm({ ...form, institution: v })} placeholder="Dinas Pendidikan dan Kebudayaan" />
-                <Input label="Unit Kerja" value={form.workUnit} onChange={(v) => setForm({ ...form, workUnit: v })} placeholder="SMPN 1 Randangan" required />
-                <Input label="Kecamatan" value={form.kecamatan} onChange={(v) => setForm({ ...form, kecamatan: v })} placeholder="Kecamatan Marisa" required />
-                <Input label="NPSN" value={form.npsn} onChange={(v) => setForm({ ...form, npsn: v })} placeholder="10xxxxxx" />
-              </div>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
-                <Input label="Alamat Instansi" value={form.institutionAddress || ''} onChange={(v) => setForm({ ...form, institutionAddress: v })} placeholder="Jalan Ki Hajar Dewantara No. 8 Palopo" />
-                <Input label="Alamat Unit Kerja" value={form.schoolAddress} onChange={(v) => setForm({ ...form, schoolAddress: v })} placeholder="Jl. xxxx No. xx" />
-              </div>
-            </>
+                SIMPAN AKUN
+              </button>
+            </div>
+          </div>
+
+          {accMsg && (
+            <div
+              className={cn(
+                'p-2.5 rounded-lg text-xs',
+                accMsg.type === 'success'
+                  ? 'bg-emerald-50 border border-emerald-200 text-emerald-700'
+                  : 'bg-red-50 border border-red-200 text-red-700'
+              )}
+            >
+              {accMsg.type === 'success' ? '✅' : '❌'} {accMsg.text}
+            </div>
           )}
 
-          {/* Sekolah Binaan - khusus pengawas, mengisi ruang sisa */}
           {isPengawas && (
-            <div className="flex-1 p-3.5 sm:p-4 bg-blue-50/60 rounded-xl border border-blue-100 flex flex-col">
-              <h4 className="text-xs sm:text-sm font-bold text-blue-900 flex items-center gap-1.5 uppercase tracking-wide mb-2">
+            <div className="p-3.5 sm:p-4 bg-blue-50/60 rounded-xl border border-blue-100 space-y-2">
+              <h4 className="text-xs sm:text-sm font-bold text-blue-900 flex items-center gap-1.5 uppercase tracking-wide">
                 <BookOpen className="w-4 h-4 text-blue-600" /> SEKOLAH BINAAN ({sekolahList.length})
               </h4>
               {sekolahList.length === 0 ? (
                 <p className="text-[11px] text-blue-800 italic">Belum ada sekolah binaan terdaftar.</p>
               ) : (
-                <div className="space-y-1.5">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
                   {sekolahList.map((s) => (
                     <div
                       key={s.npsn}
                       className="flex items-start gap-2 bg-white rounded-lg border border-blue-200 px-2.5 py-2"
                     >
-                      <span className="font-mono text-[10px] text-slate-500 shrink-0 mt-0.5">
-                        {s.npsn}
-                      </span>
+                      <span className="font-mono text-[10px] text-slate-500 shrink-0 mt-0.5">{s.npsn}</span>
                       <span className="text-xs font-semibold text-slate-800 truncate">
                         {s.namaSekolah || `NPSN ${s.npsn}`}
                       </span>
@@ -789,7 +931,6 @@ function ProfileForm({
 
         {/* Kolom KANAN */}
         <div className="lg:col-span-5 flex flex-col gap-4">
-          {/* Foto Profil */}
           <div className="p-3.5 sm:p-4 bg-slate-50/80 rounded-xl border border-slate-200/80 space-y-2.5">
             <h4 className="text-xs sm:text-sm font-bold text-slate-800 flex items-center gap-1.5 uppercase tracking-wide">
               <User className="w-4 h-4 text-indigo-600" /> FOTO PROFIL
@@ -802,10 +943,9 @@ function ProfileForm({
             />
           </div>
 
-          {/* TTD & Cap - khusus kepsek/pengawas */}
           {(isKepsek || isPengawas) && (
-            <div className={`${isPengawas ? 'flex-1 ' : ''}p-3.5 sm:p-4 bg-amber-50/60 rounded-xl border border-amber-100 flex flex-col`}>
-              <h4 className="text-xs sm:text-sm font-bold text-amber-900 flex items-center gap-1.5 uppercase tracking-wide mb-2">
+            <div className="p-3.5 sm:p-4 bg-amber-50/60 rounded-xl border border-amber-100 space-y-2.5">
+              <h4 className="text-xs sm:text-sm font-bold text-amber-900 flex items-center gap-1.5 uppercase tracking-wide">
                 <ShieldCheck className="w-4 h-4 text-amber-600" /> TANDA TANGAN &amp; CAP DIGITAL
               </h4>
               <LogoUploader
@@ -817,7 +957,6 @@ function ProfileForm({
             </div>
           )}
 
-          {/* Logo Kop - guru & kepsek */}
           {!isPengawas && (
             <div className="p-3.5 sm:p-4 bg-slate-50/80 rounded-xl border border-slate-200/80 space-y-2.5">
               <h4 className="text-xs sm:text-sm font-bold text-slate-800 flex items-center gap-1.5 uppercase tracking-wide">
@@ -838,7 +977,6 @@ function ProfileForm({
             </div>
           )}
 
-          {/* Pejabat Terkait */}
           {!isPengawas && (
             <div className="p-3.5 sm:p-4 bg-indigo-50/60 rounded-xl border border-indigo-100 space-y-2.5">
               <h4 className="text-xs sm:text-sm font-bold text-indigo-900 flex items-center gap-1.5 uppercase tracking-wide">
@@ -847,16 +985,16 @@ function ProfileForm({
               <div className="grid grid-cols-2 gap-3">
                 {!isKepsek && (
                   <>
-                    <Input label="Kepala Satuan Pendidikan" value={form.principalName} onChange={(v) => setForm({ ...form, principalName: v })} placeholder="Nama Kepala Satuan Pendidikan" />
-                    <Input label="NIP Kepala Satuan Pendidikan" value={form.principalNip} onChange={(v) => setForm({ ...form, principalNip: v })} placeholder="NIP Kepala Satuan Pendidikan" />
+                    <Input label="Kepala Satuan Pendidikan" value={form.principalName} onChange={(v) => setForm({ ...form, principalName: v })} placeholder="Nama Kepsek" />
+                    <Input label="NIP Kepala Satuan Pendidikan" value={form.principalNip} onChange={(v) => setForm({ ...form, principalNip: v })} placeholder="NIP Kepsek" />
                   </>
                 )}
                 <Input label="Pengawas Bina" value={form.supervisorName} onChange={(v) => setForm({ ...form, supervisorName: v })} placeholder="Nama Pengawas" />
                 <Input label="NIP Pengawas" value={form.supervisorNip} onChange={(v) => setForm({ ...form, supervisorNip: v })} placeholder="NIP Pengawas" />
                 {isKepsek && (
                   <>
-                    <Input label="Kepala Dinas Pendidikan" value={form.headOfDeptName || ''} onChange={(v) => setForm({ ...form, headOfDeptName: v })} placeholder="Nama Kepala Dinas Pendidikan" />
-                    <Input label="NIP Kepala Dinas" value={form.headOfDeptNip || ''} onChange={(v) => setForm({ ...form, headOfDeptNip: v })} placeholder="NIP Kepala Dinas" />
+                    <Input label="Kepala Dinas Pendidikan" value={form.headOfDeptName || ''} onChange={(v) => setForm({ ...form, headOfDeptName: v })} placeholder="Nama Kadis" />
+                    <Input label="NIP Kepala Dinas" value={form.headOfDeptNip || ''} onChange={(v) => setForm({ ...form, headOfDeptNip: v })} placeholder="NIP Kadis" />
                   </>
                 )}
               </div>
@@ -865,9 +1003,6 @@ function ProfileForm({
         </div>
       </div>
 
-      <AccountSection />
-
-      {/* Footer tombol simpan */}
       <div className="pt-5 mt-5 border-t border-slate-200 flex justify-center">
         <Button
           onClick={() => onSave(form)}
@@ -877,148 +1012,6 @@ function ProfileForm({
         </Button>
       </div>
     </Card>
-  );
-}
-
-
-function AccountSection() {
-  const [currentEmail, setCurrentEmail] = useState('');
-  const [newEmail, setNewEmail] = useState('');
-  const [newPassword, setNewPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
-  const [loading, setLoading] = useState(false);
-  const [msg, setMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
-
-  useEffect(() => {
-    supabase.auth.getUser().then(({ data }) => {
-      if (data.user?.email) {
-        setCurrentEmail(data.user.email);
-        setNewEmail(data.user.email);
-      }
-    });
-  }, []);
-
-  const handleUpdate = async () => {
-    setMsg(null);
-    const emailChanged = newEmail.trim().toLowerCase() !== currentEmail.toLowerCase();
-    const passwordFilled = newPassword.length > 0;
-
-    if (!emailChanged && !passwordFilled) {
-      setMsg({ type: 'error', text: 'Tidak ada perubahan' });
-      return;
-    }
-    if (emailChanged && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(newEmail.trim())) {
-      setMsg({ type: 'error', text: 'Format email tidak valid' });
-      return;
-    }
-    if (passwordFilled) {
-      if (newPassword.length < 6) {
-        setMsg({ type: 'error', text: 'Password minimal 6 karakter' });
-        return;
-      }
-      if (newPassword !== confirmPassword) {
-        setMsg({ type: 'error', text: 'Konfirmasi password tidak cocok' });
-        return;
-      }
-    }
-
-    setLoading(true);
-    try {
-      const payload: { email?: string; password?: string } = {};
-      if (emailChanged) payload.email = newEmail.trim();
-      if (passwordFilled) payload.password = newPassword;
-
-      const { error } = await supabase.auth.updateUser(payload);
-      if (error) throw error;
-
-      const parts: string[] = [];
-      if (emailChanged) parts.push('email');
-      if (passwordFilled) parts.push('password');
-      setMsg({
-        type: 'success',
-        text: `${parts.join(' & ')} berhasil diubah.${emailChanged ? ' Cek inbox email baru untuk konfirmasi.' : ''}`,
-      });
-      if (emailChanged) setCurrentEmail(newEmail.trim());
-      setNewPassword('');
-      setConfirmPassword('');
-    } catch (e) {
-      setMsg({ type: 'error', text: (e as Error).message });
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  return (
-    <div className="p-3.5 sm:p-4 bg-blue-50/60 rounded-xl border border-blue-100 space-y-3">
-      <h4 className="text-xs sm:text-sm font-bold text-blue-900 flex items-center gap-1.5 uppercase tracking-wide">
-        <Lock className="w-4 h-4 text-blue-600" /> UBAH EMAIL &amp; PASSWORD
-      </h4>
-
-      <div className="flex flex-col gap-1.5">
-        <label className="text-xs sm:text-sm font-semibold text-slate-700">
-          Email / Username Sekarang
-        </label>
-        <input
-          type="text"
-          value={currentEmail}
-          disabled
-          className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-slate-500 text-xs sm:text-sm cursor-not-allowed"
-        />
-      </div>
-
-      <Input
-        label="Email / Username Baru"
-        type="email"
-        value={newEmail}
-        onChange={setNewEmail}
-        placeholder="nama@example.com"
-      />
-
-      <Input
-        label="Password Baru"
-        type="password"
-        value={newPassword}
-        onChange={setNewPassword}
-        placeholder="Kosongkan jika tidak diubah"
-        hint="Minimal 6 karakter"
-      />
-
-      <Input
-        label="Konfirmasi Password Baru"
-        type="password"
-        value={confirmPassword}
-        onChange={setConfirmPassword}
-        placeholder="Ulangi password baru"
-      />
-
-      {msg && (
-        <div
-          className={cn(
-            'p-2.5 rounded-lg text-xs',
-            msg.type === 'success'
-              ? 'bg-emerald-50 border border-emerald-200 text-emerald-700'
-              : 'bg-red-50 border border-red-200 text-red-700'
-          )}
-        >
-          {msg.type === 'success' ? '✅' : '❌'} {msg.text}
-        </div>
-      )}
-
-      <div className="flex justify-end pt-1">
-        <button
-          onClick={handleUpdate}
-          disabled={loading}
-          className="px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white text-xs font-semibold rounded-lg transition-colors flex items-center gap-1.5"
-        >
-          {loading ? (
-            <Loader2 className="w-3.5 h-3.5 animate-spin" />
-          ) : (
-            <Save className="w-3.5 h-3.5" />
-          )}
-          SIMPAN AKUN
-        </button>
-      </div>
-    </div>
   );
 }
 
