@@ -1,4 +1,5 @@
 import { supabase } from './supabase';
+import { INITIAL_TEACHER_DATA } from '../types';
 import type { TeacherData, JournalEntry, UserProfile } from '../types';
 import { startOfMonth, endOfMonth, format } from 'date-fns';
 
@@ -7,6 +8,7 @@ import { startOfMonth, endOfMonth, format } from 'date-fns';
 export async function loadTeacher(): Promise<TeacherData | null> {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return null;
+
   const { data, error } = await supabase
     .from('teachers')
     .select('*')
@@ -16,7 +18,23 @@ export async function loadTeacher(): Promise<TeacherData | null> {
     console.error('loadTeacher:', error);
     return null;
   }
-  if (!data) return null;
+
+  // Ambil npsn_bina dari profiles sebagai fallback (khusus kepsek)
+  const { data: profile } = await supabase
+    .from('profiles')
+    .select('npsn_bina')
+    .eq('id', user.id)
+    .maybeSingle();
+  const npsnBina = profile?.npsn_bina || '';
+
+  // Kalau teachers row belum ada, return kosong + npsn dari profiles
+  if (!data) {
+    return {
+      ...INITIAL_TEACHER_DATA,
+      npsn: npsnBina,
+    };
+  }
+
   return {
     name: data.name || '',
     nip: data.nip || '',
@@ -31,7 +49,7 @@ export async function loadTeacher(): Promise<TeacherData | null> {
     supervisorNip: data.supervisor_nip || '',
     headOfDeptName: data.head_of_dept_name || '',
     headOfDeptNip: data.head_of_dept_nip || '',
-    npsn: data.npsn || '',
+    npsn: data.npsn || npsnBina || '',
     schoolAddress: data.school_address || '',
     institution: data.institution || '',
     institutionAddress: data.institution_address || '',
@@ -50,19 +68,26 @@ export async function saveTeacher(t: TeacherData): Promise<void> {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) throw new Error('Belum login');
 
-  // Auto-sync npsn_bina untuk kepsek
+  // Auto-sync npsn_bina untuk kepsek (dua arah)
   const { data: profile } = await supabase
     .from('profiles')
-    .select('role')
+    .select('role, npsn_bina')
     .eq('id', user.id)
     .maybeSingle();
 
-  if (profile?.role === 'kepala_sekolah' && t.npsn && t.npsn.trim() !== '') {
-    const { error: pErr } = await supabase
-      .from('profiles')
-      .update({ npsn_bina: t.npsn.trim() })
-      .eq('id', user.id);
-    if (pErr) console.error('Auto-sync npsn_bina:', pErr);
+  if (profile?.role === 'kepala_sekolah') {
+    // Kalau form npsn kosong tapi profiles ada, ambil dari profiles
+    if ((!t.npsn || t.npsn.trim() === '') && profile.npsn_bina) {
+      t = { ...t, npsn: profile.npsn_bina };
+    }
+    // Sync form.npsn → profiles.npsn_bina
+    if (t.npsn && t.npsn.trim() !== '' && t.npsn.trim() !== profile.npsn_bina) {
+      const { error: pErr } = await supabase
+        .from('profiles')
+        .update({ npsn_bina: t.npsn.trim() })
+        .eq('id', user.id);
+      if (pErr) console.error('Auto-sync npsn_bina:', pErr);
+    }
   }
 
   const { error } = await supabase.from('teachers').upsert(
