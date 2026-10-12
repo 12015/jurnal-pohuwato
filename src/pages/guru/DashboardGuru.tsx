@@ -5,7 +5,7 @@ import {
 } from 'lucide-react';
 import {
   format, parseISO, startOfMonth, endOfMonth, eachDayOfInterval,
-  isWeekend, isSameDay, getMonth, getYear, isBefore, isAfter,
+  isWeekend, isSameDay, getMonth, getYear, isAfter,
 } from 'date-fns';
 import { id as localeId } from 'date-fns/locale';
 import type { TeacherData, JournalEntry, TabKey } from '../../types';
@@ -63,10 +63,8 @@ function StatCard({
 
 interface WeeklyGroup {
   index: number;
-  label: string;
-  rangeLabel: string;
-  totalWorkDays: number;
   filledDays: number;
+  totalWorkDays: number;
   percent: number;
   isFuture: boolean;
   status: 'lengkap' | 'kurang' | 'belum' | 'future';
@@ -184,10 +182,8 @@ export function DashboardGuru({
 
       weeks.push({
         index: idx + 1,
-        label: `Minggu ${idx + 1}`,
-        rangeLabel: `${b.start}-${endDay} ${format(today, 'MMM', { locale: localeId })}`,
-        totalWorkDays: totalWork,
         filledDays: filled,
+        totalWorkDays: totalWork,
         percent: pct,
         isFuture,
         status,
@@ -219,37 +215,29 @@ export function DashboardGuru({
     }
   };
 
-  // Bar chart status color
-  const getWeekStatusStyle = (status: string) => {
+  const getWeekBarColor = (status: string) => {
     switch (status) {
       case 'lengkap':
-        return {
-          bar: 'bg-gradient-to-t from-emerald-500 to-emerald-400',
-          text: 'text-emerald-700',
-          chip: 'text-emerald-700 bg-emerald-50 border-emerald-200',
-          chipLabel: '✔ Lengkap',
-        };
+        return 'bg-gradient-to-t from-emerald-500 to-emerald-400';
       case 'kurang':
-        return {
-          bar: 'bg-gradient-to-t from-amber-500 to-amber-400',
-          text: 'text-amber-700',
-          chip: 'text-amber-700 bg-amber-50 border-amber-200',
-          chipLabel: '⚠ Kurang',
-        };
+        return 'bg-gradient-to-t from-amber-500 to-amber-400';
       case 'belum':
-        return {
-          bar: 'bg-gradient-to-t from-rose-500 to-rose-400',
-          text: 'text-rose-700',
-          chip: 'text-rose-700 bg-rose-50 border-rose-200',
-          chipLabel: '✕ Belum',
-        };
+        return 'bg-gradient-to-t from-rose-500 to-rose-400';
       default:
-        return {
-          bar: 'bg-gradient-to-t from-slate-200 to-slate-100',
-          text: 'text-slate-400',
-          chip: 'text-slate-500 bg-slate-50 border-slate-200',
-          chipLabel: '⏳ Belum Lewat',
-        };
+        return 'bg-gradient-to-t from-slate-200 to-slate-100';
+    }
+  };
+
+  const getWeekTextColor = (status: string) => {
+    switch (status) {
+      case 'lengkap':
+        return 'text-emerald-700';
+      case 'kurang':
+        return 'text-amber-700';
+      case 'belum':
+        return 'text-rose-700';
+      default:
+        return 'text-slate-400';
     }
   };
 
@@ -363,7 +351,7 @@ export function DashboardGuru({
         />
       </div>
 
-      {/* Chart Batang + Mini List */}
+      {/* Chart + Ringkasan (grid 2:3) */}
       <div className="flex flex-col lg:flex-1 lg:min-h-0 gap-2 lg:gap-2.5">
         <div className="flex items-center gap-2 px-1 shrink-0">
           <BarChart3 className="w-4 h-4 text-indigo-600" />
@@ -377,7 +365,7 @@ export function DashboardGuru({
           <div className="grid grid-cols-1 lg:grid-cols-5 gap-4 lg:flex-1 lg:min-h-0">
             {/* Kiri: Chart batang */}
             <div className="lg:col-span-2 flex flex-col border-b lg:border-b-0 lg:border-r border-slate-100 pb-3 lg:pb-0 lg:pr-4 lg:min-h-0">
-              <div className="flex items-end justify-around gap-2 h-28 lg:h-full relative">
+              <div className="flex items-end justify-around gap-2 h-32 lg:h-full relative">
                 <div className="absolute inset-0 flex flex-col justify-between pointer-events-none">
                   <div className="border-t border-dashed border-slate-100"></div>
                   <div className="border-t border-dashed border-slate-100"></div>
@@ -385,73 +373,61 @@ export function DashboardGuru({
                   <div className="border-t border-slate-200"></div>
                 </div>
 
-                {weeklyGroups.map((w) => {
-                  const cfg = getWeekStatusStyle(w.status);
-                  return (
+                {weeklyGroups.map((w) => (
+                  <div
+                    key={w.index}
+                    className="flex-1 flex flex-col items-center justify-end relative z-10 h-full"
+                    title={`Minggu ${w.index}: ${w.filledDays}/${w.totalWorkDays} hari`}
+                  >
+                    <span className={`text-[10px] lg:text-xs font-bold ${getWeekTextColor(w.status)} mb-1`}>
+                      {w.isFuture ? '-' : w.filledDays}
+                    </span>
                     <div
-                      key={w.index}
-                      className="flex-1 flex flex-col items-center justify-end relative z-10 h-full"
-                      title={`${w.label} (${w.rangeLabel}): ${w.filledDays}/${w.totalWorkDays} hari`}
-                    >
-                      <span className={`text-[10px] lg:text-xs font-bold ${cfg.text} mb-1`}>
-                        {w.isFuture ? '-' : w.filledDays}
-                      </span>
-                      <div
-                        className={`w-full max-w-[40px] ${cfg.bar} rounded-t-md shadow-sm transition-all`}
-                        style={{ height: `${w.filledDays > 0 ? barScale(w.filledDays) : 3}%` }}
-                      ></div>
-                      <p className="text-[9px] lg:text-[10px] font-semibold text-slate-500 mt-1.5 uppercase tracking-wide">
-                        M{w.index}
-                      </p>
-                    </div>
-                  );
-                })}
+                      className={`w-full max-w-[40px] ${getWeekBarColor(w.status)} rounded-t-md shadow-sm transition-all`}
+                      style={{ height: `${w.filledDays > 0 ? barScale(w.filledDays) : 3}%` }}
+                    ></div>
+                    <p className="text-[9px] lg:text-[10px] font-semibold text-slate-500 mt-1.5 uppercase tracking-wide">
+                      M{w.index}
+                    </p>
+                  </div>
+                ))}
               </div>
               <p className="text-center text-[10px] text-slate-400 mt-2 lg:mt-3">
                 Tinggi batang = jumlah hari terisi
               </p>
             </div>
 
-            {/* Kanan: Mini list per minggu */}
+            {/* Kanan: 4 kartu ringkasan dalam 2x2 grid */}
             <div className="lg:col-span-3 flex flex-col lg:min-h-0">
-              <div className="flex-1 lg:overflow-y-auto lg:min-h-0 lg:pr-1 space-y-2">
-                {weeklyGroups.map((w) => {
-                  const cfg = getWeekStatusStyle(w.status);
-                  return (
-                    <div key={w.index} className="flex items-center gap-2.5">
-                      <div className="w-16 shrink-0">
-                        <p className="text-xs font-semibold text-slate-700">{w.label}</p>
-                        <p className="text-[9px] text-slate-400">{w.rangeLabel}</p>
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="w-full h-1.5 bg-slate-100 rounded-full overflow-hidden mb-1">
-                          <div
-                            className={`h-full transition-all ${
-                              w.status === 'lengkap'
-                                ? 'bg-emerald-500'
-                                : w.status === 'kurang'
-                                ? 'bg-amber-500'
-                                : w.status === 'belum'
-                                ? 'bg-rose-500'
-                                : 'bg-slate-200'
-                            }`}
-                            style={{ width: `${w.isFuture ? 0 : w.percent}%` }}
-                          ></div>
-                        </div>
-                        <p className={`text-[10px] font-medium ${cfg.text}`}>
-                          {w.isFuture
-                            ? 'Belum lewat'
-                            : `${w.filledDays}/${w.totalWorkDays} hari (${w.percent}%)`}
-                        </p>
-                      </div>
-                      <span
-                        className={`text-[9px] font-bold px-1.5 py-0.5 rounded-full border shrink-0 ${cfg.chip}`}
-                      >
-                        {cfg.chipLabel}
-                      </span>
-                    </div>
-                  );
-                })}
+              <div className="grid grid-cols-2 gap-2.5 lg:gap-3 flex-1">
+                <StatCard
+                  icon={<Activity className="w-5 h-5" />}
+                  color="purple"
+                  label="Total Kegiatan"
+                  value={totalActivities}
+                  sub="Bulan ini"
+                />
+                <StatCard
+                  icon={<TrendingUp className="w-5 h-5" />}
+                  color={percent >= 80 ? 'emerald' : percent >= 40 ? 'amber' : 'rose'}
+                  label="Kelengkapan"
+                  value={`${percent}%`}
+                  sub={percent >= 80 ? 'Baik' : 'Perlu dilengkapi'}
+                />
+                <StatCard
+                  icon={<Target className="w-5 h-5" />}
+                  color={tpgEligible ? 'emerald' : 'rose'}
+                  label="Status TPG"
+                  value={tpgEligible ? 'Memenuhi' : 'Belum'}
+                  sub={tpgEligible ? '≥80% tercapai' : 'Minimal 80%'}
+                />
+                <StatCard
+                  icon={<Calendar className="w-5 h-5" />}
+                  color="indigo"
+                  label="Hari Aktif"
+                  value={`${filledDays} hari`}
+                  sub={format(today, 'MMM yyyy', { locale: localeId })}
+                />
               </div>
             </div>
           </div>
@@ -475,44 +451,6 @@ export function DashboardGuru({
               Belum Lewat
             </span>
           </div>
-        </div>
-      </div>
-
-      {/* Ringkasan Bulan Ini */}
-      <div className="shrink-0">
-        <div className="flex items-center gap-2 mb-2 px-1">
-          <TrendingUp className="w-4 h-4 text-indigo-600" />
-          <p className="font-semibold text-slate-800 text-xs lg:text-sm">Ringkasan Bulan Ini</p>
-        </div>
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 lg:gap-3">
-          <StatCard
-            icon={<Activity className="w-5 h-5" />}
-            color="purple"
-            label="Total Kegiatan"
-            value={totalActivities}
-            sub="Kegiatan tercatat"
-          />
-          <StatCard
-            icon={<TrendingUp className="w-5 h-5" />}
-            color={percent >= 80 ? 'emerald' : percent >= 40 ? 'amber' : 'rose'}
-            label="Kelengkapan"
-            value={`${percent}%`}
-            sub={percent >= 80 ? 'Baik' : 'Perlu dilengkapi'}
-          />
-          <StatCard
-            icon={<Target className="w-5 h-5" />}
-            color={tpgEligible ? 'emerald' : 'rose'}
-            label="Status TPG"
-            value={tpgEligible ? 'Memenuhi' : 'Belum'}
-            sub={tpgEligible ? '≥80% tercapai' : 'Minimal 80%'}
-          />
-          <StatCard
-            icon={<Calendar className="w-5 h-5" />}
-            color="indigo"
-            label="Hari Aktif"
-            value={`${filledDays} hari`}
-            sub={format(today, 'MMMM yyyy', { locale: localeId })}
-          />
         </div>
       </div>
 
