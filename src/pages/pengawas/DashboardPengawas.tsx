@@ -188,7 +188,7 @@ export function DashboardPengawas({
             </div>
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2.5 lg:gap-3 lg:flex-1 lg:min-h-0">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2.5 lg:gap-3 lg:flex-1 lg:min-h-0 lg:auto-rows-fr">
             {sekolahList.map((s) => {
               const total = s.total || 1;
               const pctLengkap = (s.lengkap / total) * 100;
@@ -200,7 +200,7 @@ export function DashboardPengawas({
               return (
                 <div
                   key={s.npsn}
-                  className="bg-white rounded-xl border border-slate-200 shadow-sm p-3 lg:p-4 flex flex-col lg:h-full lg:min-h-0"
+                  className="bg-white rounded-xl border border-slate-200 shadow-sm p-3 lg:p-4 flex flex-col lg:h-full lg:min-h-0 lg:overflow-hidden"
                 >
                   <div className="mb-2 pb-2 lg:mb-3 lg:pb-3 border-b border-slate-100 shrink-0">
                     <p className="font-bold text-slate-800 text-xs lg:text-sm truncate" title={s.namaSekolah}>
