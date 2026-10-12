@@ -1015,7 +1015,7 @@ function ProfileForm({
       {/* Pejabat Terkait khusus KEPSEK - Full width di bawah */}
       {isKepsek && (
         <div className="mt-5 p-4 bg-indigo-50/60 rounded-xl border border-indigo-100 space-y-3">
-          <h4 className="text-xs sm:text-sm font-bold text-indigo-900 flex items-center gap-1.5 uppercase tracking-wide">
+          <h4 className="text-xs sm:text-sm font-bold text-indigo-900 flex items-center justify-center gap-1.5 uppercase tracking-wide">
             <ShieldCheck className="w-4 h-4 text-indigo-600" /> PEJABAT TERKAIT
           </h4>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
