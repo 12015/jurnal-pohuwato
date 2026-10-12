@@ -871,8 +871,40 @@ function ProfileForm({
               </>
             )}
 
-            {/* Akun fields: kepsek sesuai urutan khusus, role lain seperti biasa */}
-            {isKepsek ? AccountFields : AccountFields}
+            {/* Akun fields */}
+            <div className="flex flex-col gap-1.5">
+              <label className="text-xs sm:text-sm font-semibold text-slate-700">
+                Email / Username Sekarang
+              </label>
+              <input
+                type="text"
+                value={currentEmail}
+                disabled
+                className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-slate-500 text-xs sm:text-sm cursor-not-allowed"
+              />
+            </div>
+            <Input
+              label="Email / Username Baru"
+              type="email"
+              value={newEmail}
+              onChange={setNewEmail}
+              placeholder="nama@example.com"
+            />
+            <Input
+              label="Password Baru"
+              type="password"
+              value={newPassword}
+              onChange={setNewPassword}
+              placeholder="Kosongkan jika tidak diubah"
+              hint="Min 6 karakter"
+            />
+            <Input
+              label="Konfirmasi Password Baru"
+              type="password"
+              value={confirmPassword}
+              onChange={setConfirmPassword}
+              placeholder="Ulangi password baru"
+            />
           </div>
 
           {saveMsg && (
@@ -917,8 +949,8 @@ function ProfileForm({
         </div>
 
         {/* Kolom KANAN */}
-        <div className="lg:col-span-5 flex flex-col gap-4">
-          <div className="p-3.5 sm:p-4 bg-slate-50/80 rounded-xl border border-slate-200/80 space-y-2.5">
+        <div className="lg:col-span-5 flex flex-col gap-4 h-full">
+          <div className="p-3.5 sm:p-4 bg-slate-50/80 rounded-xl border border-slate-200/80 space-y-2.5 shrink-0">
             <h4 className="text-xs sm:text-sm font-bold text-slate-800 flex items-center gap-1.5 uppercase tracking-wide">
               <User className="w-4 h-4 text-indigo-600" /> FOTO PROFIL
             </h4>
@@ -931,7 +963,7 @@ function ProfileForm({
           </div>
 
           {(isKepsek || isPengawas) && (
-            <div className="p-3.5 sm:p-4 bg-amber-50/60 rounded-xl border border-amber-100 space-y-2.5">
+            <div className="p-3.5 sm:p-4 bg-amber-50/60 rounded-xl border border-amber-100 space-y-2.5 shrink-0">
               <h4 className="text-xs sm:text-sm font-bold text-amber-900 flex items-center gap-1.5 uppercase tracking-wide">
                 <ShieldCheck className="w-4 h-4 text-amber-600" /> TANDA TANGAN &amp; CAP DIGITAL
               </h4>
@@ -945,7 +977,7 @@ function ProfileForm({
           )}
 
           {!isPengawas && (
-            <div className="p-3.5 sm:p-4 bg-slate-50/80 rounded-xl border border-slate-200/80 space-y-2.5">
+            <div className="flex-1 p-3.5 sm:p-4 bg-slate-50/80 rounded-xl border border-slate-200/80 space-y-2.5 flex flex-col">
               <h4 className="text-xs sm:text-sm font-bold text-slate-800 flex items-center gap-1.5 uppercase tracking-wide">
                 <Upload className="w-4 h-4 text-indigo-600" /> LOGO KOP SURAT (KIRI &amp; KANAN)
               </h4>
@@ -964,9 +996,8 @@ function ProfileForm({
             </div>
           )}
 
-          {/* Pejabat Terkait: khusus kepsek dipindah ke bawah, guru di kolom kanan */}
           {isGuru && (
-            <div className="p-3.5 sm:p-4 bg-indigo-50/60 rounded-xl border border-indigo-100 space-y-2.5">
+            <div className="p-3.5 sm:p-4 bg-indigo-50/60 rounded-xl border border-indigo-100 space-y-2.5 shrink-0">
               <h4 className="text-xs sm:text-sm font-bold text-indigo-900 flex items-center gap-1.5 uppercase tracking-wide">
                 <ShieldCheck className="w-4 h-4 text-indigo-600" /> PEJABAT TERKAIT
               </h4>
@@ -978,10 +1009,11 @@ function ProfileForm({
               </div>
             </div>
           )}
+
         </div>
       </div>
 
-      {/* Pejabat Terkait khusus KEPSEK - Full width di bawah grid */}
+      {/* Pejabat Terkait khusus KEPSEK - Full width di bawah */}
       {isKepsek && (
         <div className="mt-5 p-4 bg-indigo-50/60 rounded-xl border border-indigo-100 space-y-3">
           <h4 className="text-xs sm:text-sm font-bold text-indigo-900 flex items-center gap-1.5 uppercase tracking-wide">
