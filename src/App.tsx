@@ -867,7 +867,6 @@ function ProfileForm({
                 <Input label="NPSN" value={form.npsn} onChange={(v) => setForm({ ...form, npsn: v })} placeholder="10xxxxxx" />
                 <Input label="Alamat Instansi" value={form.institutionAddress || ''} onChange={(v) => setForm({ ...form, institutionAddress: v })} placeholder="Jalan Ki Hajar Dewantara No. 8 Palopo" />
                 <Input label="Alamat Unit Kerja" value={form.schoolAddress} onChange={(v) => setForm({ ...form, schoolAddress: v })} placeholder="Jl. xxxx No. xx" />
-                <div />
               </>
             )}
 
