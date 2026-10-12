@@ -50,6 +50,21 @@ export async function saveTeacher(t: TeacherData): Promise<void> {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) throw new Error('Belum login');
 
+  // Auto-sync npsn_bina untuk kepsek
+  const { data: profile } = await supabase
+    .from('profiles')
+    .select('role')
+    .eq('id', user.id)
+    .maybeSingle();
+
+  if (profile?.role === 'kepala_sekolah' && t.npsn && t.npsn.trim() !== '') {
+    const { error: pErr } = await supabase
+      .from('profiles')
+      .update({ npsn_bina: t.npsn.trim() })
+      .eq('id', user.id);
+    if (pErr) console.error('Auto-sync npsn_bina:', pErr);
+  }
+
   const { error } = await supabase.from('teachers').upsert(
     {
       user_id: user.id,
