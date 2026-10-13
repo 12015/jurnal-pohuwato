@@ -3139,7 +3139,7 @@ function PernyataanLetter({
           <tr style={{ border: 'none' }}>
             <td style={{ width: '50%', border: 'none', textAlign: 'center', verticalAlign: 'top', padding: '0 8px', color: '#000000' }}>
               <p style={{ margin: 0 }}>Mengetahui,</p>
-              <p style={{ margin: 0 }}>Kepala Sekolah</p>
+              <p style={{ margin: 0 }}>Kepala Satuan Pendidikan</p>
             </td>
             <td style={{ width: '50%', border: 'none', textAlign: 'center', verticalAlign: 'top', padding: '0 8px', color: '#000000' }}>
               <p style={{ margin: 0 }}>{city}, {format(displayDate, 'd MMMM yyyy', { locale: id })}</p>
