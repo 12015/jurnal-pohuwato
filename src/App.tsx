@@ -2914,8 +2914,8 @@ function JurnalTable({ teacher, journals, month, year, monthIndex, role = 'guru'
             </td>
           </tr>
           <tr style={{ border: 'none' }}>
-            <td style={{ height: '70px', border: 'none' }}></td>
-            <td style={{ height: '70px', border: 'none' }}></td>
+            <td style={{ border: 'none' }}></td>
+            <td style={{ border: 'none' }}></td>
           </tr>
           <tr style={{ border: 'none' }}>
             <td
@@ -3147,8 +3147,8 @@ function PernyataanLetter({
             </td>
           </tr>
           <tr style={{ border: 'none' }}>
-            <td style={{ height: '15px', border: 'none' }}></td>
-            <td style={{ height: '15px', border: 'none' }}></td>
+            <td style={{ border: 'none' }}></td>
+            <td style={{ border: 'none' }}></td>
           </tr>
           <tr style={{ border: 'none' }}>
             <td style={{ width: '50%', border: 'none', textAlign: 'center', verticalAlign: 'bottom', padding: '0 8px', color: '#000000' }}>
