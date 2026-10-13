@@ -210,7 +210,7 @@ export function DashboardKepsek({
             ❌ Ditolak Pengawas
           </span>
         )}
-        {!loadingVerif && (!isSentToPengawas || isRejectedPengawas) && myFilledDays > 0 && (
+        {!loadingVerif && (!isSentToPengawas || isRejectedPengawas) && (
           <button
             onClick={handleKirimKePengawas}
             disabled={submitting}
