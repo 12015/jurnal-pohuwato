@@ -3131,13 +3131,13 @@ function PernyataanLetter({
             </td>
           </tr>
           <tr style={{ border: 'none' }}>
-            <td style={{ height: '70px', border: 'none' }}></td>
-            <td style={{ height: '70px', border: 'none' }}></td>
+            <td style={{ height: '35px', border: 'none' }}></td>
+            <td style={{ height: '35px', border: 'none' }}></td>
           </tr>
           <tr style={{ border: 'none' }}>
             <td style={{ width: '50%', border: 'none', textAlign: 'center', verticalAlign: 'bottom', padding: '0 8px', color: '#000000' }}>
               {approved && signatureImage ? (
-                <div style={{ height: '80px', display: 'flex', alignItems: 'flex-end', justifyContent: 'center', marginBottom: '4px' }}>
+                <div style={{ height: '70px', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '4px' }}>
                   <img
                     src={signatureImage}
                     alt="TTD Kepala Sekolah"
@@ -3145,7 +3145,7 @@ function PernyataanLetter({
                   />
                 </div>
               ) : (
-                <div style={{ height: '80px' }}></div>
+                <div style={{ height: '70px' }}></div>
               )}
               <p style={{ margin: 0, fontWeight: 'bold', }}>
                 {teacher.principalName || '......................................................'}
