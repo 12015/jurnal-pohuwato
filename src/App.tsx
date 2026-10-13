@@ -1734,7 +1734,7 @@ async function downloadJurnalPDF(
 
       // Gambar QR/Scan (jika sudah diverifikasi)
       const labelBottom = sigY + 5.5;
-      const qrTop = labelBottom + 6;
+      const qrTop = labelBottom + 4;
       const qrSize = 30;
 
       if (hasOfficerSig && officerSig?.signatureStampImage) {
@@ -1753,7 +1753,7 @@ async function downloadJurnalPDF(
       }
 
       // Posisi nama: 6mm di bawah QR (kalau ada QR), atau 25mm dari label (kalau tidak ada)
-      const nameY = hasOfficerSig ? qrTop + qrSize + 6 : sigY + 25;
+      const nameY = hasOfficerSig ? qrTop + qrSize + 4 : sigY + 23;
 
       doc.setFont('times', 'bold');
       doc.text(officerName, sigLeftX, nameY, { align: 'center' });
@@ -2932,7 +2932,7 @@ function JurnalTable({ teacher, journals, month, year, monthIndex, role = 'guru'
               }}
             >
                 {approved && signatureImage ? (
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '10px auto' }}>
+                  <div style={{ height: '130px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                     <img
                       src={signatureImage}
                       alt="TTD Kepala Sekolah"
@@ -3154,7 +3154,7 @@ function PernyataanLetter({
             <td style={{ width: '50%', border: 'none', textAlign: 'center', verticalAlign: 'bottom', padding: '0 8px', color: '#000000' }}>
               
                 {approved && signatureImage ? (
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '10px auto' }}>
+                  <div style={{ height: '130px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                     <img
                       src={signatureImage}
                       alt="TTD Kepala Sekolah"
