@@ -22,6 +22,8 @@ import {
   LogOut,
   Lock,
   Pencil,
+  ChevronLeft,
+  ChevronRight,
   AlertTriangle
 } from 'lucide-react';
 import { format, isWeekend, isSameDay, parseISO, startOfMonth, endOfMonth, eachDayOfInterval, isWithinInterval, getMonth, getYear, addDays } from 'date-fns';
@@ -615,6 +617,40 @@ const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
           <Toast key={n.id} message={n.message} type={n.type} onClose={() => setNotifications(prev => prev.filter(notif => notif.id !== n.id))} />
         ))}
       </AnimatePresence>
+
+      {showDatePickerPopover && (
+        <DatePickerModal
+          selectedDate={selectedDateStr}
+          onSelect={(dateStr) => {
+            setSelectedDateStr(dateStr);
+            setShowDatePickerPopover(false);
+          }}
+          onClose={() => setShowDatePickerPopover(false)}
+        />
+      )}
+
+      {showDatePickerPopover && (
+        <DatePickerModal
+          selectedDate={selectedDateStr}
+          onSelect={(dateStr) => {
+            setSelectedDateStr(dateStr);
+            setShowDatePickerPopover(false);
+          }}
+          onClose={() => setShowDatePickerPopover(false)}
+        />
+      )}
+
+      {/* Modal Pemilih Tanggal */}
+      {showDatePickerPopover && (
+        <DatePickerModal
+          selectedDate={selectedDateStr}
+          onSelect={(dateStr) => {
+            setSelectedDateStr(dateStr);
+            setShowDatePickerPopover(false);
+          }}
+          onClose={() => setShowDatePickerPopover(false)}
+        />
+      )}
     </div>
   );
 }
@@ -1102,6 +1138,155 @@ function ProfileForm({
         </Button>
       </div>
     </Card>
+  );
+}
+
+function DatePickerModal({
+  selectedDate,
+  onSelect,
+  onClose,
+}: {
+  selectedDate: string;
+  onSelect: (dateStr: string) => void;
+  onClose: () => void;
+}) {
+  const today = new Date();
+  const [viewMonth, setViewMonth] = useState(getMonth(today));
+  const [viewYear, setViewYear] = useState(getYear(today));
+
+  const monthNames = [
+    'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni',
+    'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember',
+  ];
+
+  // Semua tanggal di bulan ini
+  const monthStart = startOfMonth(new Date(viewYear, viewMonth));
+  const monthEnd = endOfMonth(new Date(viewYear, viewMonth));
+  const daysInMonth = eachDayOfInterval({ start: monthStart, end: monthEnd });
+
+  // Tambah padding awal (mulai hari Senin)
+  const firstDayOfWeek = monthStart.getDay(); // 0=Minggu, 1=Senin
+  const paddingDays = firstDayOfWeek === 0 ? 6 : firstDayOfWeek - 1;
+
+  const prevMonth = () => {
+    if (viewMonth === 0) {
+      setViewMonth(11);
+      setViewYear(viewYear - 1);
+    } else {
+      setViewMonth(viewMonth - 1);
+    }
+  };
+
+  const nextMonth = () => {
+    if (viewMonth === 11) {
+      setViewMonth(0);
+      setViewYear(viewYear + 1);
+    } else {
+      setViewMonth(viewMonth + 1);
+    }
+  };
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 backdrop-blur-sm p-4"
+      onClick={onClose}
+    >
+      <div
+        className="bg-white rounded-2xl p-4 max-w-md w-full shadow-2xl border border-slate-200"
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* Header */}
+        <div className="flex items-center justify-between mb-3">
+          <button
+            onClick={prevMonth}
+            className="p-2 hover:bg-slate-100 rounded-lg transition-colors"
+          >
+            <ChevronLeft className="w-4 h-4 text-slate-600" />
+          </button>
+          <div className="text-center">
+            <p className="font-bold text-slate-800">
+              {monthNames[viewMonth]} {viewYear}
+            </p>
+          </div>
+          <button
+            onClick={nextMonth}
+            className="p-2 hover:bg-slate-100 rounded-lg transition-colors"
+          >
+            <ChevronRight className="w-4 h-4 text-slate-600" />
+          </button>
+        </div>
+
+        {/* Day labels */}
+        <div className="grid grid-cols-7 gap-1 mb-1">
+          {['Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab', 'Min'].map((d) => (
+            <div
+              key={d}
+              className="text-center text-[10px] font-bold text-slate-500 uppercase py-1"
+            >
+              {d}
+            </div>
+          ))}
+        </div>
+
+        {/* Days */}
+        <div className="grid grid-cols-7 gap-1">
+          {/* Padding awal */}
+          {Array.from({ length: paddingDays }).map((_, i) => (
+            <div key={`pad-${i}`}></div>
+          ))}
+
+          {daysInMonth.map((day) => {
+            const dateStr = format(day, 'yyyy-MM-dd');
+            const isSelected = dateStr === selectedDate;
+            const isToday = isSameDay(day, today);
+            const isSunday = day.getDay() === 0;
+            const isHolidayDay = isHoliday(dateStr);
+
+            return (
+              <button
+                key={dateStr}
+                onClick={() => onSelect(dateStr)}
+                className={cn(
+                  'aspect-square rounded-md flex items-center justify-center text-xs font-semibold transition-all',
+                  isSelected
+                    ? 'bg-indigo-600 text-white shadow-sm'
+                    : isToday
+                    ? 'bg-amber-100 text-amber-800 ring-1 ring-amber-300'
+                    : isHolidayDay || isSunday
+                    ? 'text-rose-400 hover:bg-rose-50'
+                    : 'text-slate-700 hover:bg-slate-100'
+                )}
+              >
+                {format(day, 'd')}
+              </button>
+            );
+          })}
+        </div>
+
+        {/* Footer legend */}
+        <div className="flex items-center gap-3 mt-3 pt-3 border-t border-slate-100 text-[10px] text-slate-500">
+          <span className="flex items-center gap-1">
+            <span className="w-2.5 h-2.5 rounded-full bg-indigo-600"></span>
+            Dipilih
+          </span>
+          <span className="flex items-center gap-1">
+            <span className="w-2.5 h-2.5 rounded-full bg-amber-200 border border-amber-300"></span>
+            Hari ini
+          </span>
+          <span className="flex items-center gap-1">
+            <span className="w-2.5 h-2.5 rounded-full bg-rose-300"></span>
+            Libur
+          </span>
+        </div>
+
+        <button
+          onClick={onClose}
+          className="w-full mt-3 py-2 bg-slate-100 hover:bg-slate-200 rounded-lg text-xs font-semibold text-slate-700 transition-colors"
+        >
+          Tutup
+        </button>
+      </div>
+    </div>
   );
 }
 
