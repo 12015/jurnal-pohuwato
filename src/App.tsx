@@ -2931,17 +2931,17 @@ function JurnalTable({ teacher, journals, month, year, monthIndex, role = 'guru'
                 background: '#ffffff',
               }}
             >
-              {approved && signatureImage ? (
-                <div style={{ height: '70px', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '6px' }}>
-                  <img
-                    src={signatureImage}
-                    alt="TTD Kepala Sekolah"
-                    style={{ maxHeight: '65px', maxWidth: '130px', objectFit: 'contain' }}
-                  />
-                </div>
-              ) : (
-                <div style={{ height: '70px' }}></div>
-              )}
+                {approved && signatureImage ? (
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '10px auto' }}>
+                    <img
+                      src={signatureImage}
+                      alt="TTD Kepala Sekolah"
+                      style={{ width: '110px', height: '110px', objectFit: 'contain', display: 'block' }}
+                    />
+                  </div>
+                ) : (
+                  <div style={{ height: '130px' }}></div>
+                )}
               <span
                 style={{
                   display: 'inline-block',
@@ -3154,14 +3154,16 @@ function PernyataanLetter({
             <td style={{ width: '50%', border: 'none', textAlign: 'center', verticalAlign: 'bottom', padding: '0 8px', color: '#000000' }}>
               
                 {approved && signatureImage ? (
-                  <div style={{ height: '70px', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '4px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '10px auto' }}>
                     <img
                       src={signatureImage}
                       alt="TTD Kepala Sekolah"
-                      style={{ maxHeight: '65px', maxWidth: '130px', objectFit: 'contain' }}
+                      style={{ width: '110px', height: '110px', objectFit: 'contain', display: 'block' }}
                     />
                   </div>
-                ) : null}
+                ) : (
+                  <div style={{ height: '130px' }}></div>
+                )}
                 <p style={{ margin: 0, fontWeight: 'bold', }}>
                 {teacher.principalName || '......................................................'}
               </p>
