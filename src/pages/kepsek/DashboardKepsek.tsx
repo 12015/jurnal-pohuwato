@@ -18,6 +18,7 @@ import {
 import { supabase } from '../../lib/supabase';
 import type { TeacherData, UserProfile } from '../../types';
 import { isHoliday } from '../../lib/holidays';
+import { cn } from '../../lib/utils';
 
 interface DashboardKepsekProps {
   profile: UserProfile;
