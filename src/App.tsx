@@ -3232,7 +3232,7 @@ function RekomendasiLetter({
             </>
           ) : (
             <>
-              Yang bersangkutan merupakan guru dengan tugas mengajar minimal 24 jam pelajaran dan memiliki linearitas sesuai dengan kualifikasi pendidikan yang dimilikinya. Berdasarkan hasil evaluasi kinerja pada Laporan Jurnal Kegiatan Harian Guru serta bukti kehadiran pada Daftar Hadir, maka yang bersangkutan dinyatakan <strong className={isAllEligible ? "text-black" : "text-red-600"}>{isAllEligible ? 'berhak' : 'belum berhak'} menerima TPG/TPP Bulan {format(displayDate, 'MMMM yyyy', { locale: id })}</strong>.
+              Yang bersangkutan merupakan guru dengan tugas mengajar minimal 24 jam pelajaran dan memiliki linearitas sesuai dengan kualifikasi pendidikan yang dimilikinya. Berdasarkan hasil evaluasi kinerja pada Laporan Jurnal Kegiatan Harian Guru serta bukti kehadiran pada Daftar Hadir, yang bersangkutan dinyatakan <strong className={isAllEligible ? "text-black" : "text-red-600"}>{isAllEligible ? 'berhak' : 'belum berhak'} menerima TPG/TPP Bulan {format(displayDate, 'MMMM yyyy', { locale: id })}</strong>.
             </>
           )}
         </p>
