@@ -2452,7 +2452,9 @@ function PreviewSection({
             year={filterYear}
             monthIndex={filterMonth}
             role={role}
-          />
+          
+                signatureImage={jurnalVerifStatus === 'approved' ? kepsekSig?.signatureStampImage : undefined}
+                approved={jurnalVerifStatus === 'approved'}/>
         )}
         {type === 'rekomendasi' && (
           <RekomendasiLetter
@@ -2662,13 +2664,15 @@ const KopSurat = ({
   </div>
 );
 
-function JurnalTable({ teacher, journals, month, year, monthIndex, role = 'guru' }: {
+function JurnalTable({ teacher, journals, month, year, monthIndex, role = 'guru', signatureImage, approved = false }: {
   teacher: TeacherData;
   journals: JournalEntry[];
   month: string;
   year: number;
   monthIndex: number;
   role?: 'guru' | 'kepala_sekolah' | 'pengawas';
+  signatureImage?: string;
+  approved?: boolean;
 }) {
   const lastDay = endOfMonth(new Date(year, monthIndex));
   const sortedJournals = [...journals].sort((a, b) => parseISO(a.date).getTime() - parseISO(b.date).getTime());
@@ -3147,7 +3151,17 @@ function PernyataanLetter({
               ) : (
                 <div style={{ height: '50px' }}></div>
               )}
-              <p style={{ margin: 0, fontWeight: 'bold', }}>
+              
+                {approved && signatureImage ? (
+                  <div style={{ height: '70px', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '4px' }}>
+                    <img
+                      src={signatureImage}
+                      alt="TTD Kepala Sekolah"
+                      style={{ maxHeight: '65px', maxWidth: '130px', objectFit: 'contain' }}
+                    />
+                  </div>
+                ) : null}
+                <p style={{ margin: 0, fontWeight: 'bold', }}>
                 {teacher.principalName || '......................................................'}
               </p>
               <p style={{ margin: 0 }}>NIP. {teacher.principalNip || '................................................'}</p>
