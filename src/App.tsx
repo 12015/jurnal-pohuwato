@@ -3223,7 +3223,15 @@ function RekomendasiLetter({
           <DataRow label="4. Unit Kerja" value={teacher.workUnit} colonPos="110px" />
         </div>
         <p className="text-justify leading-[1.5]">
-          Bahwa yang bersangkutan merupakan guru dengan tugas mengajar minimal 24 jam pelajaran dan memiliki linearitas sesuai dengan kualifikasi pendidikan yang dimilikinya. Berdasarkan hasil evaluasi kinerja pada Laporan Jurnal Kegiatan Harian Guru serta bukti kehadiran pada Daftar Hadir, maka yang bersangkutan dinyatakan <strong className={isAllEligible ? "text-black" : "text-red-600"}>{isAllEligible ? 'berhak' : 'belum berhak'} menerima TPG/TPP Bulan {format(displayDate, 'MMMM yyyy', { locale: id })}</strong>.
+          {role === 'kepala_sekolah' ? (
+            <>
+              Yang bersangkutan adalah guru dengan tugas tambahan sebagai kepala satuan pendidikan yang memiliki tugas mengajar minimal 24 jam pelajaran serta memiliki linearitas yang sesuai dengan kualifikasi pendidikannya. Berdasarkan hasil evaluasi kinerja pada Laporan Jurnal Kegiatan Harian Kepala Satuan Pendidikan dan bukti kehadiran pada daftar hadir, yang bersangkutan dinyatakan <strong className={isAllEligible ? "text-black" : "text-red-600"}>{isAllEligible ? 'berhak' : 'belum berhak'} menerima TPG/TPP bulan {format(displayDate, 'MMMM yyyy', { locale: id })}</strong>.
+            </>
+          ) : (
+            <>
+              Yang bersangkutan merupakan guru dengan tugas mengajar minimal 24 jam pelajaran dan memiliki linearitas sesuai dengan kualifikasi pendidikan yang dimilikinya. Berdasarkan hasil evaluasi kinerja pada Laporan Jurnal Kegiatan Harian Guru serta bukti kehadiran pada Daftar Hadir, maka yang bersangkutan dinyatakan <strong className={isAllEligible ? "text-black" : "text-red-600"}>{isAllEligible ? 'berhak' : 'belum berhak'} menerima TPG/TPP Bulan {format(displayDate, 'MMMM yyyy', { locale: id })}</strong>.
+            </>
+          )}
         </p>
 
         <p className="text-justify leading-[1.5]">
