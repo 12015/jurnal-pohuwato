@@ -3183,13 +3183,15 @@ function RekomendasiLetter({
   year,
   getEligibility,
   checkApproval,
-  filterMonth
+  filterMonth,
+  role // <--- TAMBAHKAN KOMA DAN KATA INI
 }: {
   teacher: TeacherData;
   year: number;
   getEligibility: (m: number) => { isEligible: boolean; filled: number; required: number; monthName: string };
   checkApproval: (m: number) => boolean;
   filterMonth: number;
+  role?: 'guru' | 'kepala_sekolah' | 'pengawas'; // <--- TAMBAHKAN BARIS INI
 }) {
   const statuses = [{
     ...getEligibility(filterMonth),
