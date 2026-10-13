@@ -1798,6 +1798,7 @@ function PreviewSection({
   const [filterYear, setFilterYear] = useState<number>(getYear(new Date()));
   const [letterPaperSize, setLetterPaperSize] = useState<'A4' | 'F4'>('F4');
   const [jurnalVerifStatus, setJurnalVerifStatus] = useState<'pending' | 'approved' | 'rejected'>('pending');
+  const [kepsekSig, setKepsekSig] = useState<{ name: string; nip: string; signatureStampImage?: string } | null>(null);
 
   const months = [
     'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni',
@@ -1847,6 +1848,19 @@ function PreviewSection({
       }
     })();
   }, [filterMonth, filterYear, role]);
+
+  // Load TTD Kepsek (untuk jurnal & pernyataan)
+  useEffect(() => {
+    (async () => {
+      if (!teacher.workUnit) return;
+      try {
+        const sig = await getKepsekSignature(teacher.workUnit);
+        setKepsekSig(sig);
+      } catch (e) {
+        console.error('load kepsekSig:', e);
+      }
+    })();
+  }, [teacher.workUnit]);
 
   const downloadPDF = async (id: string, _filename: string, isRekomendasi = false, paperSize: 'A4' | 'F4' = 'F4') => {
     try {
@@ -2353,6 +2367,15 @@ function PreviewSection({
                       return;
                     }
                     downloadPDF('preview-content', `Dokumen_${type}.pdf`, true, letterPaperSize);
+                } else if (type === 'pernyataan') {
+                  if (jurnalVerifStatus !== 'approved') {
+                    addNotification(
+                      'Surat Pernyataan hanya bisa dicetak setelah jurnal Anda diverifikasi Kepala Sekolah.',
+                      'error'
+                    );
+                    return;
+                  }
+                  downloadPDF('preview-content', `Dokumen_${type}.pdf`, false, letterPaperSize);
                   } else {
                     downloadPDF('preview-content', `Dokumen_${type}.pdf`, false, letterPaperSize);
                   }
@@ -2440,12 +2463,25 @@ function PreviewSection({
             filterMonth={filterMonth}
           />
         )}
+        {type === 'pernyataan' && jurnalVerifStatus !== 'approved' && (
+          <div className="w-full max-w-3xl p-3 bg-amber-50 border border-amber-200 rounded-lg text-xs text-amber-800 flex items-start gap-2">
+            <span className="text-base leading-none">⚠️</span>
+            <div>
+              <p className="font-semibold">Surat Pernyataan belum bisa dicetak.</p>
+              <p className="mt-0.5">
+                Preview tersedia, tapi cetak aktif setelah jurnal Anda diverifikasi Kepala Sekolah.
+              </p>
+            </div>
+          </div>
+        )}
         {type === 'pernyataan' && (
           <PernyataanLetter
-            teacher={teacher}
-            year={filterYear}
-            filterMonth={filterMonth}
-          />
+              teacher={teacher}
+              year={filterYear}
+              filterMonth={filterMonth}
+              signatureImage={jurnalVerifStatus === 'approved' ? kepsekSig?.signatureStampImage : undefined}
+              approved={jurnalVerifStatus === 'approved'}
+            />
         )}
       </div>
     </div>
@@ -3017,10 +3053,14 @@ function PernyataanLetter({
   teacher,
   year,
   filterMonth,
+  signatureImage,
+  approved = false,
 }: {
   teacher: TeacherData;
   year: number;
   filterMonth: number;
+  signatureImage?: string;
+  approved?: boolean;
 }) {
   const monthsList = [
     'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni',
@@ -3096,6 +3136,17 @@ function PernyataanLetter({
           </tr>
           <tr style={{ border: 'none' }}>
             <td style={{ width: '50%', border: 'none', textAlign: 'center', verticalAlign: 'bottom', padding: '0 8px', color: '#000000' }}>
+              {approved && signatureImage ? (
+                <div style={{ height: '80px', display: 'flex', alignItems: 'flex-end', justifyContent: 'center', marginBottom: '4px' }}>
+                  <img
+                    src={signatureImage}
+                    alt="TTD Kepala Sekolah"
+                    style={{ maxHeight: '75px', maxWidth: '140px', objectFit: 'contain' }}
+                  />
+                </div>
+              ) : (
+                <div style={{ height: '80px' }}></div>
+              )}
               <p style={{ margin: 0, fontWeight: 'bold', }}>
                 {teacher.principalName || '......................................................'}
               </p>
