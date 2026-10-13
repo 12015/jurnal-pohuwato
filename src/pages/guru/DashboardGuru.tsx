@@ -282,7 +282,7 @@ export function DashboardGuru({
             {isKepsekRejected ? 'Kirim Ulang ke Kepala Sekolah' : 'Kirim ke Kepala Sekolah'}
           </button>
         )}
-        {!loadingVerif && isSent && !isPengawasApproved && !isPengawasRejected && (
+        {!loadingVerif && isSent && !isKepsekRejected && !isPengawasApproved && !isPengawasRejected && (
           <span className="text-[11px] px-2.5 py-1 bg-slate-100 text-slate-600 border border-slate-200 rounded-full font-semibold">
             📤 Terkirim
             {verification?.guruSubmittedAt
