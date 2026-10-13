@@ -3227,7 +3227,7 @@ function RekomendasiLetter({
         <p className="text-justify leading-[1.5]">
           {role === 'kepala_sekolah' ? (
             <>
-              Yang bersangkutan adalah guru dengan tugas tambahan sebagai kepala satuan pendidikan yang memiliki tugas mengajar minimal 24 jam pelajaran serta memiliki linearitas yang sesuai dengan kualifikasi pendidikannya. Berdasarkan hasil evaluasi kinerja pada Laporan Jurnal Kegiatan Harian Kepala Satuan Pendidikan dan bukti kehadiran pada daftar hadir, yang bersangkutan dinyatakan <strong className={isAllEligible ? "text-black" : "text-red-600"}>{isAllEligible ? 'berhak' : 'belum berhak'} menerima TPG/TPP bulan {format(displayDate, 'MMMM yyyy', { locale: id })}</strong>.
+              Yang bersangkutan merupakan kepala satuan pendidikan yang melaksanakan tugas manajerial, pengembangan kewirausahaan, serta supervisi yang ekuivalen dengan pemenuhan beban kerja, dan memiliki linearitas sesuai dengan kualifikasi pendidikan yang dimilikinya. Berdasarkan hasil evaluasi kinerja pada Laporan Jurnal Kegiatan Harian Kepala Satuan Pendidikan serta bukti kehadiran pada Daftar Hadir, yang bersangkutan dinyatakan <strong className={isAllEligible ? "text-black" : "text-red-600"}>{isAllEligible ? 'berhak' : 'belum berhak'} menerima TPG/TPP Bulan {format(displayDate, 'MMMM yyyy', { locale: id })}</strong>.
             </>
           ) : (
             <>
