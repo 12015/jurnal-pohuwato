@@ -263,18 +263,23 @@ export function DashboardGuru({
             ❌ Ditolak Pengawas
           </span>
         )}
-        {!loadingVerif && !isSent && filledDays > 0 && (
+        {!loadingVerif && (!isSent || isKepsekRejected) && filledDays > 0 && (
           <button
             onClick={handleKirim}
             disabled={submitting}
-            className="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white text-xs font-semibold rounded-lg transition-colors flex items-center gap-1.5"
+            className={cn(
+              'px-3 py-1.5 disabled:opacity-50 text-white text-xs font-semibold rounded-lg transition-colors flex items-center gap-1.5',
+              isKepsekRejected
+                ? 'bg-rose-600 hover:bg-rose-700'
+                : 'bg-indigo-600 hover:bg-indigo-700'
+            )}
           >
             {submitting ? (
               <Loader2 className="w-3.5 h-3.5 animate-spin" />
             ) : (
               <Send className="w-3.5 h-3.5" />
             )}
-            Kirim ke Kepala Sekolah
+            {isKepsekRejected ? 'Kirim Ulang ke Kepala Sekolah' : 'Kirim ke Kepala Sekolah'}
           </button>
         )}
         {!loadingVerif && isSent && !isPengawasApproved && !isPengawasRejected && (
@@ -286,6 +291,35 @@ export function DashboardGuru({
           </span>
         )}
       </div>
+
+      {/* Notifikasi Penolakan dari Kepsek */}
+      {!loadingVerif && isKepsekRejected && (
+        <div className="bg-rose-50 border border-rose-200 rounded-xl p-3 flex flex-col sm:flex-row sm:items-start gap-3 shrink-0">
+          <div className="flex items-start gap-2.5 flex-1">
+            <div className="w-9 h-9 bg-rose-100 rounded-full flex items-center justify-center shrink-0">
+              <AlertCircle className="w-4 h-4 text-rose-600" />
+            </div>
+            <div className="flex-1">
+              <p className="font-semibold text-rose-900 text-sm">
+                Jurnal Anda Ditolak oleh Kepala Sekolah
+              </p>
+              {verification?.kepsekNote ? (
+                <div className="mt-1.5 p-2 bg-white/60 border border-rose-200 rounded-md">
+                  <p className="text-[11px] font-semibold text-rose-800 mb-0.5">Catatan Kepala Sekolah:</p>
+                  <p className="text-xs text-rose-700 italic">"{verification.kepsekNote}"</p>
+                </div>
+              ) : (
+                <p className="text-xs text-rose-700 mt-0.5">
+                  Silakan perbaiki jurnal Anda, lalu kirim ulang ke Kepala Sekolah.
+                </p>
+              )}
+              <p className="text-[10px] text-rose-600 mt-1">
+                💡 Buka <strong>Input Jurnal</strong> untuk memperbaiki, lalu kirim ulang.
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* 4 Kartu Status */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 lg:gap-3 shrink-0">
