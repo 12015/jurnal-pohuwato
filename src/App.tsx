@@ -3137,7 +3137,7 @@ function PernyataanLetter({
           <tr style={{ border: 'none' }}>
             <td style={{ width: '50%', border: 'none', textAlign: 'center', verticalAlign: 'bottom', padding: '0 8px', color: '#000000' }}>
               {approved && signatureImage ? (
-                <div style={{ height: '50px', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '4px' }}>
+                <div style={{ height: '50px', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '14px' }}>
                   <img
                     src={signatureImage}
                     alt="TTD Kepala Sekolah"
