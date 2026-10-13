@@ -3220,10 +3220,10 @@ function RekomendasiLetter({
         </div>
         <p>Menerangkan kepada:</p>
         <div className="ml-5 space-y-0.5">
-          <DataRow label="1. Nama" value={teacher.name} colonPos="110px" />
-          <DataRow label="2. NIP" value={teacher.nip} colonPos="110px" />
-          <DataRow label="3. Jabatan" value={role === 'kepala_sekolah' ? `${teacher.position} dengan Tugas Tambahan Kepala Satuan Pendidikan` : teacher.position} colonPos="110px" />
-          <DataRow label="4. Unit Kerja" value={teacher.workUnit} colonPos="110px" />
+          <DataRow label="Nama" value={teacher.name} colonPos="110px" />
+          <DataRow label="NIP" value={teacher.nip} colonPos="110px" />
+          <DataRow label="Jabatan" value={role === 'kepala_sekolah' ? `${teacher.position} dengan Tugas Tambahan Kepala Satuan Pendidikan` : teacher.position} colonPos="110px" />
+          <DataRow label="Unit Kerja" value={teacher.workUnit} colonPos="110px" />
         </div>
         <p className="text-justify leading-[1.5]">
           {role === 'kepala_sekolah' ? (
