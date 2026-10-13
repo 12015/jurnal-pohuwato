@@ -2643,12 +2643,13 @@ function PreviewSection({
         )}
         {type === 'rekomendasi' && (
           <RekomendasiLetter
-            teacher={teacher}
-            year={filterYear}
-            getEligibility={getEligibility}
-            checkApproval={isMonthApproved}
-            filterMonth={filterMonth}
-          />
+  teacher={teacher}
+  year={filterYear}
+  getEligibility={getEligibility}
+  checkApproval={isMonthApproved}
+  filterMonth={filterMonth}
+  role={role} // <--- TAMBAHKAN BARIS INI
+/>
         )}
         {type === 'pernyataan' && jurnalVerifStatus !== 'approved' && (
           <div className="w-full max-w-3xl p-3 bg-amber-50 border border-amber-200 rounded-lg text-xs text-amber-800 flex items-start gap-2">
