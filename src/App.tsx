@@ -2931,6 +2931,17 @@ function JurnalTable({ teacher, journals, month, year, monthIndex, role = 'guru'
                 background: '#ffffff',
               }}
             >
+              {approved && signatureImage ? (
+                <div style={{ height: '70px', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '6px' }}>
+                  <img
+                    src={signatureImage}
+                    alt="TTD Kepala Sekolah"
+                    style={{ maxHeight: '65px', maxWidth: '130px', objectFit: 'contain' }}
+                  />
+                </div>
+              ) : (
+                <div style={{ height: '70px' }}></div>
+              )}
               <span
                 style={{
                   display: 'inline-block',
@@ -2959,6 +2970,7 @@ function JurnalTable({ teacher, journals, month, year, monthIndex, role = 'guru'
                 background: '#ffffff',
               }}
             >
+              <div style={{ height: '70px' }}></div>
               <span
                 style={{
                   display: 'inline-block',
@@ -3140,17 +3152,6 @@ function PernyataanLetter({
           </tr>
           <tr style={{ border: 'none' }}>
             <td style={{ width: '50%', border: 'none', textAlign: 'center', verticalAlign: 'bottom', padding: '0 8px', color: '#000000' }}>
-              {approved && signatureImage ? (
-                <div style={{ height: '50px', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '14px' }}>
-                  <img
-                    src={signatureImage}
-                    alt="TTD Kepala Sekolah"
-                    style={{ maxHeight: '75px', maxWidth: '140px', objectFit: 'contain' }}
-                  />
-                </div>
-              ) : (
-                <div style={{ height: '50px' }}></div>
-              )}
               
                 {approved && signatureImage ? (
                   <div style={{ height: '70px', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '4px' }}>
