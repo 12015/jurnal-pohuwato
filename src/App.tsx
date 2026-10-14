@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import {
   Plus,
   Trash2,
@@ -250,6 +250,7 @@ function AppContent({
   onSignOut: () => void;
 }) {
   const role = profile?.role || 'guru';
+  const loadedMonthsRef = useRef<Set<string>>(new Set());
   const [activeTab, setActiveTab] = useState<TabKey>('dashboard');
   const [lastRole, setLastRole] = useState<string | null>(null);
 
@@ -291,6 +292,32 @@ const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
     }, 4000);
   };
 
+  const ensureMonthLoaded = useCallback(async (monthIdx: number, year: number) => {
+    const key = `${monthIdx}-${year}`;
+    if (loadedMonthsRef.current.has(key)) return;
+    loadedMonthsRef.current.add(key);
+    try {
+      const monthJournals = await db.loadJournals(monthIdx, year);
+      setJournals(prev => {
+        const filtered = prev.filter(j => {
+          const d = parseISO(j.date);
+          return !(getMonth(d) === monthIdx && getYear(d) === year);
+        });
+        return [...filtered, ...monthJournals];
+      });
+    } catch (e) {
+      console.error('ensureMonthLoaded:', e);
+      loadedMonthsRef.current.delete(key);
+    }
+  }, []);
+
+  const handleDateSelect = useCallback((dateStr: string) => {
+    setSelectedDateStr(dateStr);
+    setShowDatePickerPopover(false);
+    const d = parseISO(dateStr);
+    ensureMonthLoaded(getMonth(d), getYear(d));
+  }, [ensureMonthLoaded]);
+
   const [sidebarOpen, setSidebarOpen] = useState(true);
 
   // Load dari Supabase saat mount
@@ -298,12 +325,16 @@ const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
     let mounted = true;
     (async () => {
       try {
+        const now = new Date();
+        const mIdx = getMonth(now);
+        const yr = getYear(now);
         const [t, j, a] = await Promise.all([
           db.loadTeacher(),
-          db.loadJournals(),
+          db.loadJournals(mIdx, yr),
           db.loadApprovals(),
         ]);
         if (!mounted) return;
+        loadedMonthsRef.current.add(`${mIdx}-${yr}`);
         if (t) setTeacher(t);
         setJournals(j);
         setApprovals(a);
@@ -476,6 +507,7 @@ const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
                     }}
                     addNotification={addNotification}
                     onUpdateTeacher={handleSaveTeacher}
+                  onMonthChange={ensureMonthLoaded}
                   />
                 </motion.div>
               )}
@@ -607,6 +639,7 @@ const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
                     }}
                     addNotification={addNotification}
                     onUpdateTeacher={handleSaveTeacher}
+                  onMonthChange={ensureMonthLoaded}
                   />
                 </motion.div>
               )}
@@ -624,33 +657,7 @@ const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
       {showDatePickerPopover && (
         <DatePickerModal
           selectedDate={selectedDateStr}
-          onSelect={(dateStr) => {
-            setSelectedDateStr(dateStr);
-            setShowDatePickerPopover(false);
-          }}
-          onClose={() => setShowDatePickerPopover(false)}
-        />
-      )}
-
-      {showDatePickerPopover && (
-        <DatePickerModal
-          selectedDate={selectedDateStr}
-          onSelect={(dateStr) => {
-            setSelectedDateStr(dateStr);
-            setShowDatePickerPopover(false);
-          }}
-          onClose={() => setShowDatePickerPopover(false)}
-        />
-      )}
-
-      {/* Modal Pemilih Tanggal */}
-      {showDatePickerPopover && (
-        <DatePickerModal
-          selectedDate={selectedDateStr}
-          onSelect={(dateStr) => {
-            setSelectedDateStr(dateStr);
-            setShowDatePickerPopover(false);
-          }}
+          onSelect={handleDateSelect}
           onClose={() => setShowDatePickerPopover(false)}
         />
       )}
@@ -1972,6 +1979,7 @@ function PreviewSection({
   addNotification,
   onUpdateTeacher,
   role = 'guru',
+  onMonthChange,
 }: {
   teacher: TeacherData;
   journals: JournalEntry[];
@@ -1980,6 +1988,7 @@ function PreviewSection({
   addNotification: (message: string, type: 'success' | 'error') => void;
   onUpdateTeacher: (data: TeacherData) => void;
   role?: 'guru' | 'kepala_sekolah' | 'pengawas';
+  onMonthChange?: (monthIdx: number, year: number) => void;
 }) {
   const [type, setType] = useState<PreviewType>('jurnal');
   const [filterMonth, setFilterMonth] = useState<number>(getMonth(new Date()));
@@ -1987,6 +1996,12 @@ function PreviewSection({
   const [letterPaperSize, setLetterPaperSize] = useState<'A4' | 'F4'>('F4');
   const [jurnalVerifStatus, setJurnalVerifStatus] = useState<'pending' | 'approved' | 'rejected'>('pending');
   const [kepsekSig, setKepsekSig] = useState<{ name: string; nip: string; signatureStampImage?: string } | null>(null);
+
+  useEffect(() => {
+    if (onMonthChange) {
+      onMonthChange(filterMonth, filterYear);
+    }
+  }, [filterMonth, filterYear, onMonthChange]);
 
   const months = [
     'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni',

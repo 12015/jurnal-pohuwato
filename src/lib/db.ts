@@ -127,15 +127,22 @@ export async function saveTeacher(t: TeacherData): Promise<void> {
 
 // ============ JOURNALS ============
 
-export async function loadJournals(): Promise<JournalEntry[]> {
+export async function loadJournals(monthIdx?: number, year?: number): Promise<JournalEntry[]> {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return [];
 
-  const { data, error } = await supabase
+  let query = supabase
     .from('journals')
     .select('id, date, activities')
-    .eq('user_id', user.id)
-    .order('date', { ascending: true });
+    .eq('user_id', user.id);
+
+  if (monthIdx !== undefined && year !== undefined) {
+    const start = format(startOfMonth(new Date(year, monthIdx)), 'yyyy-MM-dd');
+    const end = format(endOfMonth(new Date(year, monthIdx)), 'yyyy-MM-dd');
+    query = query.gte('date', start).lte('date', end);
+  }
+
+  const { data, error } = await query.order('date', { ascending: true });
   if (error) {
     console.error('loadJournals:', error);
     return [];
