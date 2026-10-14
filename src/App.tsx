@@ -26,7 +26,7 @@ import {
   ChevronRight,
   AlertTriangle
 } from 'lucide-react';
-import { format, isWeekend, isSameDay, parseISO, startOfMonth, endOfMonth, eachDayOfInterval, isWithinInterval, getMonth, getYear, addDays } from 'date-fns';
+import { format, isWeekend, isSameDay, parseISO, startOfMonth, endOfMonth, eachDayOfInterval, isWithinInterval, getMonth, getYear, addDays, differenceInDays } from 'date-fns';
 import { id } from 'date-fns/locale';
 import { motion, AnimatePresence } from 'motion/react';
 import { cn } from './lib/utils';
@@ -1359,6 +1359,13 @@ function JournalInput({
   };
 
   const handleSubmit = async () => {
+    // Batasi backdate maksimal 7 hari
+    const diffDays = differenceInDays(new Date(), selectedDate);
+    if (diffDays > 7) {
+      addNotification('Jurnal hanya bisa diisi mundur maksimal 7 hari. Hubungi Kepala Sekolah untuk pengecualian.', 'error');
+      return;
+    }
+
     const validRows = rows.filter(r =>
       (r.agendaMapel || r.subject || '').trim() !== '' ||
       (r.kegiatanTujuan || r.goal || r.activity || '').trim() !== '' ||
