@@ -395,17 +395,20 @@ const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
           onToggleSidebar={() => setMobileSidebarOpen(true)}
           rightContent={
             (activeTab === 'journal' || activeTab === 'ks_journal') ? (
-              <div className="flex items-center gap-2">
-                <CalendarIcon className="w-3.5 h-3.5" />
-                <span className="text-xs font-semibold">
-                  {format(selectedDate, 'EEEE, d MMMM yyyy', { locale: id })}
+              <button
+              onClick={() => setShowDatePickerPopover(true)}
+              className="flex items-center gap-2 px-3 py-1.5 bg-white rounded-lg border border-slate-200 hover:bg-slate-50 transition-colors cursor-pointer"
+            >
+              <CalendarIcon className="w-3.5 h-3.5 text-indigo-600" />
+              <span className="text-xs font-semibold text-slate-700">
+                {format(selectedDate, 'EEEE, d MMMM yyyy', { locale: id })}
+              </span>
+              {!isWorkDay && (
+                <span className="text-[10px] px-1.5 py-0.5 bg-amber-200 text-amber-900 rounded font-medium">
+                  Hari Libur / Akhir Pekan
                 </span>
-                {!isWorkDay && (
-                  <span className="text-[10px] px-1.5 py-0.5 bg-amber-200 text-amber-900 rounded font-medium">
-                    Hari Libur / Akhir Pekan
-                  </span>
-                )}
-              </div>
+              )}
+            </button>
             ) : null
           }
         />
