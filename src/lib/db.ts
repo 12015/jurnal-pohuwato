@@ -1393,3 +1393,166 @@ export async function addMasterSekolah(
   });
   if (error) throw error;
 }
+
+// ============ ADMIN DASHBOARD DATA ============
+
+export interface DailyJournalCount {
+  date: string;
+  count: number;
+  dayName: string;
+  isToday: boolean;
+}
+
+export async function getJournalsLast7Days(): Promise<DailyJournalCount[]> {
+  const days: DailyJournalCount[] = [];
+  const today = new Date();
+  const todayStr = format(today, 'yyyy-MM-dd');
+  const dayNames = ['Min', 'Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab'];
+
+  for (let i = 6; i >= 0; i--) {
+    const d = new Date(today);
+    d.setDate(d.getDate() - i);
+    const dateStr = format(d, 'yyyy-MM-dd');
+    days.push({
+      date: dateStr,
+      count: 0,
+      dayName: dayNames[d.getDay()],
+      isToday: dateStr === todayStr,
+    });
+  }
+
+  const startDate = days[0].date;
+  const endDate = days[days.length - 1].date;
+
+  const { data, error } = await supabase
+    .from('journals')
+    .select('date')
+    .gte('date', startDate)
+    .lte('date', endDate);
+
+  if (error) throw error;
+
+  (data || []).forEach((j: any) => {
+    const day = days.find((d) => d.date === j.date);
+    if (day) day.count += 1;
+  });
+
+  return days;
+}
+
+export interface TopGuru {
+  userId: string;
+  name: string;
+  journalCount: number;
+  workUnit: string | null;
+}
+
+export async function getTopGurusThisMonth(limit: number = 5): Promise<TopGuru[]> {
+  const now = new Date();
+  const start = format(startOfMonth(now), 'yyyy-MM-dd');
+  const end = format(endOfMonth(now), 'yyyy-MM-dd');
+
+  const { data: journals, error } = await supabase
+    .from('journals')
+    .select('user_id')
+    .gte('date', start)
+    .lte('date', end);
+
+  if (error) throw error;
+
+  const counts = new Map<string, number>();
+  (journals || []).forEach((j: any) => {
+    counts.set(j.user_id, (counts.get(j.user_id) || 0) + 1);
+  });
+
+  const topIds = Array.from(counts.entries())
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, limit)
+    .map(([id]) => id);
+
+  if (topIds.length === 0) return [];
+
+  const { data: teachers } = await supabase
+    .from('teachers')
+    .select('user_id, name, work_unit')
+    .in('user_id', topIds);
+
+  const tMap = new Map<string, any>();
+  (teachers || []).forEach((t: any) => tMap.set(t.user_id, t));
+
+  return topIds.map((id) => ({
+    userId: id,
+    name: tMap.get(id)?.name || '(Tanpa Nama)',
+    journalCount: counts.get(id) || 0,
+    workUnit: tMap.get(id)?.work_unit || null,
+  }));
+}
+
+export interface RecentActivity {
+  id: string;
+  type: 'journal' | 'verification';
+  userName: string;
+  description: string;
+  timestamp: string;
+}
+
+export async function getRecentActivity(limit: number = 10): Promise<RecentActivity[]> {
+  const [journalsRes, verifsRes] = await Promise.all([
+    supabase
+      .from('journals')
+      .select('id, user_id, date, updated_at')
+      .order('updated_at', { ascending: false })
+      .limit(limit),
+    supabase
+      .from('verifications')
+      .select('id, guru_id, kepsek_status, pengawas_status, updated_at')
+      .order('updated_at', { ascending: false })
+      .limit(limit),
+  ]);
+
+  const userIds = new Set<string>();
+  (journalsRes.data || []).forEach((j: any) => userIds.add(j.user_id));
+  (verifsRes.data || []).forEach((v: any) => userIds.add(v.guru_id));
+
+  if (userIds.size === 0) return [];
+
+  const { data: teachers } = await supabase
+    .from('teachers')
+    .select('user_id, name')
+    .in('user_id', Array.from(userIds));
+
+  const nameMap = new Map<string, string>();
+  (teachers || []).forEach((t: any) => nameMap.set(t.user_id, t.name));
+
+  const activities: RecentActivity[] = [];
+
+  (journalsRes.data || []).forEach((j: any) => {
+    activities.push({
+      id: 'j-' + j.id,
+      type: 'journal',
+      userName: nameMap.get(j.user_id) || '(Tanpa Nama)',
+      description: 'Mengisi jurnal kegiatan',
+      timestamp: j.updated_at || j.date,
+    });
+  });
+
+  (verifsRes.data || []).forEach((v: any) => {
+    let desc = 'Update verifikasi';
+    if (v.pengawas_status === 'approved') desc = 'Disetujui Pengawas Bina';
+    else if (v.pengawas_status === 'rejected') desc = 'Ditolak Pengawas Bina';
+    else if (v.kepsek_status === 'approved') desc = 'Diverifikasi Kepala Sekolah';
+    else if (v.kepsek_status === 'rejected') desc = 'Ditolak Kepala Sekolah';
+
+    activities.push({
+      id: 'v-' + v.id,
+      type: 'verification',
+      userName: nameMap.get(v.guru_id) || '(Tanpa Nama)',
+      description: desc,
+      timestamp: v.updated_at,
+    });
+  });
+
+  return activities
+    .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
+    .slice(0, limit);
+}

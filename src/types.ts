@@ -149,3 +149,26 @@ export interface MasterSekolahRow {
   nama_sekolah: string;
   kecamatan: string | null;
 }
+
+// ============ ADMIN DASHBOARD TYPES ============
+export interface DailyJournalCount {
+  date: string;
+  count: number;
+  dayName: string;
+  isToday: boolean;
+}
+
+export interface TopGuru {
+  userId: string;
+  name: string;
+  journalCount: number;
+  workUnit: string | null;
+}
+
+export interface RecentActivity {
+  id: string;
+  type: 'journal' | 'verification';
+  userName: string;
+  description: string;
+  timestamp: string;
+}

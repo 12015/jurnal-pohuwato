@@ -1,25 +1,72 @@
 import { useEffect, useState } from 'react';
 import {
   BarChart3, Users, Key, School, Loader2, Trash2, RefreshCw,
-  Search, Plus, X, AlertCircle, CheckCircle2, Copy,
+  Search, Plus, X, AlertCircle, User, Award, Shield, FileText,
+  UserCog, TrendingUp, Activity, CheckCircle2, Clock,
 } from 'lucide-react';
 import {
   getAdminStats, loadAllUsers, deleteUserByAdmin,
   loadInviteCodes, generateInviteCodes, revokeInviteCode,
   loadMasterSekolah, addMasterSekolah,
+  getJournalsLast7Days, getTopGurusThisMonth, getRecentActivity,
 } from '../../lib/db';
-import type { AdminStats, AdminUserRow, InviteCode, MasterSekolahRow } from '../../types';
+import type {
+  AdminStats, AdminUserRow, InviteCode, MasterSekolahRow,
+  DailyJournalCount, TopGuru, RecentActivity,
+} from '../../types';
 import { cn } from '../../lib/utils';
+import { format, parseISO } from 'date-fns';
+import { id as localeId } from 'date-fns/locale';
 
 type AdminTab = 'stats' | 'users' | 'codes' | 'schools';
+
+type ColorKey = 'blue' | 'emerald' | 'amber' | 'rose' | 'purple' | 'indigo' | 'slate';
+const colorMap: Record<ColorKey, { bg: string; fg: string }> = {
+  blue: { bg: 'bg-blue-50', fg: 'text-blue-600' },
+  emerald: { bg: 'bg-emerald-50', fg: 'text-emerald-600' },
+  amber: { bg: 'bg-amber-50', fg: 'text-amber-600' },
+  rose: { bg: 'bg-rose-50', fg: 'text-rose-600' },
+  purple: { bg: 'bg-purple-50', fg: 'text-purple-600' },
+  indigo: { bg: 'bg-indigo-50', fg: 'text-indigo-600' },
+  slate: { bg: 'bg-slate-100', fg: 'text-slate-500' },
+};
+
+function StatCard({
+  icon, color, label, value, sub,
+}: {
+  icon: React.ReactNode;
+  color: ColorKey;
+  label: string;
+  value: string | number;
+  sub?: string;
+}) {
+  const c = colorMap[color];
+  return (
+    <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-3 hover:shadow-md transition-shadow">
+      <div className="flex items-center gap-3">
+        <div className={cn('w-10 h-10 rounded-lg flex items-center justify-center shrink-0', c.bg)}>
+          <span className={c.fg}>{icon}</span>
+        </div>
+        <div className="min-w-0 flex-1">
+          <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wide">{label}</p>
+          <p className="text-xl font-bold text-slate-900 leading-tight">{value}</p>
+          {sub && <p className="text-[10px] text-slate-400 mt-0.5">{sub}</p>}
+        </div>
+      </div>
+    </div>
+  );
+}
 
 export function AdminPage() {
   const [tab, setTab] = useState<AdminTab>('stats');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
-  // States per tab
   const [stats, setStats] = useState<AdminStats | null>(null);
+  const [dailyJournals, setDailyJournals] = useState<DailyJournalCount[]>([]);
+  const [topGurus, setTopGurus] = useState<TopGuru[]>([]);
+  const [recentActivity, setRecentActivity] = useState<RecentActivity[]>([]);
+
   const [users, setUsers] = useState<AdminUserRow[]>([]);
   const [userSearch, setUserSearch] = useState('');
   const [userFilter, setUserFilter] = useState<string>('all');
@@ -45,8 +92,18 @@ export function AdminPage() {
     setLoading(true);
     setError('');
     try {
-      if (t === 'stats') setStats(await getAdminStats());
-      else if (t === 'users') setUsers(await loadAllUsers());
+      if (t === 'stats') {
+        const [s, dj, tg, ra] = await Promise.all([
+          getAdminStats(),
+          getJournalsLast7Days(),
+          getTopGurusThisMonth(5),
+          getRecentActivity(10),
+        ]);
+        setStats(s);
+        setDailyJournals(dj);
+        setTopGurus(tg);
+        setRecentActivity(ra);
+      } else if (t === 'users') setUsers(await loadAllUsers());
       else if (t === 'codes') setCodes(await loadInviteCodes());
       else if (t === 'schools') setSchools(await loadMasterSekolah());
     } catch (e) {
@@ -131,8 +188,31 @@ export function AdminPage() {
     return true;
   });
 
+  const maxDayCount = Math.max(1, ...dailyJournals.map((d) => d.count));
+  const totalWeekJournals = dailyJournals.reduce((s, d) => s + d.count, 0);
+
   return (
     <div className="space-y-4">
+      {/* Header + Greeting */}
+      <div className="bg-gradient-to-r from-indigo-600 to-indigo-700 rounded-xl shadow-md p-4 text-white">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <h2 className="font-bold text-lg">Selamat datang, Administrator! 👋</h2>
+            <p className="text-xs text-indigo-100 mt-0.5">
+              {format(new Date(), 'EEEE, d MMMM yyyy', { locale: localeId })}
+            </p>
+          </div>
+          <button
+            onClick={() => loadTabData(tab)}
+            disabled={loading}
+            className="flex items-center gap-2 px-3 py-2 bg-white/15 hover:bg-white/25 rounded-lg text-sm font-semibold transition-colors"
+          >
+            <RefreshCw className={cn('w-4 h-4', loading && 'animate-spin')} />
+            Refresh
+          </button>
+        </div>
+      </div>
+
       {/* Tab Navigation */}
       <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-2 flex gap-1 overflow-x-auto">
         {[
@@ -153,13 +233,6 @@ export function AdminPage() {
             {t.label}
           </button>
         ))}
-        <button
-          onClick={() => loadTabData(tab)}
-          disabled={loading}
-          className="ml-auto p-2 text-slate-600 hover:bg-slate-100 rounded-lg"
-        >
-          <RefreshCw className={cn('w-4 h-4', loading && 'animate-spin')} />
-        </button>
       </div>
 
       {error && (
@@ -168,28 +241,179 @@ export function AdminPage() {
         </div>
       )}
 
-      {/* Stats Tab */}
+      {/* STATS TAB */}
       {tab === 'stats' && stats && (
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-          {[
-            { label: 'Total Users', value: stats.totalUsers, color: 'indigo' },
-            { label: 'Guru', value: stats.totalGuru, color: 'blue' },
-            { label: 'Kepala Sekolah', value: stats.totalKepsek, color: 'purple' },
-            { label: 'Pengawas', value: stats.totalPengawas, color: 'amber' },
-            { label: 'Total Jurnal', value: stats.totalJournals, color: 'emerald' },
-            { label: 'Total Sekolah', value: stats.totalSekolah, color: 'rose' },
-            { label: 'Kode Tersedia', value: stats.activeCodes, color: 'emerald' },
-            { label: 'Kode Terpakai', value: stats.usedCodes, color: 'amber' },
-          ].map((s) => (
-            <div key={s.label} className="bg-white rounded-xl border border-slate-200 shadow-sm p-4">
-              <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wide">{s.label}</p>
-              <p className="text-3xl font-bold text-slate-900 mt-1">{s.value}</p>
+        <>
+          {/* Row 1: Users */}
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+            <StatCard icon={<Users className="w-5 h-5" />} color="indigo"
+              label="Total Users" value={stats.totalUsers} sub="Semua role" />
+            <StatCard icon={<User className="w-5 h-5" />} color="blue"
+              label="Guru" value={stats.totalGuru} sub="Aktif mengajar" />
+            <StatCard icon={<Award className="w-5 h-5" />} color="purple"
+              label="Kepala Sekolah" value={stats.totalKepsek} sub="Dari 3 sekolah" />
+            <StatCard icon={<Shield className="w-5 h-5" />} color="amber"
+              label="Pengawas" value={stats.totalPengawas} sub="Bina lintas sekolah" />
+          </div>
+
+          {/* Row 2: Content */}
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+            <StatCard icon={<FileText className="w-5 h-5" />} color="emerald"
+              label="Total Jurnal" value={stats.totalJournals} sub="Semua periode" />
+            <StatCard icon={<School className="w-5 h-5" />} color="rose"
+              label="Sekolah" value={stats.totalSekolah} sub="Terdaftar" />
+            <StatCard icon={<Key className="w-5 h-5" />} color="emerald"
+              label="Kode Tersedia" value={stats.activeCodes} sub="Siap dipakai" />
+            <StatCard icon={<Key className="w-5 h-5" />} color="amber"
+              label="Kode Terpakai" value={stats.usedCodes} sub="Sudah diundang" />
+          </div>
+
+          {/* Grafik + Top Guru */}
+          <div className="grid grid-cols-1 lg:grid-cols-5 gap-3">
+            {/* Grafik 7 hari */}
+            <div className="lg:col-span-3 bg-white rounded-xl border border-slate-200 shadow-sm p-4">
+              <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center gap-2">
+                  <BarChart3 className="w-4 h-4 text-indigo-600" />
+                  <p className="font-bold text-slate-800 text-sm">Aktivitas 7 Hari Terakhir</p>
+                </div>
+                <span className="text-[11px] text-slate-500">
+                  Total: <strong className="text-indigo-600">{totalWeekJournals}</strong> jurnal
+                </span>
+              </div>
+
+              <div className="flex items-end justify-around gap-2 h-40 relative">
+                <div className="absolute inset-0 flex flex-col justify-between pointer-events-none">
+                  <div className="border-t border-dashed border-slate-100"></div>
+                  <div className="border-t border-dashed border-slate-100"></div>
+                  <div className="border-t border-slate-200"></div>
+                </div>
+
+                {dailyJournals.map((d) => {
+                  const height = d.count > 0 ? Math.max(8, (d.count / maxDayCount) * 100) : 3;
+                  return (
+                    <div key={d.date} className="flex-1 flex flex-col items-center justify-end relative z-10 h-full">
+                      <span className={cn(
+                        'text-[11px] font-bold mb-1',
+                        d.isToday ? 'text-indigo-700' : 'text-slate-600'
+                      )}>
+                        {d.count}
+                      </span>
+                      <div
+                        className={cn(
+                          'w-full max-w-[44px] rounded-t-md shadow-sm transition-all',
+                          d.isToday
+                            ? 'bg-gradient-to-t from-indigo-600 to-indigo-400'
+                            : 'bg-gradient-to-t from-indigo-400 to-indigo-300'
+                        )}
+                        style={{ height: `${height}%` }}
+                      ></div>
+                      <p className={cn(
+                        'text-[10px] font-semibold mt-1.5 uppercase tracking-wide',
+                        d.isToday ? 'text-indigo-700' : 'text-slate-500'
+                      )}>
+                        {d.dayName}
+                      </p>
+                    </div>
+                  );
+                })}
+              </div>
             </div>
-          ))}
-        </div>
+
+            {/* Top 5 Guru */}
+            <div className="lg:col-span-2 bg-white rounded-xl border border-slate-200 shadow-sm p-4">
+              <div className="flex items-center gap-2 mb-4">
+                <Award className="w-4 h-4 text-amber-600" />
+                <p className="font-bold text-slate-800 text-sm">Top 5 Guru Teraktif</p>
+              </div>
+
+              {topGurus.length === 0 ? (
+                <div className="text-center py-8">
+                  <Award className="w-8 h-8 text-slate-300 mx-auto mb-2" />
+                  <p className="text-xs text-slate-500">Belum ada data bulan ini</p>
+                </div>
+              ) : (
+                <div className="space-y-2.5">
+                  {topGurus.map((g, idx) => (
+                    <div key={g.userId} className="flex items-center gap-2">
+                      <div className={cn(
+                        'w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold shrink-0',
+                        idx === 0 ? 'bg-amber-100 text-amber-700' :
+                        idx === 1 ? 'bg-slate-200 text-slate-700' :
+                        idx === 2 ? 'bg-orange-100 text-orange-700' :
+                        'bg-slate-100 text-slate-500'
+                      )}>
+                        {idx + 1}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-xs font-semibold text-slate-700 truncate">
+                          {g.name}
+                        </p>
+                        <div className="w-full h-1 bg-slate-100 rounded-full overflow-hidden mt-1">
+                          <div
+                            className="h-full bg-gradient-to-r from-indigo-500 to-indigo-400"
+                            style={{ width: `${(g.journalCount / topGurus[0].journalCount) * 100}%` }}
+                          ></div>
+                        </div>
+                      </div>
+                      <span className="text-xs font-bold text-indigo-600 shrink-0">
+                        {g.journalCount}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Log Aktivitas Terbaru */}
+          <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-4">
+            <div className="flex items-center gap-2 mb-4">
+              <Activity className="w-4 h-4 text-indigo-600" />
+              <p className="font-bold text-slate-800 text-sm">Log Aktivitas Terbaru</p>
+              <span className="text-[11px] text-slate-400 ml-auto">10 terakhir</span>
+            </div>
+
+            {recentActivity.length === 0 ? (
+              <div className="text-center py-8">
+                <Clock className="w-8 h-8 text-slate-300 mx-auto mb-2" />
+                <p className="text-xs text-slate-500">Belum ada aktivitas</p>
+              </div>
+            ) : (
+              <div className="space-y-2 max-h-96 overflow-y-auto pr-1">
+                {recentActivity.map((a) => {
+                  const ts = new Date(a.timestamp);
+                  const diff = Math.floor((Date.now() - ts.getTime()) / 60000);
+                  const timeAgo = diff < 1 ? 'baru saja'
+                    : diff < 60 ? `${diff} menit lalu`
+                    : diff < 1440 ? `${Math.floor(diff / 60)} jam lalu`
+                    : `${Math.floor(diff / 1440)} hari lalu`;
+
+                  return (
+                    <div key={a.id} className="flex items-start gap-3 p-2 rounded-lg hover:bg-slate-50">
+                      <div className={cn(
+                        'w-8 h-8 rounded-lg flex items-center justify-center shrink-0',
+                        a.type === 'journal' ? 'bg-blue-50 text-blue-600' :
+                        'bg-emerald-50 text-emerald-600'
+                      )}>
+                        {a.type === 'journal' ? <FileText className="w-4 h-4" /> : <CheckCircle2 className="w-4 h-4" />}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-xs text-slate-700">
+                          <strong className="text-slate-900">{a.userName}</strong> — {a.description}
+                        </p>
+                        <p className="text-[10px] text-slate-400 mt-0.5">{timeAgo}</p>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        </>
       )}
 
-      {/* Users Tab */}
+      {/* USERS TAB */}
       {tab === 'users' && (
         <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
           <div className="p-3 flex flex-wrap gap-2 border-b border-slate-200">
@@ -263,7 +487,7 @@ export function AdminPage() {
         </div>
       )}
 
-      {/* Codes Tab */}
+      {/* CODES TAB */}
       {tab === 'codes' && (
         <div className="space-y-3">
           <div className="flex justify-end">
@@ -321,7 +545,7 @@ export function AdminPage() {
         </div>
       )}
 
-      {/* Schools Tab */}
+      {/* SCHOOLS TAB */}
       {tab === 'schools' && (
         <div className="space-y-3">
           <div className="flex justify-end">
