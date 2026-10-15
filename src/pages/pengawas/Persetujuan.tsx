@@ -266,15 +266,6 @@ export function Persetujuan({ profile, addNotification }: PersetujuanProps) {
                   <tr key={r.userId} className="hover:bg-slate-50">
                     <td className="px-3 py-3">
                       <div className="flex items-center gap-2.5">
-                        <div className="w-9 h-9 rounded-full bg-slate-100 flex items-center justify-center overflow-hidden shrink-0 border border-slate-200">
-                          {r.profilePhoto ? (
-                            <img src={r.profilePhoto} alt="" className="w-full h-full object-cover" />
-                          ) : (
-                            <span className="text-slate-400 font-bold text-xs">
-                              {r.name.charAt(0).toUpperCase()}
-                            </span>
-                          )}
-                        </div>
                         <div className="min-w-0">
                           <p className="font-semibold text-slate-800 truncate">{r.name}</p>
                           <p className="text-[10px] text-slate-500 truncate font-mono">
