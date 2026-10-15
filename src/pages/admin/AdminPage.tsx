@@ -15,8 +15,6 @@ import type {
   DailyJournalCount, TopGuru, RecentActivity,
 } from '../../types';
 import { cn } from '../../lib/utils';
-import { format, parseISO } from 'date-fns';
-import { id as localeId } from 'date-fns/locale';
 
 type AdminTab = 'stats' | 'users' | 'codes' | 'schools';
 
@@ -193,26 +191,6 @@ export function AdminPage() {
 
   return (
     <div className="space-y-4">
-      {/* Header + Greeting */}
-      <div className="bg-gradient-to-r from-indigo-600 to-indigo-700 rounded-xl shadow-md p-4 text-white">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <div>
-            <h2 className="font-bold text-lg">Selamat datang, Administrator! 👋</h2>
-            <p className="text-xs text-indigo-100 mt-0.5">
-              {format(new Date(), 'EEEE, d MMMM yyyy', { locale: localeId })}
-            </p>
-          </div>
-          <button
-            onClick={() => loadTabData(tab)}
-            disabled={loading}
-            className="flex items-center gap-2 px-3 py-2 bg-white/15 hover:bg-white/25 rounded-lg text-sm font-semibold transition-colors"
-          >
-            <RefreshCw className={cn('w-4 h-4', loading && 'animate-spin')} />
-            Refresh
-          </button>
-        </div>
-      </div>
-
       {/* Tab Navigation */}
       <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-2 flex gap-1 overflow-x-auto">
         {[

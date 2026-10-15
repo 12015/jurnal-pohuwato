@@ -534,7 +534,14 @@ const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
                 </span>
               )}
             </button>
-            ) : null
+            ) : activeTab === 'admin' ? (
+            <div className="flex items-center gap-2">
+              <CalendarIcon className="w-3.5 h-3.5 text-indigo-600" />
+              <span className="text-xs font-semibold text-slate-700">
+                {format(new Date(), 'EEEE, d MMMM yyyy', { locale: id })}
+              </span>
+            </div>
+          ) : null
           }
         />
 
