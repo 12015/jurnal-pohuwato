@@ -340,15 +340,6 @@ export function DashboardKepsek({
                     const txtColor = percent >= 80 ? 'text-emerald-700' : percent >= 40 ? 'text-amber-700' : 'text-rose-700';
                     return (
                       <div key={g.userId} className="flex items-center gap-2">
-                        <div className="w-7 h-7 lg:w-8 lg:h-8 rounded-full bg-slate-100 flex items-center justify-center overflow-hidden shrink-0 border border-slate-200">
-                          {g.profilePhoto ? (
-                            <img src={g.profilePhoto} alt="" className="w-full h-full object-cover" />
-                          ) : (
-                            <span className="text-slate-400 font-bold text-[10px]">
-                              {g.name.charAt(0).toUpperCase()}
-                            </span>
-                          )}
-                        </div>
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-1.5 mb-0.5">
                             <p className="flex-1 text-xs text-slate-700 truncate font-medium">{g.name}</p>

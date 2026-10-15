@@ -87,15 +87,6 @@ export function DaftarGuruBinaan({
             <tr key={`${keyPrefix}-${r.userId}`} className="hover:bg-slate-50 transition-colors">
               <td className="px-3 py-2.5">
                 <div className="flex items-center gap-2">
-                  <div className="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center overflow-hidden shrink-0 border border-slate-200">
-                    {r.profilePhoto ? (
-                      <img src={r.profilePhoto} alt="" className="w-full h-full object-cover" />
-                    ) : (
-                      <span className="text-slate-400 font-bold text-[10px]">
-                        {r.name.charAt(0).toUpperCase()}
-                      </span>
-                    )}
-                  </div>
                   <div className="min-w-0">
                     <p className="font-semibold text-slate-800 text-xs truncate">{r.name}</p>
                     <p className="text-[10px] text-slate-500 truncate font-mono">

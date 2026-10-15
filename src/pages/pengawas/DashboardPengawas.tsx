@@ -251,15 +251,6 @@ export function DashboardPengawas({
                         return (
                           <div key={g.userId}>
                             <div className="flex items-center gap-1.5 mb-0.5">
-                              <div className="w-4 h-4 lg:w-5 lg:h-5 rounded-full bg-slate-100 flex items-center justify-center overflow-hidden shrink-0 border border-slate-200">
-                                {g.profilePhoto ? (
-                                  <img src={g.profilePhoto} alt="" className="w-full h-full object-cover" />
-                                ) : (
-                                  <span className="text-slate-400 font-bold text-[7px] lg:text-[8px]">
-                                    {g.name.charAt(0).toUpperCase()}
-                                  </span>
-                                )}
-                              </div>
                               <p className="flex-1 text-[9px] lg:text-[10px] text-slate-700 truncate font-medium">
                                 {g.name}
                               </p>
