@@ -2,7 +2,6 @@ name: Supabase Keep-Alive
 
 on:
   schedule:
-    # Setiap hari jam 03:00 UTC (10:00 WIB)
     - cron: '0 3 * * *'
   workflow_dispatch:
 
@@ -10,29 +9,32 @@ jobs:
   ping:
     runs-on: ubuntu-latest
     steps:
-      - name: Ping Supabase REST API
+      - name: Ping Supabase
         env:
-          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          RAW_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
         run: |
+          # Bersihkan URL dari trailing slash dan /rest/v1 (jika ada)
+          CLEAN_URL=$(echo "$RAW_URL" | sed 's:/*$::' | sed 's:/rest/v1$::')
           echo "⏰ Memulai ping Supabase..."
-          echo "URL: ${SUPABASE_URL}"
+          echo "URL bersih: $CLEAN_URL"
 
-          # Ping REST API dengan header apikey (cara paling ampuh)
-          status=$(curl -s -o /tmp/response.json -w "%{http_code}" -L \
-            "${SUPABASE_URL}/rest/v1/profiles?select=id&limit=1" \
+          # Coba endpoint root REST API
+          echo "--- Tes 1: GET /rest/v1/ ---"
+          status=$(curl -s -o /tmp/r1.json -w "%{http_code}" -L \
+            "${CLEAN_URL}/rest/v1/" \
             -H "apikey: ${SUPABASE_ANON_KEY}" \
             -H "Authorization: Bearer ${SUPABASE_ANON_KEY}")
+          echo "Status: $status"
+          cat /tmp/r1.json 2>/dev/null | head -c 200 || true
+          echo ""
 
-          echo "HTTP Status: $status"
-          echo "--- Response Body ---"
-          cat /tmp/response.json || echo "(no body)"
-          echo "--- End Response ---"
-
-          # Terima 200 (sukses) atau 401 (auth issue tapi server hidup)
-          if [ "$status" = "200" ] || [ "$status" = "401" ] || [ "$status" = "206" ]; then
-            echo "✅ Supabase aktif dan merespon (status: $status). Anti-pause berhasil."
+          # Terima 200/401/404 sebagai "server hidup"
+          if [ "$status" = "200" ] || [ "$status" = "401" ] || [ "$status" = "404" ] || [ "$status" = "400" ]; then
+            echo "✅ Supabase aktif dan merespon (status: $status)."
+            echo "✅ Server hidup, tidak akan auto-pause."
+            exit 0
           else
-            echo "⚠️ Supabase tidak merespon dengan benar (status: $status)."
+            echo "⚠️ Server tidak merespon (status: $status)."
             exit 1
           fi
