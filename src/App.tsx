@@ -948,6 +948,19 @@ function ProfileForm({
 
     setSaving(true);
     try {
+      // Cek duplikat NIP (untuk semua role yang punya NIP)
+      if (form.nip && form.nip.trim() && profile?.id) {
+        const dupCheck = await db.checkDuplicateNip(form.nip.trim(), profile.id);
+        if (dupCheck.isDuplicate) {
+          setSaveMsg({
+            type: 'error',
+            text: `NIP ${form.nip.trim()} sudah terdaftar atas nama ${dupCheck.duplicateName}. Gunakan NIP lain atau login ke akun tersebut.`
+          });
+          setSaving(false);
+          return;
+        }
+      }
+
       if (emailChanged || passwordFilled) {
         const payload: { email?: string; password?: string } = {};
         if (emailChanged) payload.email = newEmail.trim();

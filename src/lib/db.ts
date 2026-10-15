@@ -1233,3 +1233,34 @@ export async function markInviteCodeAsUsed(
     throw error;
   }
 }
+
+// ============ CEK DUPLIKAT NIP ============
+
+/**
+ * Cek apakah NIP sudah dipakai user lain.
+ * Return: { isDuplicate: boolean, duplicateName?: string }
+ */
+export async function checkDuplicateNip(
+  nip: string,
+  currentUserId: string
+): Promise<{ isDuplicate: boolean; duplicateName?: string }> {
+  const cleanNip = nip.trim();
+  if (!cleanNip) return { isDuplicate: false };
+
+  const { data, error } = await supabase
+    .from('teachers')
+    .select('user_id, name')
+    .eq('nip', cleanNip)
+    .neq('user_id', currentUserId)
+    .maybeSingle();
+
+  if (error) {
+    console.error('checkDuplicateNip:', error);
+    return { isDuplicate: false }; // Fail-safe: izinkan save kalau error
+  }
+
+  if (data) {
+    return { isDuplicate: true, duplicateName: data.name || '(tanpa nama)' };
+  }
+  return { isDuplicate: false };
+}
