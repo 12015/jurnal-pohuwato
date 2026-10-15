@@ -290,24 +290,27 @@ export interface GuruBinaanSummary {
 export async function getGuruBinaan(npsnBinaList: string[]): Promise<GuruBinaanSummary[]> {
   if (npsnBinaList.length === 0) return [];
 
+  // OPTIMASI: Filter NPSN langsung di server + hapus profile_photo (Base64 besar)
+  const cleanNpsnList = npsnBinaList.map((n) => n.trim()).filter(Boolean);
+  if (cleanNpsnList.length === 0) return [];
+
+  const { data: teachers, error } = await supabase
+    .from('teachers')
+    .select('user_id, name, nip, work_unit, position, subject, npsn')
+    .in('npsn', cleanNpsnList);
+  if (error) { console.error('getGuruBinaan teachers:', error); return []; }
+  if (!teachers || teachers.length === 0) return [];
+
+  const guruUserIdsBaru = teachers.map((t) => t.user_id);
   const { data: guruProfiles, error: pErr } = await supabase
     .from('profiles')
     .select('id')
+    .in('id', guruUserIdsBaru)
     .eq('role', 'guru');
   if (pErr) { console.error('getGuruBinaan profiles:', pErr); return []; }
 
   const guruIds = new Set((guruProfiles || []).map((p) => p.id));
-  if (guruIds.size === 0) return [];
-
-  const { data: teachers, error } = await supabase
-    .from('teachers')
-    .select('user_id, name, nip, work_unit, position, subject, profile_photo, npsn')
-    .in('user_id', Array.from(guruIds));
-  if (error) { console.error('getGuruBinaan teachers:', error); return []; }
-
-  const matched = (teachers || []).filter(
-    (t) => npsnBinaList.includes((t.npsn || '').trim())
-  );
+  const matched = teachers.filter((t) => guruIds.has(t.user_id));
   if (matched.length === 0) return [];
 
   // Lookup nama sekolah dari master_sekolah
@@ -353,7 +356,7 @@ export async function getGuruBinaan(npsnBinaList: string[]): Promise<GuruBinaanS
       subject: t.subject || '',
       journalCount: stats.count,
       activityCount: stats.activities,
-      profilePhoto: t.profile_photo || undefined,
+      profilePhoto: undefined,
     };
   });
 }
@@ -609,32 +612,39 @@ export interface PendingVerification {
 export async function getPendingVerificationsForKepsek(
   npsnBina: string
 ): Promise<PendingVerification[]> {
+  // OPTIMASI: Filter NPSN di server + kolom terbatas + filter tahun berjalan
+  const cleanNpsn = npsnBina.trim();
+  if (!cleanNpsn) return [];
+
+  const { data: teachers, error: tErr } = await supabase
+    .from('teachers')
+    .select('user_id, name, nip, position, work_unit, npsn')
+    .eq('npsn', cleanNpsn);
+  if (tErr) { console.error(tErr); return []; }
+  if (!teachers || teachers.length === 0) return [];
+
+  const userIds3 = teachers.map((t) => t.user_id);
   const { data: guruProfiles, error: pErr } = await supabase
     .from('profiles')
     .select('id')
+    .in('id', userIds3)
     .eq('role', 'guru');
   if (pErr) { console.error(pErr); return []; }
 
   const guruProfileIds = new Set((guruProfiles || []).map((p) => p.id));
-  if (guruProfileIds.size === 0) return [];
-
-  const { data: teachers, error: tErr } = await supabase
-    .from('teachers')
-    .select('user_id, name, nip, position, work_unit, npsn');
-  if (tErr) { console.error(tErr); return []; }
-
-  const matchedTeachers = (teachers || []).filter(
-    (t) => (t.npsn || '').trim() === npsnBina.trim() && guruProfileIds.has(t.user_id)
-  );
+  const matchedTeachers = teachers.filter((t) => guruProfileIds.has(t.user_id));
   if (matchedTeachers.length === 0) return [];
 
   const guruIds = new Set(matchedTeachers.map((t) => t.user_id));
   const teacherMap = new Map(matchedTeachers.map((t) => [t.user_id, t]));
 
+  // Kolom terbatas + filter tahun berjalan (hindari muat riwayat tahun lalu)
+  const currentYear = String(new Date().getFullYear());
   const { data: verifs, error: vErr } = await supabase
     .from('verifications')
-    .select('*')
+    .select('id, guru_id, period_key, guru_submitted_at, kepsek_status, kepsek_note, kepsek_verified_at, pengawas_status')
     .in('guru_id', Array.from(guruIds))
+    .like('period_key', `%-${currentYear}`)
     .order('guru_submitted_at', { ascending: false });
   if (vErr) { console.error(vErr); return []; }
 
@@ -838,9 +848,22 @@ export interface BinaanSummary extends GuruBinaanSummary {
 export async function getAllBinaan(npsnBinaList: string[]): Promise<BinaanSummary[]> {
   if (npsnBinaList.length === 0) return [];
 
+  // OPTIMASI: Filter NPSN langsung di server + hapus profile_photo (Base64 besar)
+  const cleanNpsnList2 = npsnBinaList.map((n) => n.trim()).filter(Boolean);
+  if (cleanNpsnList2.length === 0) return [];
+
+  const { data: teachers, error } = await supabase
+    .from('teachers')
+    .select('user_id, name, nip, work_unit, position, subject, npsn')
+    .in('npsn', cleanNpsnList2);
+  if (error) { console.error('getAllBinaan teachers:', error); return []; }
+  if (!teachers || teachers.length === 0) return [];
+
+  const userIds2 = teachers.map((t) => t.user_id);
   const { data: profiles, error: pErr } = await supabase
     .from('profiles')
     .select('id, role')
+    .in('id', userIds2)
     .in('role', ['guru', 'kepala_sekolah']);
   if (pErr) { console.error('getAllBinaan profiles:', pErr); return []; }
 
@@ -848,15 +871,7 @@ export async function getAllBinaan(npsnBinaList: string[]): Promise<BinaanSummar
   (profiles || []).forEach((p) => roleMap.set(p.id, p.role as any));
   if (roleMap.size === 0) return [];
 
-  const { data: teachers, error } = await supabase
-    .from('teachers')
-    .select('user_id, name, nip, work_unit, position, subject, profile_photo, npsn')
-    .in('user_id', Array.from(roleMap.keys()));
-  if (error) { console.error('getAllBinaan teachers:', error); return []; }
-
-  const matched = (teachers || []).filter(
-    (t) => npsnBinaList.includes((t.npsn || '').trim())
-  );
+  const matched = teachers.filter((t) => roleMap.has(t.user_id));
   if (matched.length === 0) return [];
 
   // Lookup nama sekolah dari master_sekolah
@@ -902,7 +917,7 @@ export async function getAllBinaan(npsnBinaList: string[]): Promise<BinaanSummar
       subject: t.subject || '',
       journalCount: stats.count,
       activityCount: stats.activities,
-      profilePhoto: t.profile_photo || undefined,
+      profilePhoto: undefined,
       role: roleMap.get(t.user_id) || 'guru',
     };
   });
