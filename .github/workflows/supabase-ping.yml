@@ -4,25 +4,34 @@ on:
   schedule:
     # Setiap hari jam 03:00 UTC (10:00 WIB)
     - cron: '0 3 * * *'
-  workflow_dispatch:  # Bisa dijalankan manual dari GitHub UI
+  workflow_dispatch:
 
 jobs:
   ping:
     runs-on: ubuntu-latest
     steps:
-      - name: Ping Supabase Auth Health
+      - name: Ping Supabase REST API
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
         run: |
           echo "⏰ Memulai ping Supabase..."
           echo "URL: ${SUPABASE_URL}"
-          status=$(curl -s -o /dev/null -w "%{http_code}" \
-            "${SUPABASE_URL}/auth/v1/health" \
-            -H "apikey: ${SUPABASE_ANON_KEY}")
+
+          # Ping REST API dengan header apikey (cara paling ampuh)
+          status=$(curl -s -o /tmp/response.json -w "%{http_code}" -L \
+            "${SUPABASE_URL}/rest/v1/profiles?select=id&limit=1" \
+            -H "apikey: ${SUPABASE_ANON_KEY}" \
+            -H "Authorization: Bearer ${SUPABASE_ANON_KEY}")
+
           echo "HTTP Status: $status"
-          if [ "$status" = "200" ]; then
-            echo "✅ Supabase aktif dan merespon. Anti-pause berhasil."
+          echo "--- Response Body ---"
+          cat /tmp/response.json || echo "(no body)"
+          echo "--- End Response ---"
+
+          # Terima 200 (sukses) atau 401 (auth issue tapi server hidup)
+          if [ "$status" = "200" ] || [ "$status" = "401" ] || [ "$status" = "206" ]; then
+            echo "✅ Supabase aktif dan merespon (status: $status). Anti-pause berhasil."
           else
             echo "⚠️ Supabase tidak merespon dengan benar (status: $status)."
             exit 1
