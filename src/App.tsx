@@ -349,7 +349,9 @@ function AppContent({
   // Reset tab saat role berubah / login pertama dengan role tertentu
   useEffect(() => {
     if (profile && profile.role !== lastRole) {
-      if (profile.role === 'pengawas') {
+      if (profile.role === 'admin') {
+        setActiveTab('admin');
+      } else if (profile.role === 'pengawas') {
         setActiveTab('pw_dashboard');
       } else if (profile.role === 'kepala_sekolah') {
         setActiveTab('ks_dashboard');
@@ -676,7 +678,11 @@ const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, y: -20 }}
                 >
-                  <ProfileForm data={teacher} onSave={handleSaveTeacher} role={role} profile={profile} />
+                  {profile?.role === 'admin' ? (
+                    <AdminProfileForm data={teacher} onSave={handleSaveTeacher} />
+                  ) : (
+                    <ProfileForm data={teacher} onSave={handleSaveTeacher} role={role} profile={profile} />
+                  )}
                 </motion.div>
               )}
 
@@ -765,6 +771,172 @@ const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
         />
       )}
     </div>
+  );
+}
+
+
+function AdminProfileForm({
+  data,
+  onSave,
+}: {
+  data: TeacherData;
+  onSave: (d: TeacherData) => void;
+}) {
+  const [form, setForm] = useState<TeacherData>(data);
+  const [currentEmail, setCurrentEmail] = useState('');
+  const [newEmail, setNewEmail] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [saving, setSaving] = useState(false);
+  const [saveMsg, setSaveMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+
+  useEffect(() => {
+    setForm(data);
+  }, [data]);
+
+  useEffect(() => {
+    supabase.auth.getUser().then(({ data }) => {
+      if (data.user?.email) {
+        setCurrentEmail(data.user.email);
+        setNewEmail(data.user.email);
+      }
+    });
+  }, []);
+
+  const handleSaveAll = async () => {
+    setSaveMsg(null);
+    const emailChanged = newEmail.trim().toLowerCase() !== currentEmail.toLowerCase();
+    const passwordFilled = newPassword.length > 0;
+
+    if (emailChanged && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(newEmail.trim())) {
+      setSaveMsg({ type: 'error', text: 'Format email tidak valid' });
+      return;
+    }
+    if (passwordFilled) {
+      if (newPassword.length < 6) {
+        setSaveMsg({ type: 'error', text: 'Password minimal 6 karakter' });
+        return;
+      }
+      if (newPassword !== confirmPassword) {
+        setSaveMsg({ type: 'error', text: 'Konfirmasi password tidak cocok' });
+        return;
+      }
+    }
+
+    setSaving(true);
+    try {
+      if (emailChanged || passwordFilled) {
+        const payload: { email?: string; password?: string } = {};
+        if (emailChanged) payload.email = newEmail.trim();
+        if (passwordFilled) payload.password = newPassword;
+        const { error } = await supabase.auth.updateUser(payload);
+        if (error) throw error;
+        if (emailChanged) setCurrentEmail(newEmail.trim());
+        setNewPassword('');
+        setConfirmPassword('');
+      }
+
+      onSave(form);
+
+      const parts: string[] = ['profil'];
+      if (emailChanged) parts.push('email');
+      if (passwordFilled) parts.push('password');
+      setSaveMsg({
+        type: 'success',
+        text: `${parts.join(' & ')} berhasil disimpan.${emailChanged ? ' Cek inbox email baru untuk konfirmasi.' : ''}`,
+      });
+    } catch (e) {
+      setSaveMsg({ type: 'error', text: (e as Error).message });
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <Card className="p-5 sm:p-6 lg:p-8 max-w-2xl mx-auto">
+      <div className="space-y-4">
+        <div className="text-center pb-3 mb-3 border-b border-slate-200">
+          <h3 className="font-bold text-slate-800 text-base">Profil Administrator</h3>
+          <p className="text-xs text-slate-500 mt-1">
+            Kelola nama, email, dan password akun admin Anda
+          </p>
+        </div>
+
+        <Input
+          label="Nama Lengkap"
+          value={form.name}
+          onChange={(v) => setForm({ ...form, name: v })}
+          placeholder="Nama Lengkap"
+          required
+        />
+
+        <div className="flex flex-col gap-1.5">
+          <label className="text-xs sm:text-sm font-semibold text-slate-700">
+            Email / Username Sekarang
+          </label>
+          <input
+            type="text"
+            value={currentEmail}
+            disabled
+            className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-slate-500 text-xs sm:text-sm cursor-not-allowed"
+          />
+        </div>
+
+        <Input
+          label="Email / Username Baru"
+          type="email"
+          value={newEmail}
+          onChange={setNewEmail}
+          placeholder="nama@example.com"
+        />
+
+        <Input
+          label="Password Baru"
+          type="password"
+          value={newPassword}
+          onChange={setNewPassword}
+          placeholder="Kosongkan jika tidak diubah"
+          hint="Min 6 karakter"
+        />
+
+        <Input
+          label="Konfirmasi Password Baru"
+          type="password"
+          value={confirmPassword}
+          onChange={setConfirmPassword}
+          placeholder="Ulangi password baru"
+        />
+
+        {saveMsg && (
+          <div className={cn(
+            'p-2.5 rounded-lg text-xs',
+            saveMsg.type === 'success'
+              ? 'bg-emerald-50 border border-emerald-200 text-emerald-700'
+              : 'bg-red-50 border border-red-200 text-red-700'
+          )}>
+            {saveMsg.type === 'success' ? '✅' : '❌'} {saveMsg.text}
+          </div>
+        )}
+
+        <div className="pt-4 mt-4 border-t border-slate-200 flex justify-center">
+          <Button
+            onClick={handleSaveAll}
+            disabled={saving}
+            className="px-8 py-2.5 text-xs sm:text-sm font-semibold uppercase tracking-wide"
+          >
+            {saving ? (
+              <>
+                <Loader2 className="w-4 h-4 animate-spin" /> MENYIMPAN...
+              </>
+            ) : (
+              <>
+                <Save className="w-4 h-4" /> SIMPAN
+              </>
+            )}
+          </Button>
+        </div>
+      </div>
+    </Card>
   );
 }
 
