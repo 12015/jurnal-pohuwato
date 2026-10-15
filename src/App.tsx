@@ -702,17 +702,56 @@ function LogoUploader({
 }) {
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (file) {
-      if (file.size > 2 * 1024 * 1024) {
-        alert('Ukuran file logo maksimal 2MB');
-        return;
-      }
-      const reader = new FileReader();
-      reader.onloadend = () => {
+    if (!file) return;
+
+    // Batas maksimal file asli: 2 MB (validasi awal)
+    if (file.size > 2 * 1024 * 1024) {
+      alert('Ukuran file maksimal 2MB');
+      return;
+    }
+
+    // Kompresi otomatis: resize maks 500x500 px, output JPEG kualitas 0.85
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      const img = new Image();
+      img.onload = () => {
+        const MAX_DIM = 500;
+        let { width, height } = img;
+
+        // Resize proporsional jika melebihi MAX_DIM
+        if (width > MAX_DIM || height > MAX_DIM) {
+          if (width > height) {
+            height = Math.round((height * MAX_DIM) / width);
+            width = MAX_DIM;
+          } else {
+            width = Math.round((width * MAX_DIM) / height);
+            height = MAX_DIM;
+          }
+        }
+
+        const canvas = document.createElement('canvas');
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+
+        if (!ctx) {
+          // Fallback: pakai file asli kalau canvas gagal
+          onChange(reader.result as string);
+          return;
+        }
+
+        // Gambar ke canvas lalu konversi ke JPEG terkompresi
+        ctx.drawImage(img, 0, 0, width, height);
+        const compressed = canvas.toDataURL('image/jpeg', 0.85);
+        onChange(compressed);
+      };
+      img.onerror = () => {
+        // Fallback: pakai file asli kalau gambar gagal load
         onChange(reader.result as string);
       };
-      reader.readAsDataURL(file);
-    }
+      img.src = reader.result as string;
+    };
+    reader.readAsDataURL(file);
   };
 
   return (
