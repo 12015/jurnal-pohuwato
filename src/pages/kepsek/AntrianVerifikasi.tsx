@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import {
-  Loader2, CheckCircle2, XCircle, User, RefreshCw,
+  Loader2, CheckCircle2, XCircle, RefreshCw,
   X, Calendar, Eye,
 } from 'lucide-react';
 import { format, parseISO } from 'date-fns';
@@ -258,9 +258,6 @@ export function AntrianVerifikasi({ profile, addNotification }: AntrianVerifikas
                     <tr key={v.id} className="hover:bg-slate-50 transition-colors">
                       <td className="px-4 py-3">
                         <div className="flex items-center gap-2.5">
-                          <div className="w-9 h-9 rounded-full bg-slate-100 flex items-center justify-center overflow-hidden shrink-0 border border-slate-200">
-                            <User className="w-4 h-4 text-slate-400" />
-                          </div>
                           <div className="min-w-0">
                             <div className="flex items-center gap-1.5 flex-wrap">
                               <p className="font-semibold text-slate-800 truncate">{v.guruName}</p>
