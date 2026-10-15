@@ -72,6 +72,12 @@ const kepsekSections: MenuSection[] = [
 
 const adminSections: MenuSection[] = [
   {
+    title: 'UTAMA',
+    items: [
+      { key: 'profile', label: 'Profil Saya', icon: <User className="w-5 h-5" /> },
+    ],
+  },
+  {
     title: 'ADMIN PANEL',
     items: [
       { key: 'admin', label: 'Admin Panel', icon: <UserCog className="w-5 h-5" /> },
