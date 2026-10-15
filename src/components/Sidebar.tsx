@@ -2,7 +2,7 @@ import type { ReactNode } from 'react';
 import {
   LayoutDashboard, User, FileText, Eye, History,
   Users, ClipboardCheck, CheckSquare, LogOut, BookOpen,
-  FileSpreadsheet,
+  FileSpreadsheet, UserCog,
 } from 'lucide-react';
 import type { TeacherData, UserProfile, TabKey } from '../types';
 import { cn } from '../lib/utils';
@@ -70,6 +70,15 @@ const kepsekSections: MenuSection[] = [
   },
 ];
 
+const adminSections: MenuSection[] = [
+  {
+    title: 'ADMIN PANEL',
+    items: [
+      { key: 'admin', label: 'Admin Panel', icon: <UserCog className="w-5 h-5" /> },
+    ],
+  },
+];
+
 const pengawasSections: MenuSection[] = [
   {
     title: 'UTAMA',
@@ -97,12 +106,16 @@ export function Sidebar({
   onCloseMobile,
 }: SidebarProps) {
   const role = profile?.role || 'guru';
-  const sections = role === 'pengawas'
+  const sections = role === 'admin'
+    ? adminSections
+    : role === 'pengawas'
     ? pengawasSections
     : role === 'kepala_sekolah'
     ? kepsekSections
     : guruSections;
-  const roleLabel = role === 'pengawas'
+  const roleLabel = role === 'admin'
+    ? 'Administrator'
+    : role === 'pengawas'
     ? 'Pengawas Sekolah'
     : role === 'kepala_sekolah'
     ? 'Kepala Sekolah'

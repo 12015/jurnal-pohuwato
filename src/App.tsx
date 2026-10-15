@@ -63,6 +63,7 @@ import { DashboardKepsek } from './pages/kepsek/DashboardKepsek';
 import { AntrianVerifikasi } from './pages/kepsek/AntrianVerifikasi';
 import { SPTJMSekolah } from './pages/kepsek/SPTJMSekolah';
 import { Persetujuan } from './pages/pengawas/Persetujuan';
+import { AdminPage } from './pages/admin/AdminPage';
 import type { TabKey } from './types';
 import { TopBar } from './components/TopBar';
 import { getVerificationStatus, getKepsekSignature, getPengawasSignature, getPengawasSekolah } from './lib/db';
@@ -329,6 +330,7 @@ const tabTitles: Record<TabKey, string> = {
   ks_preview: 'Preview Dokumen',
   ks_sptjm: 'SPTJM Sekolah',
   ks_journal: 'Input Jurnal',
+  admin: 'Admin Panel',
 };
 function AppContent({
   user: _user,
@@ -702,6 +704,17 @@ const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
                 </motion.div>
               )}
 
+              {activeTab === 'admin' && profile?.role === 'admin' && (
+                <motion.div
+                  key="admin"
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -20 }}
+                >
+                  <AdminPage />
+                </motion.div>
+              )}
+
               {activeTab === 'preview' && (
                 <motion.div
                   key="preview"
@@ -888,7 +901,7 @@ function ProfileForm({
 }: {
   data: TeacherData;
   onSave: (d: TeacherData) => void;
-  role?: 'guru' | 'kepala_sekolah' | 'pengawas';
+  role?: import('./types').UserRole;
   profile?: import('./types').UserProfile | null;
 }) {
   const [form, setForm] = useState<TeacherData>(data);
@@ -2136,7 +2149,7 @@ function PreviewSection({
   onToggleApproval: (key: string) => void | Promise<void>;
   addNotification: (message: string, type: 'success' | 'error') => void;
   onUpdateTeacher: (data: TeacherData) => void;
-  role?: 'guru' | 'kepala_sekolah' | 'pengawas';
+  role?: import('./types').UserRole;
   onMonthChange?: (monthIdx: number, year: number) => void;
 }) {
   const [type, setType] = useState<PreviewType>('jurnal');
@@ -3023,7 +3036,7 @@ function JurnalTable({ teacher, journals, month, year, monthIndex, role = 'guru'
   month: string;
   year: number;
   monthIndex: number;
-  role?: 'guru' | 'kepala_sekolah' | 'pengawas';
+  role?: import('./types').UserRole;
   signatureImage?: string;
   approved?: boolean;
 }) {
@@ -3359,7 +3372,7 @@ function RekomendasiLetter({
   getEligibility: (m: number) => { isEligible: boolean; filled: number; required: number; monthName: string };
   checkApproval: (m: number) => boolean;
   filterMonth: number;
-  role?: 'guru' | 'kepala_sekolah' | 'pengawas'; // <--- TAMBAHKAN BARIS INI
+  role?: import('./types').UserRole; // <--- TAMBAHKAN BARIS INI
 }) {
   const statuses = [{
     ...getEligibility(filterMonth),

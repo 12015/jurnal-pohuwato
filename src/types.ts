@@ -84,7 +84,7 @@ export const INITIAL_TEACHER_DATA: TeacherData = {
 
 export { getHolidaysForYear, isHoliday, isWorkday } from './lib/holidays';
 
-export type UserRole = 'guru' | 'kepala_sekolah' | 'pengawas';
+export type UserRole = 'guru' | 'kepala_sekolah' | 'pengawas' | 'admin';
 
 export interface UserProfile {
   id: string;
@@ -109,4 +109,43 @@ export type TabKey =
   | 'ks_journal'
   | 'ks_preview'
   | 'ks_sptjm'
+  | 'admin'
 ;
+
+// ============ ADMIN TYPES ============
+export interface AdminStats {
+  totalUsers: number;
+  totalGuru: number;
+  totalKepsek: number;
+  totalPengawas: number;
+  totalJournals: number;
+  totalSekolah: number;
+  activeCodes: number;
+  usedCodes: number;
+}
+
+export interface AdminUserRow {
+  id: string;
+  email: string;
+  role: string;
+  name: string | null;
+  nip: string | null;
+  npsn_bina: string | null;
+  work_unit_bina: string | null;
+}
+
+export interface InviteCode {
+  id: string;
+  code: string;
+  role: string;
+  notes: string | null;
+  used_by: string | null;
+  used_at: string | null;
+  created_at: string;
+}
+
+export interface MasterSekolahRow {
+  npsn: string;
+  nama_sekolah: string;
+  kecamatan: string | null;
+}

@@ -1264,3 +1264,132 @@ export async function checkDuplicateNip(
   }
   return { isDuplicate: false };
 }
+
+// ============ ADMIN FUNCTIONS ============
+
+import type { AdminStats, AdminUserRow, InviteCode, MasterSekolahRow } from '../types';
+
+export async function getAdminStats(): Promise<AdminStats> {
+  const [profiles, journals, sekolah, codes] = await Promise.all([
+    supabase.from('profiles').select('role'),
+    supabase.from('journals').select('id', { count: 'exact', head: true }),
+    supabase.from('master_sekolah').select('npsn', { count: 'exact', head: true }),
+    supabase.from('invite_codes').select('used_by'),
+  ]);
+
+  const roles = profiles.data || [];
+  const codesList = codes.data || [];
+
+  return {
+    totalUsers: roles.length,
+    totalGuru: roles.filter((r: any) => r.role === 'guru').length,
+    totalKepsek: roles.filter((r: any) => r.role === 'kepala_sekolah').length,
+    totalPengawas: roles.filter((r: any) => r.role === 'pengawas').length,
+    totalJournals: journals.count || 0,
+    totalSekolah: sekolah.count || 0,
+    activeCodes: codesList.filter((r: any) => !r.used_by).length,
+    usedCodes: codesList.filter((r: any) => r.used_by).length,
+  };
+}
+
+export async function loadAllUsers(): Promise<AdminUserRow[]> {
+  const [profilesRes, teachersRes] = await Promise.all([
+    supabase.from('profiles').select('id, email, role, npsn_bina, work_unit_bina'),
+    supabase.from('teachers').select('user_id, name, nip'),
+  ]);
+
+  if (profilesRes.error) throw profilesRes.error;
+  if (teachersRes.error) throw teachersRes.error;
+
+  const tMap = new Map<string, { name: string | null; nip: string | null }>();
+  (teachersRes.data || []).forEach((t: any) => {
+    tMap.set(t.user_id, { name: t.name, nip: t.nip });
+  });
+
+  return (profilesRes.data || []).map((p: any) => ({
+    id: p.id,
+    email: p.email,
+    role: p.role,
+    name: tMap.get(p.id)?.name || null,
+    nip: tMap.get(p.id)?.nip || null,
+    npsn_bina: p.npsn_bina,
+    work_unit_bina: p.work_unit_bina,
+  }));
+}
+
+export async function deleteUserByAdmin(userId: string): Promise<void> {
+  const { error } = await supabase.rpc('admin_delete_user', { target_user_id: userId });
+  if (error) throw error;
+}
+
+export async function loadInviteCodes(): Promise<InviteCode[]> {
+  const { data, error } = await supabase
+    .from('invite_codes')
+    .select('*')
+    .order('created_at', { ascending: false });
+  if (error) throw error;
+  return (data || []) as InviteCode[];
+}
+
+export async function generateInviteCodes(
+  role: 'kepala_sekolah' | 'pengawas',
+  count: number,
+  prefix: string,
+  notes: string
+): Promise<string[]> {
+  const year = new Date().getFullYear();
+  const { data: existing } = await supabase
+    .from('invite_codes')
+    .select('code')
+    .like('code', `${prefix}-${year}-%`);
+
+  const existingCodes = new Set((existing || []).map((r: any) => r.code));
+  const newCodes: string[] = [];
+
+  let counter = 1;
+  while (newCodes.length < count) {
+    const candidate = `${prefix}-${year}-${String(counter).padStart(3, '0')}`;
+    if (!existingCodes.has(candidate)) {
+      newCodes.push(candidate);
+    }
+    counter++;
+    if (counter > 999) break;
+  }
+
+  const rows = newCodes.map((code) => ({
+    code,
+    role,
+    notes: notes || null,
+  }));
+
+  const { error } = await supabase.from('invite_codes').insert(rows);
+  if (error) throw error;
+  return newCodes;
+}
+
+export async function revokeInviteCode(codeId: string): Promise<void> {
+  const { error } = await supabase.from('invite_codes').delete().eq('id', codeId);
+  if (error) throw error;
+}
+
+export async function loadMasterSekolah(): Promise<MasterSekolahRow[]> {
+  const { data, error } = await supabase
+    .from('master_sekolah')
+    .select('npsn, nama_sekolah, kecamatan')
+    .order('nama_sekolah', { ascending: true });
+  if (error) throw error;
+  return (data || []) as MasterSekolahRow[];
+}
+
+export async function addMasterSekolah(
+  npsn: string,
+  namaSekolah: string,
+  kecamatan: string
+): Promise<void> {
+  const { error } = await supabase.from('master_sekolah').insert({
+    npsn: npsn.trim(),
+    nama_sekolah: namaSekolah.trim(),
+    kecamatan: kecamatan.trim() || null,
+  });
+  if (error) throw error;
+}
