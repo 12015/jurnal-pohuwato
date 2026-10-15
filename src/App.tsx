@@ -855,14 +855,8 @@ function AdminProfileForm({
   };
 
   return (
-    <Card className="p-5 sm:p-6 lg:p-8 max-w-2xl mx-auto">
+    <Card className="p-5 sm:p-6 lg:p-8">
       <div className="space-y-4">
-        <div className="text-center pb-3 mb-3 border-b border-slate-200">
-          <h3 className="font-bold text-slate-800 text-base">Profil Administrator</h3>
-          <p className="text-xs text-slate-500 mt-1">
-            Kelola nama, email, dan password akun admin Anda
-          </p>
-        </div>
 
         <Input
           label="Nama Lengkap"

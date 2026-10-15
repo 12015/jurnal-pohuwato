@@ -358,7 +358,7 @@ export function AdminPage() {
                 <p className="text-xs text-slate-500">Belum ada aktivitas</p>
               </div>
             ) : (
-              <div className="space-y-2 max-h-96 overflow-y-auto pr-1">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-2 max-h-96 overflow-y-auto pr-1">
                 {recentActivity.map((a) => {
                   const ts = new Date(a.timestamp);
                   const diff = Math.floor((Date.now() - ts.getTime()) / 60000);
