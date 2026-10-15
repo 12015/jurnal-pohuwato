@@ -1556,3 +1556,79 @@ export async function getRecentActivity(limit: number = 10): Promise<RecentActiv
     .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
     .slice(0, limit);
 }
+
+// ============ ADMIN: UPDATE USER ROLE ============
+
+export async function adminUpdateUserRole(
+  userId: string,
+  newRole: 'guru' | 'kepala_sekolah' | 'pengawas',
+  npsnBina?: string | null,
+  npsnBinaList?: string[]
+): Promise<void> {
+  // 1. Update profile
+  const { error: profileErr } = await supabase
+    .from('profiles')
+    .update({
+      role: newRole,
+      npsn_bina: newRole === 'kepala_sekolah' ? (npsnBina || null) : null,
+      work_unit_bina: null,
+    })
+    .eq('id', userId);
+  if (profileErr) throw profileErr;
+
+  // 2. Kelola pengawas_sekolah
+  if (newRole === 'pengawas' && npsnBinaList && npsnBinaList.length > 0) {
+    // Hapus yang lama dulu
+    await supabase.from('pengawas_sekolah').delete().eq('pengawas_id', userId);
+
+    // Insert yang baru
+    const rows = npsnBinaList
+      .filter(Boolean)
+      .map((npsn) => ({ pengawas_id: userId, npsn: npsn.trim() }));
+
+    if (rows.length > 0) {
+      const { error: psErr } = await supabase.from('pengawas_sekolah').insert(rows);
+      if (psErr) throw psErr;
+    }
+  } else {
+    // Kalau bukan pengawas, hapus dari pengawas_sekolah
+    await supabase.from('pengawas_sekolah').delete().eq('pengawas_id', userId);
+  }
+}
+
+// ============ ADMIN: RESET KODE UNDANGAN ============
+
+export async function resetInviteCode(codeId: string): Promise<void> {
+  const { error } = await supabase
+    .from('invite_codes')
+    .update({ used_by: null, used_at: null })
+    .eq('id', codeId);
+  if (error) throw error;
+}
+
+// ============ ADMIN: UPDATE MASTER SEKOLAH ============
+
+export async function updateMasterSekolah(
+  oldNpsn: string,
+  newNama: string,
+  newKecamatan: string
+): Promise<void> {
+  const { error } = await supabase
+    .from('master_sekolah')
+    .update({
+      nama_sekolah: newNama.trim(),
+      kecamatan: newKecamatan.trim() || null,
+    })
+    .eq('npsn', oldNpsn);
+  if (error) throw error;
+}
+
+// ============ ADMIN: DELETE MASTER SEKOLAH ============
+
+export async function deleteMasterSekolah(npsn: string): Promise<void> {
+  const { error } = await supabase
+    .from('master_sekolah')
+    .delete()
+    .eq('npsn', npsn);
+  if (error) throw error;
+}

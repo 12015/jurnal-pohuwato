@@ -2,12 +2,13 @@ import { useEffect, useState } from 'react';
 import {
   BarChart3, Users, Key, School, Loader2, Trash2, RefreshCw,
   Search, Plus, X, AlertCircle, User, Award, Shield, FileText,
-  UserCog, TrendingUp, Activity, CheckCircle2, Clock,
+  TrendingUp, Activity, CheckCircle2, Clock, Pencil, Copy, RotateCcw,
 } from 'lucide-react';
 import {
   getAdminStats, loadAllUsers, deleteUserByAdmin,
   loadInviteCodes, generateInviteCodes, revokeInviteCode,
-  loadMasterSekolah, addMasterSekolah,
+  loadMasterSekolah, addMasterSekolah, updateMasterSekolah, deleteMasterSekolah,
+  adminUpdateUserRole, resetInviteCode,
   getJournalsLast7Days, getTopGurusThisMonth, getRecentActivity,
 } from '../../lib/db';
 import type {
@@ -59,6 +60,7 @@ export function AdminPage() {
   const [tab, setTab] = useState<AdminTab>('stats');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [copiedCode, setCopiedCode] = useState<string | null>(null);
 
   const [stats, setStats] = useState<AdminStats | null>(null);
   const [dailyJournals, setDailyJournals] = useState<DailyJournalCount[]>([]);
@@ -70,6 +72,11 @@ export function AdminPage() {
   const [userFilter, setUserFilter] = useState<string>('all');
   const [deleteTarget, setDeleteTarget] = useState<AdminUserRow | null>(null);
   const [deleting, setDeleting] = useState(false);
+  const [editUserTarget, setEditUserTarget] = useState<AdminUserRow | null>(null);
+  const [editRole, setEditRole] = useState<'guru' | 'kepala_sekolah' | 'pengawas'>('guru');
+  const [editNpsn, setEditNpsn] = useState('');
+  const [editNpsnList, setEditNpsnList] = useState('');
+  const [savingEdit, setSavingEdit] = useState(false);
 
   const [codes, setCodes] = useState<InviteCode[]>([]);
   const [showGenForm, setShowGenForm] = useState(false);
@@ -85,6 +92,11 @@ export function AdminPage() {
   const [newNama, setNewNama] = useState('');
   const [newKecamatan, setNewKecamatan] = useState('');
   const [addingSchool, setAddingSchool] = useState(false);
+  const [editSchoolTarget, setEditSchoolTarget] = useState<MasterSekolahRow | null>(null);
+  const [editSchoolNama, setEditSchoolNama] = useState('');
+  const [editSchoolKecamatan, setEditSchoolKecamatan] = useState('');
+  const [savingSchool, setSavingSchool] = useState(false);
+  const [deleteSchoolTarget, setDeleteSchoolTarget] = useState<MasterSekolahRow | null>(null);
 
   const loadTabData = async (t: AdminTab) => {
     setLoading(true);
@@ -128,6 +140,44 @@ export function AdminPage() {
     }
   };
 
+  const openEditUser = (u: AdminUserRow) => {
+    setEditUserTarget(u);
+    if (u.role === 'guru' || u.role === 'kepala_sekolah' || u.role === 'pengawas') {
+      setEditRole(u.role);
+    } else {
+      setEditRole('guru');
+    }
+    setEditNpsn(u.npsn_bina || '');
+    setEditNpsnList('');
+  };
+
+  const handleSaveEditUser = async () => {
+    if (!editUserTarget) return;
+    if (editRole === 'kepala_sekolah' && !/^\d{8}$/.test(editNpsn.trim())) {
+      alert('NPSN harus 8 digit angka');
+      return;
+    }
+    setSavingEdit(true);
+    try {
+      const npsnList = editRole === 'pengawas'
+        ? editNpsnList.split(/[\n,;]+/).map(s => s.trim()).filter(Boolean)
+        : undefined;
+      await adminUpdateUserRole(
+        editUserTarget.id,
+        editRole,
+        editRole === 'kepala_sekolah' ? editNpsn.trim() : null,
+        npsnList
+      );
+      setUsers(await loadAllUsers());
+      setEditUserTarget(null);
+      alert('Role berhasil diubah. User harus login ulang agar perubahan aktif.');
+    } catch (e) {
+      alert('Gagal: ' + (e as Error).message);
+    } finally {
+      setSavingEdit(false);
+    }
+  };
+
   const handleGenerate = async () => {
     setGenerating(true);
     try {
@@ -153,6 +203,26 @@ export function AdminPage() {
     }
   };
 
+  const handleCopyCode = async (code: string) => {
+    try {
+      await navigator.clipboard.writeText(code);
+      setCopiedCode(code);
+      setTimeout(() => setCopiedCode(null), 2000);
+    } catch {
+      alert('Gagal copy: ' + code);
+    }
+  };
+
+  const handleResetCode = async (c: InviteCode) => {
+    if (!confirm(`Reset kode ${c.code} jadi Tersedia?`)) return;
+    try {
+      await resetInviteCode(c.id);
+      setCodes(await loadInviteCodes());
+    } catch (e) {
+      alert('Gagal: ' + (e as Error).message);
+    }
+  };
+
   const handleAddSchool = async () => {
     if (!newNpsn.trim() || !newNama.trim()) {
       alert('NPSN dan Nama Sekolah wajib diisi');
@@ -172,6 +242,41 @@ export function AdminPage() {
       alert('Gagal: ' + (e as Error).message);
     } finally {
       setAddingSchool(false);
+    }
+  };
+
+  const openEditSchool = (s: MasterSekolahRow) => {
+    setEditSchoolTarget(s);
+    setEditSchoolNama(s.nama_sekolah);
+    setEditSchoolKecamatan(s.kecamatan || '');
+  };
+
+  const handleSaveEditSchool = async () => {
+    if (!editSchoolTarget) return;
+    if (!editSchoolNama.trim()) {
+      alert('Nama sekolah wajib diisi');
+      return;
+    }
+    setSavingSchool(true);
+    try {
+      await updateMasterSekolah(editSchoolTarget.npsn, editSchoolNama, editSchoolKecamatan);
+      setSchools(await loadMasterSekolah());
+      setEditSchoolTarget(null);
+    } catch (e) {
+      alert('Gagal: ' + (e as Error).message);
+    } finally {
+      setSavingSchool(false);
+    }
+  };
+
+  const handleDeleteSchool = async () => {
+    if (!deleteSchoolTarget) return;
+    try {
+      await deleteMasterSekolah(deleteSchoolTarget.npsn);
+      setSchools(await loadMasterSekolah());
+      setDeleteSchoolTarget(null);
+    } catch (e) {
+      alert('Gagal: ' + (e as Error).message);
     }
   };
 
@@ -211,6 +316,13 @@ export function AdminPage() {
             {t.label}
           </button>
         ))}
+        <button
+          onClick={() => loadTabData(tab)}
+          disabled={loading}
+          className="ml-auto p-2 text-slate-600 hover:bg-slate-100 rounded-lg"
+        >
+          <RefreshCw className={cn('w-4 h-4', loading && 'animate-spin')} />
+        </button>
       </div>
 
       {error && (
@@ -222,7 +334,6 @@ export function AdminPage() {
       {/* STATS TAB */}
       {tab === 'stats' && stats && (
         <>
-          {/* Row 1: Users */}
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
             <StatCard icon={<Users className="w-5 h-5" />} color="indigo"
               label="Total Users" value={stats.totalUsers} sub="Semua role" />
@@ -234,7 +345,6 @@ export function AdminPage() {
               label="Pengawas" value={stats.totalPengawas} sub="Bina lintas sekolah" />
           </div>
 
-          {/* Row 2: Content */}
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
             <StatCard icon={<FileText className="w-5 h-5" />} color="emerald"
               label="Total Jurnal" value={stats.totalJournals} sub="Semua periode" />
@@ -246,9 +356,7 @@ export function AdminPage() {
               label="Kode Terpakai" value={stats.usedCodes} sub="Sudah diundang" />
           </div>
 
-          {/* Grafik + Top Guru */}
           <div className="grid grid-cols-1 lg:grid-cols-5 gap-3">
-            {/* Grafik 7 hari */}
             <div className="lg:col-span-3 bg-white rounded-xl border border-slate-200 shadow-sm p-4">
               <div className="flex items-center justify-between mb-4">
                 <div className="flex items-center gap-2">
@@ -298,7 +406,6 @@ export function AdminPage() {
               </div>
             </div>
 
-            {/* Top 5 Guru */}
             <div className="lg:col-span-2 bg-white rounded-xl border border-slate-200 shadow-sm p-4">
               <div className="flex items-center gap-2 mb-4">
                 <Award className="w-4 h-4 text-amber-600" />
@@ -344,7 +451,6 @@ export function AdminPage() {
             </div>
           </div>
 
-          {/* Log Aktivitas Terbaru */}
           <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-4">
             <div className="flex items-center gap-2 mb-4">
               <Activity className="w-4 h-4 text-indigo-600" />
@@ -446,13 +552,24 @@ export function AdminPage() {
                       </span>
                     </td>
                     <td className="px-3 py-2 text-center">
-                      <button
-                        onClick={() => setDeleteTarget(u)}
-                        className="p-1.5 text-rose-600 hover:bg-rose-50 rounded-lg"
-                        title="Hapus user"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
+                      <div className="flex items-center justify-center gap-1">
+                        {u.role !== 'admin' && (
+                          <button
+                            onClick={() => openEditUser(u)}
+                            className="p-1.5 text-indigo-600 hover:bg-indigo-50 rounded-lg"
+                            title="Edit role user"
+                          >
+                            <Pencil className="w-4 h-4" />
+                          </button>
+                        )}
+                        <button
+                          onClick={() => setDeleteTarget(u)}
+                          className="p-1.5 text-rose-600 hover:bg-rose-50 rounded-lg"
+                          title="Hapus user"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))}
@@ -505,15 +622,38 @@ export function AdminPage() {
                       )}
                     </td>
                     <td className="px-3 py-2 text-center">
-                      {!c.used_by && (
+                      <div className="flex items-center justify-center gap-1">
                         <button
-                          onClick={() => handleRevoke(c)}
-                          className="p-1.5 text-rose-600 hover:bg-rose-50 rounded-lg"
-                          title="Hapus kode"
+                          onClick={() => handleCopyCode(c.code)}
+                          className={cn(
+                            'p-1.5 rounded-lg transition-colors',
+                            copiedCode === c.code
+                              ? 'bg-emerald-50 text-emerald-600'
+                              : 'text-slate-600 hover:bg-slate-100'
+                          )}
+                          title="Copy kode"
                         >
-                          <Trash2 className="w-4 h-4" />
+                          {copiedCode === c.code ? <CheckCircle2 className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
                         </button>
-                      )}
+                        {c.used_by && (
+                          <button
+                            onClick={() => handleResetCode(c)}
+                            className="p-1.5 text-amber-600 hover:bg-amber-50 rounded-lg"
+                            title="Reset ke Tersedia"
+                          >
+                            <RotateCcw className="w-4 h-4" />
+                          </button>
+                        )}
+                        {!c.used_by && (
+                          <button
+                            onClick={() => handleRevoke(c)}
+                            className="p-1.5 text-rose-600 hover:bg-rose-50 rounded-lg"
+                            title="Hapus kode"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        )}
+                      </div>
                     </td>
                   </tr>
                 ))}
@@ -541,6 +681,7 @@ export function AdminPage() {
                   <th className="text-left px-3 py-2 text-xs font-bold text-slate-700 uppercase">NPSN</th>
                   <th className="text-left px-3 py-2 text-xs font-bold text-slate-700 uppercase">Nama Sekolah</th>
                   <th className="text-left px-3 py-2 text-xs font-bold text-slate-700 uppercase">Kecamatan</th>
+                  <th className="text-center px-3 py-2 text-xs font-bold text-slate-700 uppercase">Aksi</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
@@ -549,6 +690,24 @@ export function AdminPage() {
                     <td className="px-3 py-2 font-mono text-xs">{s.npsn}</td>
                     <td className="px-3 py-2 text-xs font-semibold">{s.nama_sekolah}</td>
                     <td className="px-3 py-2 text-xs text-slate-500">{s.kecamatan || '-'}</td>
+                    <td className="px-3 py-2 text-center">
+                      <div className="flex items-center justify-center gap-1">
+                        <button
+                          onClick={() => openEditSchool(s)}
+                          className="p-1.5 text-indigo-600 hover:bg-indigo-50 rounded-lg"
+                          title="Edit sekolah"
+                        >
+                          <Pencil className="w-4 h-4" />
+                        </button>
+                        <button
+                          onClick={() => setDeleteSchoolTarget(s)}
+                          className="p-1.5 text-rose-600 hover:bg-rose-50 rounded-lg"
+                          title="Hapus sekolah"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
+                    </td>
                   </tr>
                 ))}
               </tbody>
@@ -557,7 +716,7 @@ export function AdminPage() {
         </div>
       )}
 
-      {/* Modal Hapus User */}
+      {/* MODAL: Hapus User */}
       {deleteTarget && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4">
           <div className="bg-white rounded-2xl p-5 max-w-md w-full shadow-2xl space-y-4">
@@ -596,7 +755,83 @@ export function AdminPage() {
         </div>
       )}
 
-      {/* Modal Generate Kode */}
+      {/* MODAL: Edit User Role */}
+      {editUserTarget && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4">
+          <div className="bg-white rounded-2xl p-5 max-w-md w-full shadow-2xl space-y-4">
+            <h4 className="font-bold text-slate-800">Edit Role User</h4>
+            <div className="space-y-3">
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 mb-1">Email</label>
+                <input
+                  type="text"
+                  value={editUserTarget.email}
+                  disabled
+                  className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm text-slate-500 cursor-not-allowed"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 mb-1">Role</label>
+                <select
+                  value={editRole}
+                  onChange={(e) => setEditRole(e.target.value as any)}
+                  className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm"
+                >
+                  <option value="guru">Guru</option>
+                  <option value="kepala_sekolah">Kepala Sekolah</option>
+                  <option value="pengawas">Pengawas</option>
+                </select>
+                <p className="text-[10px] text-slate-400 mt-1">
+                  Admin hanya bisa diatur via Supabase (untuk keamanan)
+                </p>
+              </div>
+              {editRole === 'kepala_sekolah' && (
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 mb-1">NPSN Sekolah (8 digit)</label>
+                  <input
+                    type="text"
+                    value={editNpsn}
+                    onChange={(e) => setEditNpsn(e.target.value.replace(/\D/g, '').slice(0, 8))}
+                    placeholder="40500733"
+                    className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm font-mono"
+                  />
+                </div>
+              )}
+              {editRole === 'pengawas' && (
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 mb-1">NPSN Binaan (satu per baris, maks 5)</label>
+                  <textarea
+                    value={editNpsnList}
+                    onChange={(e) => setEditNpsnList(e.target.value)}
+                    rows={4}
+                    placeholder={'40500733\n40401234'}
+                    className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm font-mono resize-none"
+                  />
+                </div>
+              )}
+            </div>
+            <div className="flex justify-end gap-2 pt-2 border-t">
+              <button
+                onClick={() => setEditUserTarget(null)}
+                disabled={savingEdit}
+                className="px-4 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-100 rounded-lg"
+              >
+                Batal
+              </button>
+              <button
+                onClick={handleSaveEditUser}
+                disabled={savingEdit}
+                className="px-4 py-2 text-sm font-semibold bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg flex items-center gap-2"
+              >
+                {savingEdit ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle2 className="w-4 h-4" />}
+                Simpan
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL: Generate Kode */}
       {showGenForm && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4">
           <div className="bg-white rounded-2xl p-5 max-w-md w-full shadow-2xl space-y-4">
@@ -668,7 +903,7 @@ export function AdminPage() {
         </div>
       )}
 
-      {/* Modal Tambah Sekolah */}
+      {/* MODAL: Tambah Sekolah */}
       {showAddSchool && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4">
           <div className="bg-white rounded-2xl p-5 max-w-md w-full shadow-2xl space-y-4">
@@ -719,6 +954,98 @@ export function AdminPage() {
               >
                 {addingSchool && <Loader2 className="w-4 h-4 animate-spin" />}
                 Simpan
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL: Edit Sekolah */}
+      {editSchoolTarget && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4">
+          <div className="bg-white rounded-2xl p-5 max-w-md w-full shadow-2xl space-y-4">
+            <h4 className="font-bold text-slate-800">Edit Sekolah</h4>
+            <div className="space-y-3">
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 mb-1">NPSN</label>
+                <input
+                  type="text"
+                  value={editSchoolTarget.npsn}
+                  disabled
+                  className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm text-slate-500 font-mono cursor-not-allowed"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 mb-1">Nama Sekolah</label>
+                <input
+                  type="text"
+                  value={editSchoolNama}
+                  onChange={(e) => setEditSchoolNama(e.target.value)}
+                  className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 mb-1">Kecamatan</label>
+                <input
+                  type="text"
+                  value={editSchoolKecamatan}
+                  onChange={(e) => setEditSchoolKecamatan(e.target.value)}
+                  className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm"
+                />
+              </div>
+            </div>
+            <div className="flex justify-end gap-2 pt-2 border-t">
+              <button
+                onClick={() => setEditSchoolTarget(null)}
+                disabled={savingSchool}
+                className="px-4 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-100 rounded-lg"
+              >
+                Batal
+              </button>
+              <button
+                onClick={handleSaveEditSchool}
+                disabled={savingSchool}
+                className="px-4 py-2 text-sm font-semibold bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg flex items-center gap-2"
+              >
+                {savingSchool ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle2 className="w-4 h-4" />}
+                Simpan
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL: Hapus Sekolah */}
+      {deleteSchoolTarget && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4">
+          <div className="bg-white rounded-2xl p-5 max-w-md w-full shadow-2xl space-y-4">
+            <div className="flex items-start gap-3">
+              <div className="w-10 h-10 rounded-full bg-rose-100 flex items-center justify-center shrink-0">
+                <AlertCircle className="w-5 h-5 text-rose-600" />
+              </div>
+              <div className="flex-1">
+                <h4 className="font-bold text-slate-800">Hapus Sekolah?</h4>
+                <p className="text-sm text-slate-600 mt-1">
+                  <strong>{deleteSchoolTarget.nama_sekolah}</strong> (NPSN {deleteSchoolTarget.npsn})
+                </p>
+                <p className="text-xs text-rose-600 mt-2">
+                  ⚠️ Siswa/guru dengan NPSN ini tidak akan bisa registrasi setelah dihapus.
+                </p>
+              </div>
+            </div>
+            <div className="flex justify-end gap-2 pt-2 border-t">
+              <button
+                onClick={() => setDeleteSchoolTarget(null)}
+                className="px-4 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-100 rounded-lg"
+              >
+                Batal
+              </button>
+              <button
+                onClick={handleDeleteSchool}
+                className="px-4 py-2 text-sm font-semibold bg-rose-600 hover:bg-rose-700 text-white rounded-lg flex items-center gap-2"
+              >
+                <Trash2 className="w-4 h-4" />
+                Hapus
               </button>
             </div>
           </div>
