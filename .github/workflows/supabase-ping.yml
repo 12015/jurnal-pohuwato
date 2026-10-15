@@ -1,0 +1,29 @@
+name: Supabase Keep-Alive
+
+on:
+  schedule:
+    # Setiap hari jam 03:00 UTC (10:00 WIB)
+    - cron: '0 3 * * *'
+  workflow_dispatch:  # Bisa dijalankan manual dari GitHub UI
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping Supabase Auth Health
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+        run: |
+          echo "⏰ Memulai ping Supabase..."
+          echo "URL: ${SUPABASE_URL}"
+          status=$(curl -s -o /dev/null -w "%{http_code}" \
+            "${SUPABASE_URL}/auth/v1/health" \
+            -H "apikey: ${SUPABASE_ANON_KEY}")
+          echo "HTTP Status: $status"
+          if [ "$status" = "200" ]; then
+            echo "✅ Supabase aktif dan merespon. Anti-pause berhasil."
+          else
+            echo "⚠️ Supabase tidak merespon dengan benar (status: $status)."
+            exit 1
+          fi
