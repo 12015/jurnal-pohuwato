@@ -149,7 +149,7 @@ export function DashboardPengawas({
   const belumIsi = gurus.filter((g) => g.journalCount === 0).length;
 
   return (
-    <div className="flex flex-col gap-2.5 lg:gap-3 lg:h-full lg:overflow-hidden">
+    <div className="flex flex-col gap-2.5 lg:gap-3">
       {/* OPSI A: 4 kartu atas */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 lg:gap-3 shrink-0">
         <StatCard icon={<Users className="w-5 h-5" />} color="blue"
@@ -164,7 +164,7 @@ export function DashboardPengawas({
       </div>
 
       {/* OPSI B: Chart per sekolah + mini list */}
-      <div className="flex flex-col lg:flex-1 lg:min-h-0 gap-2 lg:gap-2.5">
+      <div className="flex flex-col gap-2 lg:gap-2.5">
         <div className="flex items-center gap-2 px-1 shrink-0">
           <School className="w-4 h-4 text-indigo-600" />
           <p className="font-semibold text-slate-800 text-xs lg:text-sm">Kelengkapan per Sekolah</p>
@@ -188,7 +188,7 @@ export function DashboardPengawas({
             </div>
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2.5 lg:gap-3 lg:flex-1 lg:min-h-0 lg:auto-rows-fr">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2.5 lg:gap-3">
             {sekolahList.map((s) => {
               const total = s.total || 1;
               const pctLengkap = (s.lengkap / total) * 100;
@@ -200,7 +200,7 @@ export function DashboardPengawas({
               return (
                 <div
                   key={s.npsn}
-                  className="bg-white rounded-xl border border-slate-200 shadow-sm p-3 lg:p-4 flex flex-col lg:h-full lg:min-h-0 lg:overflow-hidden"
+                  className="bg-white rounded-xl border border-slate-200 shadow-sm p-3 lg:p-4 flex flex-col"
                 >
                   <div className="mb-2 pb-2 lg:mb-3 lg:pb-3 border-b border-slate-100 shrink-0">
                     <p className="font-bold text-slate-800 text-xs lg:text-sm truncate" title={s.namaSekolah}>
@@ -243,7 +243,7 @@ export function DashboardPengawas({
                     <p className="text-[9px] lg:text-[10px] font-bold text-slate-500 uppercase tracking-wide mb-1 lg:mb-1.5 shrink-0">
                       Daftar Guru ({guruList.length})
                     </p>
-                    <div className="space-y-1 lg:space-y-1.5 lg:flex-1 lg:overflow-y-auto lg:min-h-0 lg:pr-1 max-h-40 lg:max-h-none">
+                    <div className="space-y-1 lg:space-y-1.5 max-h-40 overflow-y-auto pr-1">
                       {guruList.map((g) => {
                         const percent = required > 0 ? Math.round((g.journalCount / required) * 100) : 0;
                         const barColor = percent >= 80 ? 'bg-emerald-500' : percent >= 40 ? 'bg-amber-500' : 'bg-rose-500';

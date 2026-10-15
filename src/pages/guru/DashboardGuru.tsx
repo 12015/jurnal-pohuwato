@@ -242,7 +242,7 @@ export function DashboardGuru({
   };
 
   return (
-    <div className="flex flex-col gap-2.5 lg:gap-3 lg:h-full lg:overflow-hidden">
+    <div className="flex flex-col gap-2.5 lg:gap-3">
       {/* Toolbar */}
       <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-3 flex flex-wrap items-center gap-2 shrink-0">
         <div className="flex items-center gap-2 min-w-0">
@@ -386,7 +386,7 @@ export function DashboardGuru({
       </div>
 
       {/* Chart + Ringkasan (grid 2:3) */}
-      <div className="flex flex-col lg:flex-1 lg:min-h-0 gap-2 lg:gap-2.5">
+      <div className="flex flex-col gap-2 lg:gap-2.5">
         <div className="flex items-center gap-2 px-1 shrink-0">
           <BarChart3 className="w-4 h-4 text-indigo-600" />
           <p className="font-semibold text-slate-800 text-xs lg:text-sm">Kelengkapan per Minggu</p>
@@ -395,11 +395,11 @@ export function DashboardGuru({
           </span>
         </div>
 
-        <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-3 lg:p-4 flex flex-col lg:flex-1 lg:min-h-0 lg:overflow-hidden">
-          <div className="grid grid-cols-1 lg:grid-cols-5 gap-4 lg:flex-1 lg:min-h-0">
+        <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-3 lg:p-4">
+          <div className="grid grid-cols-1 lg:grid-cols-5 gap-4">
             {/* Kiri: Chart batang */}
-            <div className="lg:col-span-2 flex flex-col border-b lg:border-b-0 lg:border-r border-slate-100 pb-3 lg:pb-0 lg:pr-4 lg:min-h-0">
-              <div className="flex items-end justify-around gap-2 h-32 lg:h-full relative">
+            <div className="lg:col-span-2 flex flex-col border-b lg:border-b-0 lg:border-r border-slate-100 pb-3 lg:pb-0 lg:pr-4">
+              <div className="flex items-end justify-around gap-2 h-40 relative">
                 <div className="absolute inset-0 flex flex-col justify-between pointer-events-none">
                   <div className="border-t border-dashed border-slate-100"></div>
                   <div className="border-t border-dashed border-slate-100"></div>
@@ -432,7 +432,7 @@ export function DashboardGuru({
             </div>
 
             {/* Kanan: 4 kartu ringkasan dalam 2x2 grid */}
-            <div className="lg:col-span-3 flex flex-col lg:min-h-0">
+            <div className="lg:col-span-3 flex flex-col">
               <div className="grid grid-cols-2 gap-2.5 lg:gap-3 flex-1">
                 <StatCard
                   icon={<Activity className="w-5 h-5" />}

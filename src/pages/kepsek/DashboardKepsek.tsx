@@ -189,7 +189,7 @@ export function DashboardKepsek({
   const barScale = (count: number) => Math.max(6, (count / maxCount) * 100);
 
   return (
-    <div className="flex flex-col gap-2.5 lg:gap-3 lg:h-full lg:overflow-hidden">
+    <div className="flex flex-col gap-2.5 lg:gap-3">
       {/* Toolbar Jurnal Saya */}
       <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-3 flex flex-wrap items-center gap-3 shrink-0">
         <div className="flex items-center gap-2 min-w-0">
@@ -270,7 +270,7 @@ export function DashboardKepsek({
       </div>
 
       {/* Chart + mini list */}
-      <div className="flex flex-col lg:flex-1 lg:min-h-0 gap-2 lg:gap-2.5">
+      <div className="flex flex-col gap-2 lg:gap-2.5">
         <div className="flex items-center gap-2 px-1 shrink-0">
           <School className="w-4 h-4 text-indigo-600" />
           <p className="font-semibold text-slate-800 text-xs lg:text-sm">Kelengkapan Jurnal Guru</p>
@@ -297,11 +297,11 @@ export function DashboardKepsek({
             </div>
           </div>
         ) : (
-          <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-3 lg:p-4 flex flex-col lg:flex-1 lg:min-h-0 lg:overflow-hidden">
-            <div className="grid grid-cols-1 lg:grid-cols-5 gap-4 lg:flex-1 lg:min-h-0">
+          <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-3 lg:p-4">
+            <div className="grid grid-cols-1 lg:grid-cols-5 gap-4">
               {/* Kiri: chart */}
-              <div className="lg:col-span-2 flex flex-col border-b lg:border-b-0 lg:border-r border-slate-100 pb-3 lg:pb-0 lg:pr-4 lg:min-h-0">
-                <div className="flex items-end justify-around gap-2 h-28 lg:h-full relative">
+              <div className="lg:col-span-2 flex flex-col border-b lg:border-b-0 lg:border-r border-slate-100 pb-3 lg:pb-0 lg:pr-4">
+                <div className="flex items-end justify-around gap-2 h-36 relative">
                   <div className="absolute inset-0 flex flex-col justify-between pointer-events-none">
                     <div className="border-t border-dashed border-slate-100"></div>
                     <div className="border-t border-dashed border-slate-100"></div>
@@ -332,8 +332,8 @@ export function DashboardKepsek({
               </div>
 
               {/* Kanan: mini list guru */}
-              <div className="lg:col-span-3 flex flex-col lg:min-h-0">
-                <div className="flex-1 lg:overflow-y-auto lg:min-h-0 lg:pr-1 space-y-2">
+              <div className="lg:col-span-3 flex flex-col">
+                <div className="space-y-2 max-h-80 overflow-y-auto pr-1">
                   {gurus.map((g) => {
                     const percent = required > 0 ? Math.round((g.journalCount / required) * 100) : 0;
                     const barColor = percent >= 80 ? 'bg-emerald-500' : percent >= 40 ? 'bg-amber-500' : 'bg-rose-500';
