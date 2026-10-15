@@ -9,8 +9,8 @@ const INVITE_PENGAWAS = import.meta.env.VITE_INVITE_CODE_PENGAWAS as string | un
 const INVITE_KEPSEK = import.meta.env.VITE_INVITE_CODE_KEPSEK as string | undefined;
 
 export function LoginPage() {
-  const { signIn, signUp } = useAuth();
-  const [mode, setMode] = useState<'login' | 'register'>('login');
+  const { signIn, signUp, resetPassword } = useAuth();
+  const [mode, setMode] = useState<'login' | 'register' | 'forgot'>('login');
   const [registerAs, setRegisterAs] = useState<RegisterMode>('guru');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -75,6 +75,21 @@ export function LoginPage() {
       setLookupResult([]);
     } finally {
       setLookingUp(false);
+    }
+  };
+
+  const handleForgotPassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    resetMessages();
+    setLoading(true);
+    try {
+      await resetPassword(email.trim());
+      setInfo('Link reset password telah dikirim ke email Anda. Cek inbox (dan folder spam).');
+      setMode('login');
+    } catch (err) {
+      setError((err as Error).message || 'Gagal mengirim email reset');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -151,6 +166,8 @@ export function LoginPage() {
     }
   };
 
+  const onSubmit = mode === 'forgot' ? handleForgotPassword : handleSubmit;
+
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-50 to-slate-100 p-4">
       <div className="w-full max-w-md bg-white rounded-2xl shadow-xl border border-slate-200 p-8">
@@ -167,7 +184,7 @@ export function LoginPage() {
           <p className="text-sm text-slate-500 mt-1">Kabupaten Pohuwato</p>
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form onSubmit={onSubmit} className="space-y-4">
           {mode === 'register' && (
             <div>
               <label className="block text-xs font-semibold text-slate-700 mb-1.5">
@@ -217,17 +234,19 @@ export function LoginPage() {
             />
           </div>
 
-          <div>
-            <label className="block text-xs font-semibold text-slate-700 mb-1.5">PASSWORD</label>
-            <input
-              type="password"
-              required
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              placeholder="Minimal 6 karakter"
-              className="w-full px-3 py-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none text-sm"
-            />
-          </div>
+          {mode !== 'forgot' && (
+            <div>
+              <label className="block text-xs font-semibold text-slate-700 mb-1.5">PASSWORD</label>
+              <input
+                type="password"
+                required
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder="Minimal 6 karakter"
+                className="w-full px-3 py-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none text-sm"
+              />
+            </div>
+          )}
 
           {mode === 'register' && (
             <div>
@@ -370,22 +389,53 @@ export function LoginPage() {
             ) : (
               <UserPlus className="w-4 h-4" />
             )}
-            {loading ? 'Memproses...' : mode === 'login' ? 'Masuk' : 'Daftar'}
+            {loading
+              ? 'Memproses...'
+              : mode === 'login'
+              ? 'Masuk'
+              : mode === 'forgot'
+              ? 'Kirim Link Reset'
+              : 'Daftar'}
           </button>
         </form>
 
         <div className="mt-6 text-center text-xs text-slate-500">
-          {mode === 'login' ? (
+          {mode === 'login' && (
             <>
-              Belum punya akun?{' '}
               <button
-                onClick={() => switchToRegister('guru')}
-                className="text-indigo-600 font-semibold hover:underline"
+                onClick={() => {
+                  setMode('forgot');
+                  resetMessages();
+                }}
+                className="text-slate-500 hover:text-indigo-600 hover:underline mb-2 block w-full"
               >
-                Daftar sekarang
+                Lupa password?
+              </button>
+              <div className="pt-2 border-t border-slate-100">
+                Belum punya akun?{' '}
+                <button
+                  onClick={() => switchToRegister('guru')}
+                  className="text-indigo-600 font-semibold hover:underline"
+                >
+                  Daftar sekarang
+                </button>
+              </div>
+            </>
+          )}
+
+          {mode === 'forgot' && (
+            <>
+              Masukkan email Anda untuk menerima link reset password.
+              <button
+                onClick={switchToLogin}
+                className="text-indigo-600 font-semibold hover:underline ml-1"
+              >
+                Kembali ke Login
               </button>
             </>
-          ) : (
+          )}
+
+          {mode === 'register' && (
             <>
               Sudah punya akun?{' '}
               <button

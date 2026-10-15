@@ -194,7 +194,97 @@ const Input = ({
 // --- Main App ---
 
 export default function App() {
-  const { user, profile, loading, signOut } = useAuth();
+  const { user, profile, loading, signOut, updatePassword } = useAuth();
+  const [isRecoveryMode, setIsRecoveryMode] = useState(false);
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [recoveryLoading, setRecoveryLoading] = useState(false);
+  const [recoveryError, setRecoveryError] = useState('');
+
+  // Deteksi link recovery dari URL
+  useEffect(() => {
+    const hash = window.location.hash || '';
+    const search = window.location.search || '';
+    if (hash.includes('type=recovery') || search.includes('type=recovery')) {
+      setIsRecoveryMode(true);
+    }
+  }, []);
+
+  const handleRecoverySubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setRecoveryError('');
+    if (newPassword.length < 6) {
+      setRecoveryError('Password minimal 6 karakter');
+      return;
+    }
+    if (newPassword !== confirmPassword) {
+      setRecoveryError('Konfirmasi password tidak cocok');
+      return;
+    }
+    setRecoveryLoading(true);
+    try {
+      await updatePassword(newPassword);
+      alert('Password berhasil diubah! Silakan login dengan password baru Anda.');
+      // Bersihkan URL dari hash recovery
+      window.history.replaceState(null, '', window.location.pathname);
+      setIsRecoveryMode(false);
+      setNewPassword('');
+      setConfirmPassword('');
+    } catch (err) {
+      setRecoveryError((err as Error).message);
+    } finally {
+      setRecoveryLoading(false);
+    }
+  };
+
+  if (isRecoveryMode) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-50 to-slate-100 p-4">
+        <div className="w-full max-w-md bg-white rounded-2xl shadow-xl border border-slate-200 p-8">
+          <div className="text-center mb-6">
+            <h1 className="text-xl font-bold text-slate-900">Set Password Baru</h1>
+            <p className="text-sm text-slate-500 mt-1">Masukkan password baru untuk akun Anda</p>
+          </div>
+          <form onSubmit={handleRecoverySubmit} className="space-y-4">
+            <div>
+              <label className="block text-xs font-semibold text-slate-700 mb-1.5">PASSWORD BARU</label>
+              <input
+                type="password"
+                required
+                value={newPassword}
+                onChange={(e) => setNewPassword(e.target.value)}
+                placeholder="Minimal 6 karakter"
+                className="w-full px-3 py-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none text-sm"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-semibold text-slate-700 mb-1.5">KONFIRMASI PASSWORD</label>
+              <input
+                type="password"
+                required
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+                placeholder="Ulangi password baru"
+                className="w-full px-3 py-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none text-sm"
+              />
+            </div>
+            {recoveryError && (
+              <div className="p-3 bg-red-50 border border-red-200 rounded-lg text-xs text-red-700">
+                {recoveryError}
+              </div>
+            )}
+            <button
+              type="submit"
+              disabled={recoveryLoading}
+              className="w-full py-2.5 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white font-semibold rounded-lg transition-colors"
+            >
+              {recoveryLoading ? 'Menyimpan...' : 'Simpan Password Baru'}
+            </button>
+          </form>
+        </div>
+      </div>
+    );
+  }
 
   if (loading) {
     return (

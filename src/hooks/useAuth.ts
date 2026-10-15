@@ -53,6 +53,16 @@ export function useAuth() {
     user,
     profile,
     loading,
+    resetPassword: async (email: string) => {
+      const { error } = await supabase.auth.resetPasswordForEmail(email, {
+        redirectTo: `${window.location.origin}/?type=recovery`,
+      });
+      if (error) throw error;
+    },
+    updatePassword: async (newPassword: string) => {
+      const { error } = await supabase.auth.updateUser({ password: newPassword });
+      if (error) throw error;
+    },
     signIn: async (email: string, password: string) => {
       const { error } = await supabase.auth.signInWithPassword({ email, password });
       if (error) throw error;
