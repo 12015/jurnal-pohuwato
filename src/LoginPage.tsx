@@ -1,12 +1,9 @@
 import { useState, useEffect } from 'react';
 import { Loader2, LogIn, UserPlus, CheckCircle2, AlertCircle, School, Info } from 'lucide-react';
 import { useAuth } from './hooks/useAuth';
-import { lookupSekolahByNpsn } from './lib/db';
+import { lookupSekolahByNpsn, validateInviteCode, markInviteCodeAsUsed } from './lib/db';
 
 type RegisterMode = 'guru' | 'pejabat';
-
-const INVITE_PENGAWAS = import.meta.env.VITE_INVITE_CODE_PENGAWAS as string | undefined;
-const INVITE_KEPSEK = import.meta.env.VITE_INVITE_CODE_KEPSEK as string | undefined;
 
 export function LoginPage() {
   const { signIn, signUp, resetPassword } = useAuth();
@@ -117,10 +114,12 @@ export function LoginPage() {
 
       // ==== REGISTER PEJABAT ====
       const targetRole = isKepsek ? 'kepala_sekolah' : 'pengawas';
-      const expectedCode = targetRole === 'kepala_sekolah' ? INVITE_KEPSEK : INVITE_PENGAWAS;
 
-      if (!expectedCode) throw new Error('Kode undangan belum dikonfigurasi. Hubungi admin.');
-      if (inviteCode.trim() !== expectedCode) throw new Error('Kode undangan salah');
+      // Validasi kode undangan ke database
+      const validation = await validateInviteCode(inviteCode.trim(), targetRole);
+      if (!validation.valid) {
+        throw new Error(validation.message || 'Kode undangan tidak valid');
+      }
 
       // Validasi NPSN
       let npsnList: string[] = [];
@@ -149,7 +148,17 @@ export function LoginPage() {
         .filter((n) => n && !n.includes('tidak ditemukan'))
         .join(', ') || (isKepsek ? `NPSN ${npsnList[0]}` : `Binaan ${npsnList.length} sekolah`);
 
-      await signUp(email.trim(), password, targetRole, workUnitBina.trim(), npsnList);
+      const result = await signUp(email.trim(), password, targetRole, workUnitBina.trim(), npsnList);
+
+      // Tandai kode undangan sebagai sudah dipakai
+      if (result?.userId) {
+        try {
+          await markInviteCodeAsUsed(inviteCode.trim(), result.userId);
+        } catch (markErr) {
+          console.error('Gagal mark code as used:', markErr);
+          // Tidak throw — signup tetap dianggap berhasil
+        }
+      }
 
       setInfo('Pendaftaran pejabat berhasil. Silakan login.');
       setMode('login');

@@ -1165,3 +1165,71 @@ export async function resetKepsekStatus(
     .eq('id', verificationId);
   if (error) throw error;
 }
+
+// ============ INVITE CODES (Kode Undangan Unik) ============
+
+export interface InviteCodeValidation {
+  valid: boolean;
+  message?: string;
+  role?: 'kepala_sekolah' | 'pengawas';
+}
+
+/**
+ * Validasi kode undangan untuk registrasi pejabat.
+ * Cek: apakah kode ada, sesuai role, dan belum dipakai.
+ */
+export async function validateInviteCode(
+  code: string,
+  expectedRole: 'kepala_sekolah' | 'pengawas'
+): Promise<InviteCodeValidation> {
+  const cleanCode = code.trim().toUpperCase();
+
+  const { data, error } = await supabase
+    .from('invite_codes')
+    .select('code, role, used_by')
+    .eq('code', cleanCode)
+    .maybeSingle();
+
+  if (error) {
+    console.error('validateInviteCode:', error);
+    return { valid: false, message: 'Gagal memverifikasi kode: ' + error.message };
+  }
+
+  if (!data) {
+    return { valid: false, message: 'Kode undangan tidak ditemukan' };
+  }
+
+  if (data.role !== expectedRole) {
+    return {
+      valid: false,
+      message: `Kode ini untuk role ${data.role}, bukan ${expectedRole}`,
+    };
+  }
+
+  if (data.used_by) {
+    return { valid: false, message: 'Kode undangan ini sudah pernah digunakan' };
+  }
+
+  return { valid: true, role: data.role as 'kepala_sekolah' | 'pengawas' };
+}
+
+/**
+ * Tandai kode undangan sebagai sudah terpakai oleh user tertentu.
+ */
+export async function markInviteCodeAsUsed(
+  code: string,
+  userId: string
+): Promise<void> {
+  const cleanCode = code.trim().toUpperCase();
+
+  const { error } = await supabase
+    .from('invite_codes')
+    .update({ used_by: userId, used_at: new Date().toISOString() })
+    .eq('code', cleanCode)
+    .is('used_by', null);  // Hanya update kalau belum dipakai
+
+  if (error) {
+    console.error('markInviteCodeAsUsed:', error);
+    throw error;
+  }
+}

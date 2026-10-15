@@ -73,7 +73,7 @@ export function useAuth() {
       role: UserRole,
       workUnitBina?: string,
       npsnBinaList?: string[]
-    ) => {
+    ): Promise<{ userId: string } | null> => {
       // Set flag SEBELUM signUp → supaya listener onAuthStateChange skip loadProfile
       signingUpRef.current = true;
 
@@ -107,7 +107,10 @@ export function useAuth() {
           // ⚡ Reload profile SEGERA setelah upsert selesai
           const freshProfile = await getProfile(data.user.id);
           if (freshProfile) setProfile(freshProfile);
+
+          return { userId: data.user.id };
         }
+        return null;
       } finally {
         // Lepas flag setelah semua selesai
         signingUpRef.current = false;
