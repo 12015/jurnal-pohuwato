@@ -74,18 +74,18 @@ export function DaftarGuruBinaan({
   const renderCol = (list: BinaanSummary[], keyPrefix: string) => (
     <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
       <div className="overflow-x-auto">
-      <table className="w-full text-sm min-w-[600px]">
+      <table className="w-full text-sm">
         <thead className="bg-slate-50 border-b border-slate-200">
           <tr>
-            <th className="text-left px-3 py-2.5 font-bold text-slate-700 text-[10px] uppercase tracking-wider">Nama</th>
-            <th className="text-left px-3 py-2.5 font-bold text-slate-700 text-[10px] uppercase tracking-wider">Sekolah</th>
-            <th className="text-center px-3 py-2.5 font-bold text-slate-700 text-[10px] uppercase tracking-wider">Jabatan</th>
+            <th className="text-left px-2 py-2 font-bold text-slate-700 text-[10px] uppercase tracking-wider">Nama</th>
+            <th className="text-left px-2 py-2 font-bold text-slate-700 text-[10px] uppercase tracking-wider">Sekolah</th>
+            <th className="text-center px-2 py-2 font-bold text-slate-700 text-[10px] uppercase tracking-wider">Jabatan</th>
           </tr>
         </thead>
         <tbody className="divide-y divide-slate-100">
           {list.map((r) => (
             <tr key={`${keyPrefix}-${r.userId}`} className="hover:bg-slate-50 transition-colors">
-              <td className="px-3 py-2.5">
+              <td className="px-2 py-2">
                 <div className="flex items-center gap-2">
                   <div className="min-w-0">
                     <p className="font-semibold text-slate-800 text-xs truncate">{r.name}</p>
@@ -95,7 +95,7 @@ export function DaftarGuruBinaan({
                   </div>
                 </div>
               </td>
-              <td className="px-3 py-2.5">
+              <td className="px-2 py-2">
                 <p className="font-medium text-slate-700 text-xs truncate max-w-[160px]">
                   {r.namaSekolah || r.workUnit || '-'}
                 </p>
@@ -103,7 +103,7 @@ export function DaftarGuruBinaan({
                   <p className="text-[9px] text-slate-400 font-mono">NPSN {r.npsn}</p>
                 )}
               </td>
-              <td className="px-3 py-2.5 text-center">
+              <td className="px-2 py-2 text-center">
                 {r.role === 'kepala_sekolah' ? (
                   <span className="inline-flex items-center gap-0.5 px-2 py-0.5 rounded-full text-[9px] font-bold bg-purple-50 text-purple-700 border border-purple-200">
                     <UserCheck className="w-2.5 h-2.5" /> Kepsek
